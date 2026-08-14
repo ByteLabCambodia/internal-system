@@ -1,0 +1,36 @@
+<%
+/*
+ * Compact table shell: one row per record, sortable headers via query params, horizontal
+ * scroll contained. Pass `columns` [{ key, label, align, sortable }] and render rows in
+ * the caller through `rowsHtml`.
+ */
+const sort = locals.sort || {};
+const baseQuery = locals.baseQuery || '';
+%>
+<div class="overflow-x-auto rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+  <table class="w-full text-left text-sm text-gray-600 dark:text-gray-300">
+    <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+      <tr>
+        <% columns.forEach(function (column) { %>
+          <th scope="col" class="px-4 py-3 <%= column.align === 'right' ? 'text-right' : '' %>">
+            <% if (column.sortable) { %>
+              <%
+                const nextOrder = sort.orderBy === column.key && sort.order === 'asc' ? 'desc' : 'asc';
+                const arrow = sort.orderBy === column.key ? (sort.order === 'asc' ? '↑' : '↓') : '';
+              %>
+              <a href="?<%= baseQuery %>orderBy=<%= column.key %>&order=<%= nextOrder %>"
+                 class="inline-flex items-center gap-1 hover:text-gray-900 dark:hover:text-white">
+                <%= column.label %><span aria-hidden="true"><%= arrow %></span>
+              </a>
+            <% } else { %>
+              <%= column.label %>
+            <% } %>
+          </th>
+        <% }); %>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+      <%- rowsHtml %>
+    </tbody>
+  </table>
+</div>

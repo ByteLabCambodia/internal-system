@@ -1,0 +1,41 @@
+<h1 class="mb-1 text-lg font-semibold text-gray-900 dark:text-white">Sign in</h1>
+<p class="mb-5 text-sm text-gray-500 dark:text-gray-400">
+  Use your work email to access the operations system.
+</p>
+
+<% if (locals.alert) { %>
+  <%- include('../partials/alert', { tone: 'error', message: alert }) %>
+<% } %>
+
+<form method="post" action="/login" x-data="{ pending: false }" @submit="pending = true">
+  <%- include('../partials/csrf') %>
+  <% if (next) { %><input type="hidden" name="next" value="<%= next %>" /><% } %>
+
+  <%- include('../partials/form-field', {
+    name: 'email', label: 'Email', type: 'email', value: values.email,
+    errors, required: true, autocomplete: 'username', autofocus: true,
+  }) %>
+
+  <%- include('../partials/password-field', {
+    name: 'password', label: 'Password', errors, autocomplete: 'current-password',
+  }) %>
+
+  <button type="submit" :disabled="pending"
+          class="w-full rounded-lg bg-primary-600 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 disabled:opacity-60 dark:focus:ring-primary-800">
+    <span x-text="pending ? 'Signing in…' : 'Sign in'">Sign in</span>
+  </button>
+</form>
+
+<% if (invitePending) { %>
+  <form method="post" action="/resend-invite" class="mt-4">
+    <%- include('../partials/csrf') %>
+    <input type="hidden" name="email" value="<%= values.email %>" />
+    <button type="submit" class="w-full text-center text-sm font-medium text-primary-600 hover:underline dark:text-primary-400">
+      Resend my invite email
+    </button>
+  </form>
+<% } %>
+
+<p class="mt-5 text-center text-sm text-gray-500 dark:text-gray-400">
+  <a href="/forgot-password" class="font-medium text-primary-600 hover:underline dark:text-primary-400">Forgot your password?</a>
+</p>

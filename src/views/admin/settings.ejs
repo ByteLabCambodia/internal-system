@@ -1,0 +1,94 @@
+<%- include('../partials/admin-nav') %>
+
+<div class="grid gap-6 lg:grid-cols-2">
+  <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+    <h2 class="mb-1 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Approval limits</h2>
+    <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+      The most a role may approve on one purchase request, in USD. Tick <em>unlimited</em> for no
+      ceiling; leave both blank and the role cannot approve at all. The
+      <code>pr.decide</code> permission still decides who may try.
+    </p>
+
+    <form method="post" action="/admin/settings/thresholds">
+      <%- include('../partials/csrf') %>
+
+      <% roles.forEach(function (role) { %>
+        <%
+          const current = thresholds.find(function (t) { return t.role && t.role.id === role.id; });
+          const value = current ? (current.maxAmountUsd === null ? '' : Number(current.maxAmountUsd)) : '';
+        %>
+        <div class="mb-3 flex items-center gap-3" x-data='<%- JSON.stringify({ unlimited: Boolean(current) && current.maxAmountUsd === null }) %>'>
+          <label for="limit_<%= role.id %>" class="w-24 text-sm text-gray-900 dark:text-white"><%= role.label %></label>
+          <input type="number" step="0.01" min="0" id="limit_<%= role.id %>" name="limit_<%= role.id %>" value="<%= value %>"
+                 :disabled="unlimited" placeholder="cannot approve"
+                 class="w-40 rounded-lg border border-gray-300 bg-gray-50 p-2 text-right text-sm tabular disabled:opacity-40 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+          <label class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+            <input type="checkbox" name="unlimited_<%= role.id %>" value="true" x-model="unlimited"
+                   class="h-4 w-4 rounded border-gray-300 text-primary-600 dark:border-gray-600 dark:bg-gray-700" />
+            unlimited
+          </label>
+        </div>
+      <% }); %>
+
+      <button type="submit" class="mt-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">Save limits</button>
+    </form>
+  </div>
+
+  <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+    <h2 class="mb-1 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Tolerances</h2>
+    <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+      How far over an order a receipt or a payment may go. Fractions: <code>0.05</code> is 5%.
+      Zero means exact. These are read by the database triggers, not just the app.
+    </p>
+
+    <form method="post" action="/admin/settings/tolerances">
+      <%- include('../partials/csrf') %>
+
+      <div class="mb-3 flex items-center gap-3">
+        <label for="receipt" class="w-40 text-sm text-gray-900 dark:text-white">Over-receipt</label>
+        <input type="number" step="0.01" min="0" max="1" id="receipt" name="receipt" value="<%= receiptTolerance %>"
+               class="w-32 rounded-lg border border-gray-300 bg-gray-50 p-2 text-right text-sm tabular dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+      </div>
+      <div class="mb-3 flex items-center gap-3">
+        <label for="payment" class="w-40 text-sm text-gray-900 dark:text-white">Over-payment</label>
+        <input type="number" step="0.01" min="0" max="1" id="payment" name="payment" value="<%= paymentTolerance %>"
+               class="w-32 rounded-lg border border-gray-300 bg-gray-50 p-2 text-right text-sm tabular dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+      </div>
+
+      <button type="submit" class="mt-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">Save tolerances</button>
+    </form>
+  </div>
+
+  <div class="rounded-lg border border-gray-200 bg-white p-4 lg:col-span-2 dark:border-gray-700 dark:bg-gray-800">
+    <h2 class="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Integrations</h2>
+
+    <dl class="grid gap-4 text-sm sm:grid-cols-3">
+      <% [
+        { label: 'Telegram bot', on: integrations.telegram, hint: 'TELEGRAM_BOT_TOKEN' },
+        { label: 'Telegram Mini App', on: integrations.miniApp, hint: 'TELEGRAM_MINIAPP_URL' },
+        { label: 'File storage (R2)', on: integrations.storage, hint: 'ACCESS_KEY_ID / R2_ENDPOINT' },
+        { label: 'Receipt OCR', on: integrations.ocr, hint: 'OCR_SPACE_API_KEY' },
+      ].forEach(function (item) { %>
+        <div>
+          <dt class="text-gray-500 dark:text-gray-400"><%= item.label %></dt>
+          <dd class="mt-1">
+            <%- include('../partials/status-badge', { status: item.on ? 'confirmed' : 'cancelled' }) %>
+            <span class="ms-1 text-xs text-gray-400"><%= item.on ? 'configured' : item.hint %></span>
+          </dd>
+        </div>
+      <% }); %>
+    </dl>
+
+    <% if (integrations.telegram) { %>
+      <form method="post" action="/telegram/setup" class="mt-4">
+        <%- include('../partials/csrf') %>
+        <button class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+          Register webhook<%= integrations.miniApp ? ' & Mini App menu button' : '' %>
+        </button>
+        <% if (!integrations.miniApp) { %>
+          <p class="mt-1.5 text-xs text-gray-400">Set TELEGRAM_MINIAPP_URL to also set the bot's Open-app menu button here.</p>
+        <% } %>
+      </form>
+    <% } %>
+  </div>
+</div>

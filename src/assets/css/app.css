@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Numbers in tables line up: one row per record, right-aligned, tabular figures. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Accessibility: focus must always be visible, in both themes. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-900;
+  }
+}

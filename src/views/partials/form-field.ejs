@@ -1,0 +1,43 @@
+<%
+/*
+ * Label above, error inline underneath, required marked. Usage:
+ *   include('../partials/form-field', {
+ *     name: 'email', label: 'Email', type: 'email', value: values.email,
+ *     errors, required: true, hint: '…', autocomplete: 'username', autofocus: true
+ *   })
+ */
+const type = locals.type || 'text';
+const value = locals.value === undefined || locals.value === null ? '' : locals.value;
+const errors = locals.errors || {};
+const error = errors[name];
+const required = locals.required || false;
+const hint = locals.hint || null;
+const autocomplete = locals.autocomplete || null;
+const autofocus = locals.autofocus || false;
+const inputmode = locals.inputmode || null;
+const step = locals.step || null;
+const placeholder = locals.placeholder || null;
+%>
+<div class="mb-4">
+  <label for="<%= name %>" class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">
+    <%= label %><% if (required) { %><span class="text-red-600" aria-hidden="true"> *</span><span class="sr-only"> (required)</span><% } %>
+  </label>
+
+  <input type="<%= type %>" id="<%= name %>" name="<%= name %>" value="<%= value %>"
+         <%= required ? 'required' : '' %>
+         <%= autofocus ? 'autofocus' : '' %>
+         <%- autocomplete ? `autocomplete="${autocomplete}"` : '' %>
+         <%- inputmode ? `inputmode="${inputmode}"` : '' %>
+         <%- step ? `step="${step}"` : '' %>
+         <%- placeholder ? `placeholder="${placeholder}"` : '' %>
+         <%- error ? 'aria-invalid="true" aria-describedby="' + name + '-error"' : '' %>
+         class="block w-full rounded-lg border p-2.5 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 <%= error
+           ? 'border-red-500 bg-red-50 text-red-900 focus:border-red-500 focus:ring-red-500 dark:border-red-500'
+           : 'border-gray-300 bg-gray-50 text-gray-900 focus:border-primary-600 focus:ring-primary-600 dark:border-gray-600' %>" />
+
+  <% if (error) { %>
+    <p id="<%= name %>-error" class="mt-1.5 text-sm text-red-600 dark:text-red-500"><%= error %></p>
+  <% } else if (hint) { %>
+    <p class="mt-1.5 text-sm text-gray-500 dark:text-gray-400"><%= hint %></p>
+  <% } %>
+</div>

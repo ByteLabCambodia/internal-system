@@ -12,11 +12,9 @@ import bcrypt from 'bcryptjs';
 import { AuthProvidersEnum } from '../auth/auth-providers.enum';
 import { FilesService } from '../files/files.service';
 import { RoleEnum } from '../roles/roles.enum';
-import { StatusEnum } from '../statuses/statuses.enum';
 import { IPaginationOptions } from '../utils/types/pagination-options';
 import { FileType } from '../files/domain/file';
 import { Role } from '../roles/domain/role';
-import { Status } from '../statuses/domain/status';
 import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
@@ -73,7 +71,7 @@ export class UsersService {
       photo = null;
     }
 
-    let role: Role | undefined = undefined;
+    let role: Role | undefined = { id: RoleEnum.employee };
 
     if (createUserDto.role?.id) {
       const roleObject = Object.values(RoleEnum)
@@ -93,26 +91,6 @@ export class UsersService {
       };
     }
 
-    let status: Status | undefined = undefined;
-
-    if (createUserDto.status?.id) {
-      const statusObject = Object.values(StatusEnum)
-        .map(String)
-        .includes(String(createUserDto.status.id));
-      if (!statusObject) {
-        throw new UnprocessableEntityException({
-          status: HttpStatus.UNPROCESSABLE_ENTITY,
-          errors: {
-            status: 'statusNotExists',
-          },
-        });
-      }
-
-      status = {
-        id: createUserDto.status.id,
-      };
-    }
-
     return this.usersRepository.create({
       // Do not remove comment below.
       // <creating-property-payload />
@@ -122,7 +100,8 @@ export class UsersService {
       password: password,
       photo: photo,
       role: role,
-      status: status,
+      active: createUserDto.active ?? true,
+      mustChangePassword: false,
       provider: createUserDto.provider ?? AuthProvidersEnum.email,
       socialId: createUserDto.socialId,
     });
@@ -247,26 +226,6 @@ export class UsersService {
       };
     }
 
-    let status: Status | undefined = undefined;
-
-    if (updateUserDto.status?.id) {
-      const statusObject = Object.values(StatusEnum)
-        .map(String)
-        .includes(String(updateUserDto.status.id));
-      if (!statusObject) {
-        throw new UnprocessableEntityException({
-          status: HttpStatus.UNPROCESSABLE_ENTITY,
-          errors: {
-            status: 'statusNotExists',
-          },
-        });
-      }
-
-      status = {
-        id: updateUserDto.status.id,
-      };
-    }
-
     return this.usersRepository.update(id, {
       // Do not remove comment below.
       // <updating-property-payload />
@@ -276,7 +235,11 @@ export class UsersService {
       password,
       photo,
       role,
-      status,
+      active: updateUserDto.active,
+      mustChangePassword: updateUserDto.mustChangePassword,
+      department: updateUserDto.department,
+      paymentLink: updateUserDto.paymentLink,
+      paymentQrObjectKey: updateUserDto.paymentQrObjectKey,
       provider: updateUserDto.provider,
       socialId: updateUserDto.socialId,
     });

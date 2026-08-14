@@ -1,0 +1,20 @@
+<%
+/*
+ * Flowbite File Input plus the presigned-PUT JS in public/js/r2-upload.js. Only the object
+ * key reaches the form; the file goes straight to R2.
+ */
+const prefix = locals.prefix || 'receipts';
+const label = locals.label || 'Attachment';
+const enabled = locals.enabled !== false;
+%>
+<div class="mb-4" data-upload data-upload-prefix="<%= prefix %>">
+  <label for="<%= name %>-file" class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white"><%= label %></label>
+  <input type="file" id="<%= name %>-file" data-upload-input accept="image/*" <%- enabled ? '' : 'disabled' %>
+         class="block w-full cursor-pointer rounded-lg border border-gray-300 bg-gray-50 text-sm text-gray-900 file:mr-4 file:border-0 file:bg-gray-100 file:px-4 file:py-2.5 file:text-sm file:font-medium disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:file:bg-gray-600 dark:file:text-gray-200" />
+  <input type="hidden" name="<%= name %>" data-upload-key value="<%= locals.value || '' %>" />
+  <img data-upload-preview alt="Preview" <%- locals.previewUrl ? '' : 'hidden' %> src="<%= locals.previewUrl || '' %>"
+       class="mt-2 max-h-40 rounded-lg border border-gray-200 object-contain dark:border-gray-600" />
+  <p data-upload-status class="mt-1.5 text-sm text-gray-500 dark:text-gray-400">
+    <%= enabled ? 'PNG or JPG. Uploaded straight to storage.' : 'File storage is not configured on this environment.' %>
+  </p>
+</div>

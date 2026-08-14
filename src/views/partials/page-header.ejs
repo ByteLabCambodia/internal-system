@@ -1,0 +1,30 @@
+<%
+/* Detail-page header: record number, status badge, actions. */
+const breadcrumbs = locals.breadcrumbs || [];
+const status = locals.status || null;
+const actionsHtml = locals.actionsHtml || '';
+%>
+<% if (breadcrumbs.length) { %>
+  <nav class="mb-3 flex text-sm text-gray-500 dark:text-gray-400" aria-label="Breadcrumb">
+    <ol class="inline-flex items-center gap-1">
+      <% breadcrumbs.forEach(function (crumb, index) { %>
+        <li class="inline-flex items-center gap-1">
+          <% if (index > 0) { %><span aria-hidden="true">/</span><% } %>
+          <% if (crumb.href) { %>
+            <a href="<%= crumb.href %>" class="hover:text-gray-900 dark:hover:text-white"><%= crumb.label %></a>
+          <% } else { %>
+            <span class="text-gray-900 dark:text-white"><%= crumb.label %></span>
+          <% } %>
+        </li>
+      <% }); %>
+    </ol>
+  </nav>
+<% } %>
+
+<div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+  <div class="flex items-center gap-3">
+    <h2 class="text-xl font-semibold text-gray-900 dark:text-white"><%= heading %></h2>
+    <% if (status) { %><%- include('status-badge', { status }) %><% } %>
+  </div>
+  <div class="flex items-center gap-2"><%- actionsHtml %></div>
+</div>

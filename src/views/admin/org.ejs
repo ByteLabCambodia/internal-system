@@ -1,0 +1,72 @@
+<%- include('../partials/admin-nav') %>
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="space-y-6 lg:col-span-2">
+    <% [{ kind: 'department', label: 'Departments', rows: departments },
+        { kind: 'project', label: 'Projects', rows: projects }].forEach(function (group) { %>
+      <div class="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+        <div class="border-b border-gray-200 px-4 py-3 dark:border-gray-700">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"><%= group.label %></h2>
+        </div>
+
+        <% if (!group.rows.length) { %>
+          <p class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">None yet.</p>
+        <% } else { %>
+          <table class="w-full text-left text-sm text-gray-600 dark:text-gray-300">
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+              <% group.rows.forEach(function (row) { %>
+                <tr>
+                  <td class="px-4 py-2.5">
+                    <form method="post" action="/admin/org/<%= group.kind %>/<%= row.id %>/rename" class="flex items-center gap-2">
+                      <%- include('../partials/csrf') %>
+                      <input type="text" name="name" value="<%= row.name %>"
+                             class="w-full max-w-xs rounded-lg border border-gray-300 bg-gray-50 p-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                      <button class="text-xs text-primary-600 hover:underline dark:text-primary-400">Rename</button>
+                    </form>
+                  </td>
+                  <td class="px-4 py-2.5">
+                    <%- include('../partials/status-badge', { status: row.active ? 'confirmed' : 'cancelled' }) %>
+                  </td>
+                  <td class="px-4 py-2.5 text-right text-xs">
+                    <form method="post" action="/admin/org/<%= group.kind %>/<%= row.id %>/toggle" class="inline">
+                      <%- include('../partials/csrf') %>
+                      <button class="text-gray-500 hover:underline dark:text-gray-400"><%= row.active ? 'Deactivate' : 'Activate' %></button>
+                    </form>
+                    <form method="post" action="/admin/org/<%= group.kind %>/<%= row.id %>/delete" class="inline">
+                      <%- include('../partials/csrf') %>
+                      <button class="ms-2 text-gray-400 hover:text-red-600 hover:underline">Delete</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        <% } %>
+      </div>
+    <% }); %>
+  </div>
+
+  <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+    <h2 class="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Add</h2>
+
+    <form method="post" action="/admin/org">
+      <%- include('../partials/csrf') %>
+
+      <div class="mb-4">
+        <label for="kind" class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Type</label>
+        <select id="kind" name="kind" class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+          <option value="department">Department</option>
+          <option value="project">Project</option>
+        </select>
+      </div>
+
+      <%- include('../partials/form-field', { name: 'name', label: 'Name', value: values.name, errors, required: true }) %>
+
+      <button type="submit" class="w-full rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">Add</button>
+    </form>
+
+    <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">
+      Deactivating hides it from new records but keeps existing history readable — prefer it to deleting.
+    </p>
+  </div>
+</div>

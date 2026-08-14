@@ -1,0 +1,164 @@
+<%
+/*
+ * The line-item repeater is the one genuinely interactive form in the app: rows add and
+ * remove, the running total and the USD preview update as you type. Alpine covers exactly
+ * that and nothing else. Fields post as items[0][name] so the DTO's @ValidateNested reads
+ * them straight back on a validation failure.
+ */
+const submitted = (values.items && Array.isArray(values.items)) ? values.items : null;
+const initialItems = submitted && submitted.length
+  ? submitted.map(function (item) {
+      return { name: item.name || '', qty: item.qty || 1, unitPrice: item.unitPrice || 0, category: item.category || '' };
+    })
+  : [{ name: '', qty: 1, unitPrice: 0, category: '' }];
+%>
+
+<% if (locals.alert) { %><%- include('../partials/alert', { tone: 'error', message: alert }) %><% } %>
+<% if (errors && errors.items) { %><%- include('../partials/alert', { tone: 'error', message: errors.items }) %><% } %>
+
+<form method="post" action="/purchase-requests"
+      x-data='<%- JSON.stringify({
+        items: initialItems,
+        currency: values.currency || "USD",
+        rates: rates,
+      }) %>'>
+  <%- include('../partials/csrf') %>
+
+  <div class="grid gap-6 lg:grid-cols-3">
+    <div class="lg:col-span-2 space-y-4">
+      <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+        <h2 class="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Line items</h2>
+
+        <template x-for="(item, index) in items" :key="index">
+          <div class="mb-3 grid gap-2 border-b border-gray-100 pb-3 last:border-0 dark:border-gray-700 sm:grid-cols-12">
+            <div class="sm:col-span-5">
+              <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400" :for="'item-name-' + index">Description</label>
+              <input type="text" :id="'item-name-' + index" :name="'items[' + index + '][name]'" x-model="item.name" required
+                     class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400" :for="'item-qty-' + index">Qty</label>
+              <input type="number" step="0.0001" min="0.0001" :id="'item-qty-' + index" :name="'items[' + index + '][qty]'" x-model.number="item.qty" required
+                     class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-right text-sm tabular dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400" :for="'item-price-' + index">Unit price</label>
+              <input type="number" step="0.0001" min="0" :id="'item-price-' + index" :name="'items[' + index + '][unitPrice]'" x-model.number="item.unitPrice" required
+                     class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-right text-sm tabular dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400" :for="'item-category-' + index">Category</label>
+              <input type="text" :id="'item-category-' + index" :name="'items[' + index + '][category]'" x-model="item.category" list="category-options"
+                     class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+            </div>
+            <div class="flex items-end sm:col-span-1">
+              <button type="button" @click="items.splice(index, 1)" x-show="items.length > 1"
+                      class="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm text-gray-500 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700">
+                <span class="sr-only">Remove line</span>&times;
+              </button>
+            </div>
+          </div>
+        </template>
+
+        <datalist id="category-options">
+          <option value="Electronics"></option>
+          <option value="Office Supplies"></option>
+          <option value="Tools"></option>
+          <option value="Materials"></option>
+        </datalist>
+
+        <button type="button" @click="items.push({ name: '', qty: 1, unitPrice: 0, category: '' })"
+                class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+          Add line
+        </button>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+        <div class="mb-4">
+          <label for="currency" class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">
+            Currency<span class="text-red-600" aria-hidden="true"> *</span>
+          </label>
+          <select id="currency" name="currency" x-model="currency"
+                  class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+            <% currencies.forEach(function (currency) { %>
+              <option value="<%= currency %>" <%- values.currency === currency ? 'selected' : '' %>><%= currency %></option>
+            <% }); %>
+          </select>
+          <p class="mt-1.5 text-sm text-gray-500 dark:text-gray-400">
+            <span x-show="currency === 'USD'">USD records need no conversion.</span>
+            <span x-show="currency !== 'USD'" x-cloak>
+              <template x-if="rates[currency]">
+                <span>Today's rate: <span x-text="rates[currency]"></span> per USD, locked when you submit.</span>
+              </template>
+              <template x-if="!rates[currency]">
+                <span class="text-red-600 dark:text-red-500">No rate on file — finance must set one before this can be submitted.</span>
+              </template>
+            </span>
+          </p>
+        </div>
+
+        <div class="mb-4">
+          <label for="departmentId" class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Department</label>
+          <select id="departmentId" name="departmentId"
+                  class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+            <option value="">—</option>
+            <% departments.forEach(function (department) { %>
+              <option value="<%= department.id %>" <%- String(values.departmentId) === String(department.id) ? 'selected' : '' %>><%= department.name %></option>
+            <% }); %>
+          </select>
+        </div>
+
+        <div class="mb-4">
+          <label for="projectId" class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Project</label>
+          <select id="projectId" name="projectId"
+                  class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+            <option value="">—</option>
+            <% projects.forEach(function (project) { %>
+              <option value="<%= project.id %>" <%- String(values.projectId) === String(project.id) ? 'selected' : '' %>><%= project.name %></option>
+            <% }); %>
+          </select>
+        </div>
+
+        <div class="mb-1">
+          <label for="note" class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Note</label>
+          <textarea id="note" name="note" rows="3"
+                    class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"><%= values.note || '' %></textarea>
+        </div>
+      </div>
+
+      <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+        <dl class="space-y-1 text-sm">
+          <div class="flex justify-between">
+            <dt class="text-gray-500 dark:text-gray-400">Lines</dt>
+            <dd class="tabular text-gray-900 dark:text-white" x-text="items.length"></dd>
+          </div>
+          <div class="flex justify-between border-t border-gray-100 pt-1 dark:border-gray-700">
+            <dt class="font-medium text-gray-900 dark:text-white">Total</dt>
+            <dd class="tabular font-semibold text-gray-900 dark:text-white"
+                x-text="items.reduce((sum, item) => sum + (Number(item.qty) || 0) * (Number(item.unitPrice) || 0), 0).toFixed(2) + ' ' + currency"></dd>
+          </div>
+          <div class="flex justify-between" x-show="currency !== 'USD' && rates[currency]" x-cloak>
+            <dt class="text-gray-500 dark:text-gray-400">≈ USD</dt>
+            <dd class="tabular text-gray-500 dark:text-gray-400"
+                x-text="'$' + (items.reduce((sum, item) => sum + (Number(item.qty) || 0) * (Number(item.unitPrice) || 0), 0) / Number(rates[currency] || 1)).toFixed(2)"></dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sticky footer: long forms keep their actions reachable. -->
+  <div class="sticky bottom-0 mt-6 flex items-center justify-end gap-2 border-t border-gray-200 bg-gray-50/95 py-3 backdrop-blur dark:border-gray-700 dark:bg-gray-900/95">
+    <a href="/purchase-requests" class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Cancel</a>
+    <button type="submit" name="intent" value="draft"
+            class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+      Save draft
+    </button>
+    <button type="submit" name="intent" value="submit"
+            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">
+      Submit for approval
+    </button>
+  </div>
+</form>

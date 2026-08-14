@@ -1,0 +1,26 @@
+<%
+/*
+ * Activity timeline (Flowbite Timeline), rendered last on every detail page.
+ * events: [{ action, actorName, createdAt, detail }]
+ */
+%>
+<% if (!events || !events.length) { %>
+  <p class="text-sm text-gray-500 dark:text-gray-400">No activity recorded yet.</p>
+<% } else { %>
+  <ol class="relative border-s border-gray-200 dark:border-gray-700">
+    <% events.forEach(function (event, index) { %>
+      <li class="<%= index === events.length - 1 ? 'ms-4' : 'mb-8 ms-4' %>">
+        <div class="absolute -start-1.5 mt-1.5 h-3 w-3 rounded-full border border-white bg-gray-200 dark:border-gray-900 dark:bg-gray-700"></div>
+        <time class="mb-1 block text-xs font-normal leading-none text-gray-400 dark:text-gray-500">
+          <%= new Date(event.createdAt).toLocaleString() %>
+        </time>
+        <h3 class="text-sm font-semibold capitalize text-gray-900 dark:text-white">
+          <%= String(event.action).replace(/_/g, ' ') %>
+        </h3>
+        <p class="text-sm font-normal text-gray-500 dark:text-gray-400">
+          <%= event.actorName || 'System' %>
+        </p>
+      </li>
+    <% }); %>
+  </ol>
+<% } %>

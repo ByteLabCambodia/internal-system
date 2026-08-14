@@ -1,0 +1,45 @@
+<%
+/* Every list page opens the same way: filters → count → table → pagination → export. */
+const statuses = locals.statuses || [];
+const filters = locals.filters || {};
+const exportHref = locals.exportHref || null;
+%>
+<form method="get" class="mb-4 flex flex-wrap items-end gap-3">
+  <div>
+    <label for="filter-status" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Status</label>
+    <select id="filter-status" name="status"
+            class="rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+      <option value="">All</option>
+      <% statuses.forEach(function (status) { %>
+        <option value="<%= status %>" <%- filters.status === status ? 'selected' : '' %> class="capitalize"><%= status %></option>
+      <% }); %>
+    </select>
+  </div>
+
+  <div>
+    <label for="filter-from" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">From</label>
+    <input type="date" id="filter-from" name="from" value="<%= filters.from || '' %>"
+           class="rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+  </div>
+
+  <div>
+    <label for="filter-to" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">To</label>
+    <input type="date" id="filter-to" name="to" value="<%= filters.to || '' %>"
+           class="rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+  </div>
+
+  <div class="min-w-[12rem] flex-1">
+    <label for="filter-search" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Search</label>
+    <input type="search" id="filter-search" name="search" value="<%= filters.search || '' %>" placeholder="Number, supplier, note"
+           class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+  </div>
+
+  <button type="submit" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">Filter</button>
+  <a href="?" class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Reset</a>
+
+  <% if (exportHref) { %>
+    <a href="<%= exportHref %>" class="ms-auto rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+      Export CSV
+    </a>
+  <% } %>
+</form>

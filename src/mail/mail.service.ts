@@ -166,4 +166,76 @@ export class MailService {
       },
     });
   }
+
+  /**
+   * Operations system: the admin invite link. Single-use, 7 days, and the landing page is
+   * server-rendered by this app, so the URL is on the backend domain, not the frontend.
+   */
+  async userInvite(
+    mailData: MailData<{ token: string; expiresAt: Date; invitedBy?: string }>,
+  ): Promise<void> {
+    const appName = this.configService.get('app.name', { infer: true });
+    const url = new URL(
+      this.configService.getOrThrow('app.backendDomain', { infer: true }) +
+        '/set-password',
+    );
+    url.searchParams.set('token', mailData.data.token);
+
+    const title = `You have been invited to ${appName}`;
+
+    await this.mailerService.sendMail({
+      to: mailData.to,
+      subject: title,
+      text: `${url.toString()} ${title}`,
+      templatePath: path.join(
+        this.configService.getOrThrow('app.workingDirectory', { infer: true }),
+        'src',
+        'mail',
+        'mail-templates',
+        'invite.hbs',
+      ),
+      context: {
+        title,
+        url: url.toString(),
+        actionTitle: 'Set your password',
+        app_name: appName,
+        invitedBy: mailData.data.invitedBy,
+        expiresAt: mailData.data.expiresAt.toUTCString(),
+      },
+    });
+  }
+
+  /** Operations system: password reset link. Single-use, 1 hour. */
+  async passwordResetLink(
+    mailData: MailData<{ token: string; expiresAt: Date }>,
+  ): Promise<void> {
+    const appName = this.configService.get('app.name', { infer: true });
+    const url = new URL(
+      this.configService.getOrThrow('app.backendDomain', { infer: true }) +
+        '/reset-password',
+    );
+    url.searchParams.set('token', mailData.data.token);
+
+    const title = `Reset your ${appName} password`;
+
+    await this.mailerService.sendMail({
+      to: mailData.to,
+      subject: title,
+      text: `${url.toString()} ${title}`,
+      templatePath: path.join(
+        this.configService.getOrThrow('app.workingDirectory', { infer: true }),
+        'src',
+        'mail',
+        'mail-templates',
+        'password-reset.hbs',
+      ),
+      context: {
+        title,
+        url: url.toString(),
+        actionTitle: 'Reset password',
+        app_name: appName,
+        expiresAt: mailData.data.expiresAt.toUTCString(),
+      },
+    });
+  }
 }

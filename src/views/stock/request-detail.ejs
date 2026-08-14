@@ -1,0 +1,70 @@
+<%
+const actions = [];
+if (can['stock.fulfil'] && request.status === 'pending') {
+  actions.push(`<form method="post" action="/stock-requests/${request.id}/approve">${include('../partials/csrf')}
+    <button class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Approve</button></form>`);
+}
+if (can['stock.fulfil'] && ['pending', 'approved'].includes(request.status)) {
+  actions.push(`<form method="post" action="/stock-requests/${request.id}/fulfil">${include('../partials/csrf')}
+    <button class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">Fulfil</button></form>`);
+  actions.push(`<form method="post" action="/stock-requests/${request.id}/reject">${include('../partials/csrf')}
+    <button class="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-gray-700">Reject</button></form>`);
+}
+%>
+
+<%- include('../partials/page-header', {
+  heading: 'Stock request #' + request.id,
+  status: request.status,
+  breadcrumbs: [{ label: 'Stock Requests', href: '/stock-requests' }, { label: '#' + request.id }],
+  actionsHtml: actions.join(''),
+}) %>
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="space-y-6 lg:col-span-2">
+    <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+      <dl class="grid gap-4 text-sm sm:grid-cols-3">
+        <div><dt class="text-gray-500 dark:text-gray-400">Item</dt>
+          <dd class="text-gray-900 dark:text-white">
+            <% if (request.inventoryItem) { %>
+              <a href="/inventory/<%= request.inventoryItem.id %>" class="hover:underline"><%= request.inventoryItem.name %></a>
+              <span class="block text-xs text-gray-400"><%= request.inventoryItem.sku %></span>
+            <% } else { %>—<% } %>
+          </dd></div>
+        <div><dt class="text-gray-500 dark:text-gray-400">Quantity</dt>
+          <dd class="tabular text-gray-900 dark:text-white"><%= Number(request.qty) %>
+            <%= request.inventoryItem ? request.inventoryItem.unit : '' %></dd></div>
+        <div><dt class="text-gray-500 dark:text-gray-400">On hand now</dt>
+          <dd class="tabular text-gray-900 dark:text-white"><%= request.inventoryItem ? Number(request.inventoryItem.stockQty) : '—' %></dd></div>
+      </dl>
+
+      <% if (request.note) { %>
+        <p class="mt-4 whitespace-pre-line border-t border-gray-100 pt-4 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300"><%= request.note %></p>
+      <% } %>
+    </div>
+
+    <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+      <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Activity</h2>
+      <%- include('../partials/timeline', { events }) %>
+    </div>
+  </div>
+
+  <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+    <dl class="space-y-3 text-sm">
+      <div><dt class="text-gray-500 dark:text-gray-400">Requester</dt>
+        <dd class="text-gray-900 dark:text-white"><%= request.requester ? request.requester.firstName + ' ' + request.requester.lastName : '—' %></dd></div>
+      <div><dt class="text-gray-500 dark:text-gray-400">Priority</dt>
+        <dd class="mt-0.5"><%- include('../partials/status-badge', { status: request.priority }) %></dd></div>
+      <div><dt class="text-gray-500 dark:text-gray-400">Department</dt>
+        <dd class="text-gray-900 dark:text-white"><%= request.department || '—' %></dd></div>
+      <% if (request.approvedBy) { %>
+        <div><dt class="text-gray-500 dark:text-gray-400">Approved by</dt>
+          <dd class="text-gray-900 dark:text-white"><%= request.approvedBy.firstName %> <%= request.approvedBy.lastName %></dd></div>
+      <% } %>
+      <% if (request.fulfilledBy) { %>
+        <div><dt class="text-gray-500 dark:text-gray-400">Fulfilled by</dt>
+          <dd class="text-gray-900 dark:text-white"><%= request.fulfilledBy.firstName %> <%= request.fulfilledBy.lastName %>
+            <span class="block text-xs text-gray-400"><%= request.fulfilledAt ? new Date(request.fulfilledAt).toLocaleString() : '' %></span></dd></div>
+      <% } %>
+    </dl>
+  </div>
+</div>

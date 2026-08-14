@@ -1,8 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+
 import { Repository } from 'typeorm';
-import { RoleEntity } from '../../../../roles/infrastructure/persistence/relational/entities/role.entity';
 import { RoleEnum } from '../../../../roles/roles.enum';
+import { RoleEntity } from '../../../../roles/infrastructure/persistence/relational/entities/role.entity';
+
+const ROLES: { id: number; name: string }[] = [
+  { id: RoleEnum.admin, name: 'Admin' },
+  { id: RoleEnum.manager, name: 'Manager' },
+  { id: RoleEnum.finance, name: 'Finance' },
+  { id: RoleEnum.employee, name: 'Employee' },
+];
 
 @Injectable()
 export class RoleSeedService {
@@ -12,34 +20,12 @@ export class RoleSeedService {
   ) {}
 
   async run() {
-    const countUser = await this.repository.count({
-      where: {
-        id: RoleEnum.user,
-      },
-    });
+    for (const role of ROLES) {
+      const count = await this.repository.count({ where: { id: role.id } });
 
-    if (!countUser) {
-      await this.repository.save(
-        this.repository.create({
-          id: RoleEnum.user,
-          name: 'User',
-        }),
-      );
-    }
-
-    const countAdmin = await this.repository.count({
-      where: {
-        id: RoleEnum.admin,
-      },
-    });
-
-    if (!countAdmin) {
-      await this.repository.save(
-        this.repository.create({
-          id: RoleEnum.admin,
-          name: 'Admin',
-        }),
-      );
+      if (!count) {
+        await this.repository.save(this.repository.create(role));
+      }
     }
   }
 }

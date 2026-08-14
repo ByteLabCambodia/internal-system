@@ -1,0 +1,18 @@
+<%
+/* Defined once, reused everywhere — a blank table with no explanation is the most common
+   way these pages go wrong (Part 1c). */
+const action = locals.action || null;
+const description = locals.description || null;
+%>
+<div class="px-6 py-12 text-center">
+  <p class="text-sm font-medium text-gray-900 dark:text-white"><%= title %></p>
+  <% if (description) { %>
+    <p class="mx-auto mt-1 max-w-md text-sm text-gray-500 dark:text-gray-400"><%= description %></p>
+  <% } %>
+  <% if (action) { %>
+    <a href="<%= action.href %>"
+       class="mt-4 inline-block rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">
+      <%= action.label %>
+    </a>
+  <% } %>
+</div>

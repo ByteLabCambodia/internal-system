@@ -1,0 +1,82 @@
+<%
+const LABELS = {
+  'profit-and-loss': 'P&L',
+  'cash-flow': 'Cash flow',
+  'expense-by-category': 'Expense by category',
+  'expense-by-department': 'Expense by department',
+  'currency-summary': 'Currency summary',
+  'po-summary': 'PO summary',
+  'transaction-history': 'Transactions',
+  'budget-vs-actual': 'Budget vs actual',
+  'spend-by-supplier': 'Spend by supplier',
+};
+const MONEY_COLUMNS = new Set(['income', 'expense', 'net', 'inflow', 'outflow', 'total', 'total_usd', 'budget', 'actual', 'debit_usd', 'credit_usd']);
+%>
+
+<div class="mb-4 flex flex-wrap gap-2">
+  <% reports.forEach(function (key) { %>
+    <a href="/reports/<%= key %><%= query ? '?' + query : '' %>"
+       class="rounded-lg border px-3 py-1.5 text-sm <%= key === report.key
+         ? 'border-primary-600 bg-primary-50 font-medium text-primary-700 dark:bg-gray-700 dark:text-white'
+         : 'border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700' %>">
+      <%= LABELS[key] || key %>
+    </a>
+  <% }); %>
+</div>
+
+<form method="get" class="mb-4 flex flex-wrap items-end gap-3">
+  <div>
+    <label for="from" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">From</label>
+    <input type="date" id="from" name="from" value="<%= range.from || '' %>"
+           class="rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+  </div>
+  <div>
+    <label for="to" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">To</label>
+    <input type="date" id="to" name="to" value="<%= range.to || '' %>"
+           class="rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+  </div>
+  <button type="submit" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">Apply</button>
+  <a href="/reports/<%= report.key %>" class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Reset</a>
+  <a href="/reports/<%= report.key %>/export.csv<%= query ? '?' + query : '' %>"
+     class="ms-auto rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Export CSV</a>
+</form>
+
+<p class="mb-3 text-sm text-gray-500 dark:text-gray-400"><%= report.description %></p>
+
+<% if (!report.rows.length) { %>
+  <div class="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+    <%- include('../partials/empty-state', {
+      title: 'Nothing in this range',
+      description: 'Widen the date filter, or record some activity first — reports read the ledger, so they only show what has been posted.',
+    }) %>
+  </div>
+<% } else { %>
+  <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+    <table class="w-full text-left text-sm text-gray-600 dark:text-gray-300">
+      <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+        <tr>
+          <% report.columns.forEach(function (column) { %>
+            <th class="px-4 py-3 <%= column.align === 'right' ? 'text-right' : '' %>"><%= column.label %></th>
+          <% }); %>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+        <% report.rows.forEach(function (row) { %>
+          <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+            <% report.columns.forEach(function (column) { %>
+              <%
+                const raw = row[column.key];
+                const isMoney = MONEY_COLUMNS.has(column.key);
+                const negative = isMoney && Number(raw) < 0;
+              %>
+              <td class="px-4 py-2.5 <%= column.align === 'right' ? 'text-right tabular' : '' %> <%= negative ? 'text-red-600 dark:text-red-400' : '' %>">
+                <%= raw === null || raw === undefined ? '—' : (isMoney ? money.formatUsd(raw) : raw) %>
+              </td>
+            <% }); %>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+  <p class="mt-3 text-sm text-gray-500 dark:text-gray-400"><%= report.rows.length %> row<%= report.rows.length === 1 ? '' : 's' %></p>
+<% } %>

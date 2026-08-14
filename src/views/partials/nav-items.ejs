@@ -1,0 +1,37 @@
+<%
+/*
+ * One nav definition, used by both the fixed sidebar and the mobile drawer. `permission`
+ * is checked against the grants the WebAuthGuard put on res.locals — a nav item the user
+ * cannot use is never rendered.
+ */
+const navItems = [
+  { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
+  { href: '/purchase-requests', label: 'Purchase Requests', icon: 'requests' },
+  { href: '/purchase-orders', label: 'Purchase Orders', icon: 'orders' },
+  { href: '/claims', label: 'Claims', icon: 'claims' },
+  { href: '/stock-requests', label: 'Stock Requests', icon: 'stock' },
+  { href: '/inventory', label: 'Inventory', icon: 'inventory' },
+  { href: '/reports', label: 'Reports', icon: 'reports', permission: 'accounting.view' },
+  { href: '/accounting', label: 'Accounting', icon: 'accounting', permission: 'accounting.view' },
+  { href: '/admin', label: 'Admin', icon: 'admin', permission: 'users.manage' },
+];
+%>
+<ul class="space-y-1 font-medium">
+  <% navItems.forEach(function (item) { %>
+    <% if (!item.permission || can[item.permission]) { %>
+      <%
+        const active = currentPath === item.href || currentPath.startsWith(item.href + '/');
+      %>
+      <li>
+        <a href="<%= item.href %>"
+           <%- active ? 'aria-current="page"' : '' %>
+           class="group flex items-center rounded-lg p-2 text-sm <%= active
+             ? 'bg-primary-50 text-primary-700 dark:bg-gray-700 dark:text-white'
+             : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' %>">
+          <%- include('icon', { name: item.icon, size: 'h-5 w-5', cls: active ? 'text-primary-600 dark:text-white' : 'text-gray-400 group-hover:text-gray-700 dark:group-hover:text-white' }) %>
+          <span class="ms-3"><%= item.label %></span>
+        </a>
+      </li>
+    <% } %>
+  <% }); %>
+</ul>

@@ -1,0 +1,149 @@
+<%
+const actions = [];
+if (can['payment.record'] && po.status !== 'cancelled' && po.paymentStatus !== 'paid') {
+  actions.push(`<a href="/accounting/payments/new?poId=${po.id}" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">Record payment</a>`);
+}
+if (can['po.cancel'] && !['cancelled', 'complete'].includes(po.status)) {
+  actions.push(`<button data-modal-target="cancel-po" data-modal-toggle="cancel-po" class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Cancel order</button>`);
+}
+%>
+
+<%- include('../partials/page-header', {
+  heading: po.poNumber,
+  status: po.status,
+  breadcrumbs: [{ label: 'Purchase Orders', href: '/purchase-orders' }, { label: po.poNumber }],
+  actionsHtml: actions.join(''),
+}) %>
+
+<div class="mb-6 rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+  <%- include('../partials/stepper', { steps, currentIndex: currentStep }) %>
+</div>
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="space-y-6 lg:col-span-2">
+    <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+      <table class="w-full text-left text-sm text-gray-600 dark:text-gray-300">
+        <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+          <tr>
+            <th class="px-4 py-3">Item</th>
+            <th class="px-4 py-3 text-right">Ordered</th>
+            <th class="px-4 py-3 text-right">Received</th>
+            <th class="px-4 py-3 text-right">Unit price</th>
+            <th class="px-4 py-3 text-right">Line total</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+          <% po.items.forEach(function (item) { %>
+            <tr>
+              <td class="px-4 py-2.5 text-gray-900 dark:text-white"><%= item.name %></td>
+              <td class="px-4 py-2.5 text-right tabular"><%= Number(item.qtyOrdered) %></td>
+              <td class="px-4 py-2.5 text-right tabular <%= Number(item.qtyClaimed) >= Number(item.qtyOrdered) ? 'text-green-600 dark:text-green-400' : '' %>">
+                <%= Number(item.qtyClaimed) %>
+              </td>
+              <td class="px-4 py-2.5 text-right tabular"><%= money.format(item.unitPriceOriginal, po.currency) %></td>
+              <td class="px-4 py-2.5 text-right tabular"><%= money.format(money.lineTotal(item.qtyOrdered, item.unitPriceOriginal), po.currency) %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+        <tfoot class="border-t border-gray-200 dark:border-gray-700">
+          <tr>
+            <td colspan="4" class="px-4 py-2.5 text-right font-medium text-gray-900 dark:text-white">Total</td>
+            <td class="px-4 py-2.5 text-right font-semibold text-gray-900 dark:text-white">
+              <%- include('../partials/money', { amount: po.totalOriginal, currency: po.currency, amountUsd: po.totalUsd, money }) %>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <% if (payToLink) { %>
+      <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+        <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Pay the requester</h2>
+        <div class="min-w-0 space-y-1">
+          <a href="<%= payToLink %>" target="_blank" rel="noopener"
+             class="break-all text-sm text-primary-600 underline underline-offset-2 hover:text-primary-700 dark:text-primary-400">
+            <%= payToLink %>
+          </a>
+        </div>
+      </div>
+    <% } %>
+
+    <div class="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+      <div class="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-700">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Payments</h2>
+        <span class="text-sm text-gray-500 dark:text-gray-400">
+          <%= money.formatUsd(paidUsd) %> of <%= money.formatUsd(po.totalUsd) %> paid
+        </span>
+      </div>
+
+      <% if (!payments.length) { %>
+        <%- include('../partials/empty-state', {
+          title: 'Nothing paid yet',
+          description: 'Recording a payment posts the expense to the ledger and updates this order.',
+          action: can['payment.record'] && po.status !== 'cancelled' ? { href: '/accounting/payments/new?poId=' + po.id, label: 'Record payment' } : null,
+        }) %>
+      <% } else { %>
+        <table class="w-full text-left text-sm text-gray-600 dark:text-gray-300">
+          <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+            <% payments.forEach(function (payment) { %>
+              <tr>
+                <td class="px-4 py-2.5 text-gray-500 dark:text-gray-400"><%= new Date(payment.paidAt).toLocaleDateString() %></td>
+                <td class="px-4 py-2.5 capitalize"><%= payment.method ? String(payment.method).replace(/_/g, ' ') : '—' %>
+                  <% if (payment.reference) { %><span class="block text-xs text-gray-400"><%= payment.reference %></span><% } %>
+                </td>
+                <td class="px-4 py-2.5 text-right">
+                  <%- include('../partials/money', { amount: payment.amountOriginal, currency: payment.currency, amountUsd: payment.amountUsd, money }) %>
+                </td>
+                <td class="px-4 py-2.5 text-right">
+                  <% if (receiptUrls[payment.id]) { %>
+                    <a href="<%= receiptUrls[payment.id] %>" target="_blank" rel="noopener"
+                       class="text-primary-600 hover:underline dark:text-primary-400">Receipt</a>
+                  <% } %>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+
+    <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+      <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Activity</h2>
+      <%- include('../partials/timeline', { events }) %>
+    </div>
+  </div>
+
+  <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+    <dl class="space-y-3 text-sm">
+      <div><dt class="text-gray-500 dark:text-gray-400">Payment status</dt>
+        <dd class="mt-0.5"><%- include('../partials/status-badge', { status: po.paymentStatus }) %></dd></div>
+      <div><dt class="text-gray-500 dark:text-gray-400">Supplier</dt>
+        <dd class="text-gray-900 dark:text-white"><%= po.supplier ? po.supplier.name : (po.supplierName || '—') %></dd></div>
+      <div><dt class="text-gray-500 dark:text-gray-400">Type</dt>
+        <dd class="capitalize text-gray-900 dark:text-white"><%= po.type %></dd></div>
+      <div><dt class="text-gray-500 dark:text-gray-400">Expense account</dt>
+        <dd class="text-gray-900 dark:text-white">
+          <%= po.expenseAccount ? po.expenseAccount.code + ' ' + po.expenseAccount.name : '—' %>
+        </dd></div>
+      <div><dt class="text-gray-500 dark:text-gray-400">From request</dt>
+        <dd><% if (po.purchaseRequest) { %>
+          <a href="/purchase-requests/<%= po.purchaseRequest.id %>" class="text-primary-600 hover:underline dark:text-primary-400"><%= po.purchaseRequest.prNumber %></a>
+        <% } else { %>—<% } %></dd></div>
+      <div><dt class="text-gray-500 dark:text-gray-400">Rate locked at</dt>
+        <dd class="tabular text-gray-900 dark:text-white"><%= Number(po.exchangeRate) %> <%= po.currency %> per USD</dd></div>
+      <div><dt class="text-gray-500 dark:text-gray-400">Raised by</dt>
+        <dd class="text-gray-900 dark:text-white"><%= po.createdBy ? po.createdBy.firstName + ' ' + po.createdBy.lastName : '—' %></dd></div>
+    </dl>
+  </div>
+</div>
+
+<%- include('../partials/modal', {
+  id: 'cancel-po',
+  title: 'Cancel this purchase order?',
+  bodyHtml: `<p class="mb-4 text-sm text-gray-500 dark:text-gray-400">The order stays visible with a cancelled status. Payments already recorded are not reversed.</p>
+    <form method="post" action="/purchase-orders/${po.id}/cancel" class="flex justify-end gap-2">
+      ${include('../partials/csrf')}
+      <button type="button" data-modal-hide="cancel-po" class="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-600 dark:text-gray-300">Keep it</button>
+      <button type="submit" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700">Cancel order</button>
+    </form>`,
+}) %>

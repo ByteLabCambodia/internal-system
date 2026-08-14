@@ -1,0 +1,23 @@
+<%
+/* Flowbite Tabs. Pass tabs: [{ id, label, contentHtml }] and a unique `name`. */
+%>
+<div class="border-b border-gray-200 dark:border-gray-700">
+  <ul class="-mb-px flex flex-wrap text-sm font-medium" id="<%= name %>-tabs" data-tabs-toggle="#<%= name %>-content" role="tablist">
+    <% tabs.forEach(function (tab, index) { %>
+      <li role="presentation">
+        <button class="inline-block rounded-t-lg border-b-2 p-3" id="<%= tab.id %>-tab"
+                data-tabs-target="#<%= tab.id %>" type="button" role="tab"
+                aria-controls="<%= tab.id %>" aria-selected="<%= index === 0 ? 'true' : 'false' %>">
+          <%= tab.label %>
+        </button>
+      </li>
+    <% }); %>
+  </ul>
+</div>
+<div id="<%= name %>-content">
+  <% tabs.forEach(function (tab, index) { %>
+    <div class="<%= index === 0 ? '' : 'hidden' %> py-4" id="<%= tab.id %>" role="tabpanel" aria-labelledby="<%= tab.id %>-tab">
+      <%- tab.contentHtml %>
+    </div>
+  <% }); %>
+</div>

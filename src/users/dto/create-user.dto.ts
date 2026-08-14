@@ -6,6 +6,7 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   // decorators here
+  IsBoolean,
   IsEmail,
   IsNotEmpty,
   IsOptional,
@@ -13,7 +14,6 @@ import {
 } from 'class-validator';
 import { FileDto } from '../../files/dto/file.dto';
 import { RoleDto } from '../../roles/dto/role.dto';
-import { StatusDto } from '../../statuses/dto/status.dto';
 import { lowerCaseTransformer } from '../../utils/transformers/lower-case.transformer';
 
 export class CreateUserDto {
@@ -23,8 +23,9 @@ export class CreateUserDto {
   @IsEmail()
   email: string | null;
 
-  @ApiProperty()
-  @MinLength(6)
+  @ApiPropertyOptional()
+  @IsOptional()
+  @MinLength(8)
   password?: string;
 
   provider?: string;
@@ -48,8 +49,8 @@ export class CreateUserDto {
   @Type(() => RoleDto)
   role?: RoleDto | null;
 
-  @ApiPropertyOptional({ type: StatusDto })
+  @ApiPropertyOptional({ type: Boolean, default: true })
   @IsOptional()
-  @Type(() => StatusDto)
-  status?: StatusDto;
+  @IsBoolean()
+  active?: boolean;
 }

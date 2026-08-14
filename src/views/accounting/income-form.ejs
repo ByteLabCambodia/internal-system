@@ -1,0 +1,82 @@
+<% if (locals.alert) { %><%- include('../partials/alert', { tone: 'error', message: alert }) %><% } %>
+
+<form method="post" action="/accounting/income" class="max-w-2xl"
+      x-data='<%- JSON.stringify({ currency: values.currency || "USD", rates: rates }) %>'>
+  <%- include('../partials/csrf') %>
+
+  <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+    <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+      Posts one balanced entry: debit 1000 Cash / Bank, credit the income account you choose.
+    </p>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <%- include('../partials/form-field', {
+        name: 'amountOriginal', label: 'Amount', type: 'number', step: '0.0001',
+        value: values.amountOriginal, errors, required: true,
+      }) %>
+
+      <div class="mb-4">
+        <label for="currency" class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Currency<span class="text-red-600"> *</span></label>
+        <select id="currency" name="currency" x-model="currency"
+                class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+          <% currencies.forEach(function (currency) { %>
+            <option value="<%= currency %>" <%- values.currency === currency ? 'selected' : '' %>><%= currency %></option>
+          <% }); %>
+        </select>
+        <p class="mt-1.5 text-sm text-gray-500 dark:text-gray-400" x-cloak>
+          <span x-show="currency === 'USD'">Recorded at 1.00.</span>
+          <span x-show="currency !== 'USD'" x-text="rates[currency] ? 'Converted at ' + rates[currency] + ' per USD.' : 'No rate on file — set one first.'"></span>
+        </p>
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <label for="incomeAccountId" class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Income account<span class="text-red-600"> *</span></label>
+      <select id="incomeAccountId" name="incomeAccountId"
+              class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+        <option value="">Choose an account…</option>
+        <% incomeAccounts.forEach(function (account) { %>
+          <option value="<%= account.id %>" <%- String(values.incomeAccountId) === String(account.id) ? 'selected' : '' %>>
+            <%= account.code %> <%= account.name %>
+          </option>
+        <% }); %>
+      </select>
+      <% if (errors && errors.incomeAccountId) { %>
+        <p class="mt-1.5 text-sm text-red-600 dark:text-red-500"><%= errors.incomeAccountId %></p>
+      <% } %>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <%- include('../partials/form-field', { name: 'entryDate', label: 'Entry date', type: 'date', value: values.entryDate, errors }) %>
+      <%- include('../partials/form-field', { name: 'memo', label: 'Memo', value: values.memo, errors }) %>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div class="mb-4">
+        <label for="departmentId" class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Department</label>
+        <select id="departmentId" name="departmentId"
+                class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+          <option value="">—</option>
+          <% departments.forEach(function (department) { %>
+            <option value="<%= department.id %>" <%- String(values.departmentId) === String(department.id) ? 'selected' : '' %>><%= department.name %></option>
+          <% }); %>
+        </select>
+      </div>
+      <div class="mb-4">
+        <label for="projectId" class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Project</label>
+        <select id="projectId" name="projectId"
+                class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+          <option value="">—</option>
+          <% projects.forEach(function (project) { %>
+            <option value="<%= project.id %>" <%- String(values.projectId) === String(project.id) ? 'selected' : '' %>><%= project.name %></option>
+          <% }); %>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-4 flex justify-end gap-2">
+    <a href="/accounting" class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Cancel</a>
+    <button type="submit" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">Record income</button>
+  </div>
+</form>

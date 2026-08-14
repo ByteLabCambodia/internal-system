@@ -1,0 +1,29 @@
+<!-- Server flash messages, rendered as Flowbite toasts. -->
+<% if (flash && flash.length) { %>
+  <div class="fixed bottom-4 right-4 z-50 space-y-2">
+    <% flash.forEach(function (item, index) { %>
+      <%
+        const tone = {
+          success: { wrap: 'text-green-500 bg-green-100 dark:bg-green-800 dark:text-green-200', label: 'Success' },
+          error: { wrap: 'text-red-500 bg-red-100 dark:bg-red-800 dark:text-red-200', label: 'Error' },
+          info: { wrap: 'text-primary-600 bg-primary-100 dark:bg-primary-800 dark:text-primary-100', label: 'Info' },
+        }[item.kind] || { wrap: 'text-gray-500 bg-gray-100', label: 'Notice' };
+      %>
+      <div id="toast-<%= index %>" role="alert"
+           class="flex w-full max-w-xs items-center rounded-lg bg-white p-4 text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">
+        <div class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg <%= tone.wrap %>">
+          <span class="text-sm font-bold"><%= tone.label.slice(0, 1) %></span>
+          <span class="sr-only"><%= tone.label %></span>
+        </div>
+        <div class="ms-3 text-sm font-normal"><%= item.message %></div>
+        <button type="button" data-dismiss-target="#toast-<%= index %>" aria-label="Close"
+                class="ms-auto -mx-1.5 -my-1.5 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-900 dark:bg-gray-800 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-white">
+          <span class="sr-only">Close</span>
+          <svg class="h-3 w-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+          </svg>
+        </button>
+      </div>
+    <% }); %>
+  </div>
+<% } %>

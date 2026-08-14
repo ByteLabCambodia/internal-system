@@ -2,10 +2,9 @@ import { PartialType, ApiPropertyOptional } from '@nestjs/swagger';
 import { CreateUserDto } from './create-user.dto';
 
 import { Transform, Type } from 'class-transformer';
-import { IsEmail, IsOptional, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsOptional, MinLength } from 'class-validator';
 import { FileDto } from '../../files/dto/file.dto';
 import { RoleDto } from '../../roles/dto/role.dto';
-import { StatusDto } from '../../statuses/dto/status.dto';
 import { lowerCaseTransformer } from '../../utils/transformers/lower-case.transformer';
 
 export class UpdateUserDto extends PartialType(CreateUserDto) {
@@ -17,7 +16,7 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @MinLength(6)
+  @MinLength(8)
   password?: string;
 
   provider?: string;
@@ -41,8 +40,16 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
   @Type(() => RoleDto)
   role?: RoleDto | null;
 
-  @ApiPropertyOptional({ type: () => StatusDto })
+  @ApiPropertyOptional({ type: Boolean })
   @IsOptional()
-  @Type(() => StatusDto)
-  status?: StatusDto;
+  @IsBoolean()
+  active?: boolean;
+
+  // Internal: set when an admin sets a password directly, cleared once the user changes it.
+  mustChangePassword?: boolean;
+
+  // Profile fields, set from the profile page rather than the admin user form.
+  department?: string | null;
+  paymentLink?: string | null;
+  paymentQrObjectKey?: string | null;
 }

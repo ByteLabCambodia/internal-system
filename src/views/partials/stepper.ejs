@@ -1,0 +1,35 @@
+<%
+/*
+ * The unified procurement flow stepper (Flowbite Stepper):
+ * Requested → Approved → Ordered → Paid → Received, derived from PR/PO status.
+ * Pass `steps` [{ label }] and `currentIndex` (0-based; every earlier step is done).
+ */
+%>
+<ol class="flex w-full items-center text-sm font-medium text-gray-500 dark:text-gray-400">
+  <% steps.forEach(function (step, index) { %>
+    <%
+      const done = index < currentIndex;
+      const current = index === currentIndex;
+      const isLast = index === steps.length - 1;
+    %>
+    <li class="flex items-center <%= isLast ? '' : 'w-full' %> <%= done || current ? 'text-primary-600 dark:text-primary-400' : '' %>
+               <%= isLast ? '' : "after:mx-3 after:inline-block after:h-1 after:w-full after:border-b-4 after:content-['']" %>
+               <%= isLast ? '' : (done ? 'after:border-primary-200 dark:after:border-primary-800' : 'after:border-gray-200 dark:after:border-gray-700') %>">
+      <span class="flex items-center whitespace-nowrap">
+        <span class="me-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs
+                     <%= done ? 'bg-primary-100 text-primary-700 dark:bg-primary-800 dark:text-primary-100'
+                        : current ? 'bg-primary-600 text-white'
+                        : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400' %>">
+          <% if (done) { %>
+            <svg class="h-3 w-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 16 12">
+              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5.917 5.724 10.5 15 1.5"/>
+            </svg>
+          <% } else { %>
+            <%= index + 1 %>
+          <% } %>
+        </span>
+        <span class="hidden sm:inline"><%= step.label %></span>
+      </span>
+    </li>
+  <% }); %>
+</ol>

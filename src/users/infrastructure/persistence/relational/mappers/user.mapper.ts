@@ -1,7 +1,6 @@
 import { FileEntity } from '../../../../../files/infrastructure/persistence/relational/entities/file.entity';
 import { FileMapper } from '../../../../../files/infrastructure/persistence/relational/mappers/file.mapper';
 import { RoleEntity } from '../../../../../roles/infrastructure/persistence/relational/entities/role.entity';
-import { StatusEntity } from '../../../../../statuses/infrastructure/persistence/relational/entities/status.entity';
 import { User } from '../../../../domain/user';
 import { UserEntity } from '../entities/user.entity';
 
@@ -19,7 +18,15 @@ export class UserMapper {
       domainEntity.photo = FileMapper.toDomain(raw.photo);
     }
     domainEntity.role = raw.role;
-    domainEntity.status = raw.status;
+    domainEntity.active = raw.active;
+    domainEntity.mustChangePassword = raw.mustChangePassword;
+    domainEntity.telegramId = raw.telegramId;
+    domainEntity.telegramUsername = raw.telegramUsername;
+    domainEntity.telegramLinkToken = raw.telegramLinkToken;
+    domainEntity.telegramLinkExpiresAt = raw.telegramLinkExpiresAt;
+    domainEntity.department = raw.department;
+    domainEntity.paymentLink = raw.paymentLink;
+    domainEntity.paymentQrObjectKey = raw.paymentQrObjectKey;
     domainEntity.createdAt = raw.createdAt;
     domainEntity.updatedAt = raw.updatedAt;
     domainEntity.deletedAt = raw.deletedAt;
@@ -44,13 +51,6 @@ export class UserMapper {
       photo = null;
     }
 
-    let status: StatusEntity | undefined = undefined;
-
-    if (domainEntity.status) {
-      status = new StatusEntity();
-      status.id = Number(domainEntity.status.id);
-    }
-
     const persistenceEntity = new UserEntity();
     if (domainEntity.id && typeof domainEntity.id === 'number') {
       persistenceEntity.id = domainEntity.id;
@@ -63,7 +63,18 @@ export class UserMapper {
     persistenceEntity.lastName = domainEntity.lastName;
     persistenceEntity.photo = photo;
     persistenceEntity.role = role;
-    persistenceEntity.status = status;
+    persistenceEntity.active = domainEntity.active;
+    persistenceEntity.mustChangePassword = domainEntity.mustChangePassword;
+    persistenceEntity.telegramId = domainEntity.telegramId ?? null;
+    persistenceEntity.telegramUsername = domainEntity.telegramUsername ?? null;
+    persistenceEntity.telegramLinkToken =
+      domainEntity.telegramLinkToken ?? null;
+    persistenceEntity.telegramLinkExpiresAt =
+      domainEntity.telegramLinkExpiresAt ?? null;
+    persistenceEntity.department = domainEntity.department ?? null;
+    persistenceEntity.paymentLink = domainEntity.paymentLink ?? null;
+    persistenceEntity.paymentQrObjectKey =
+      domainEntity.paymentQrObjectKey ?? null;
     persistenceEntity.createdAt = domainEntity.createdAt;
     persistenceEntity.updatedAt = domainEntity.updatedAt;
     persistenceEntity.deletedAt = domainEntity.deletedAt;

@@ -1,0 +1,103 @@
+<%
+/* Reference page for the shared partials — every later page assembles these instead of
+   inventing markup. Not linked from the nav; reachable at /admin/ui-kit. */
+const statuses = ['draft', 'pending', 'approved', 'converted', 'complete', 'paid',
+  'confirmed', 'fulfilled', 'rejected', 'unpaid', 'cancelled', 'partial', 'open',
+  'low', 'medium', 'high', 'urgent'];
+%>
+
+<div class="space-y-8">
+  <section>
+    <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Status badges</h2>
+    <div class="flex flex-wrap gap-2 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+      <% statuses.forEach(function (status) { %><%- include('../partials/status-badge', { status }) %><% }); %>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Flow stepper</h2>
+    <div class="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+      <%- include('../partials/stepper', {
+        steps: [{ label: 'Requested' }, { label: 'Approved' }, { label: 'Ordered' }, { label: 'Paid' }, { label: 'Received' }],
+        currentIndex: 2,
+      }) %>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Table, pagination, empty state</h2>
+    <%
+      const rowsHtml = `
+        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+          <td class="px-4 py-2.5 font-medium text-gray-900 dark:text-white">PR-0001</td>
+          <td class="px-4 py-2.5">Molly Manager<span class="block text-xs text-gray-400">Engineering</span></td>
+          <td class="px-4 py-2.5 text-right tabular">41,000.00 KHR<span class="block text-xs text-gray-400">$10.00</span></td>
+          <td class="px-4 py-2.5">${include('../partials/status-badge', { status: 'approved' })}</td>
+        </tr>`;
+    %>
+    <%- include('../partials/table', {
+      columns: [
+        { key: 'pr_number', label: 'Number', sortable: true },
+        { key: 'requester', label: 'Requester' },
+        { key: 'total', label: 'Total', align: 'right', sortable: true },
+        { key: 'status', label: 'Status' },
+      ],
+      sort: { orderBy: 'pr_number', order: 'asc' },
+      rowsHtml,
+    }) %>
+    <%- include('../partials/pagination', { page: 1, limit: 10, count: 1, baseQuery: '' }) %>
+  </section>
+
+  <section>
+    <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Form fields</h2>
+    <div class="max-w-md rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+      <%- include('../partials/form-field', {
+        name: 'demo_supplier', label: 'Supplier', value: 'ABC Co.', errors: {}, required: true,
+        hint: 'Autocompletes over active suppliers.',
+      }) %>
+      <%- include('../partials/form-field', {
+        name: 'demo_amount', label: 'Amount', type: 'number', step: '0.0001', value: '',
+        errors: { demo_amount: 'Enter an amount greater than zero' },
+      }) %>
+      <%- include('../partials/password-field', {
+        name: 'demo_password', label: 'Password', errors: {}, hint: 'At least 8 characters.',
+      }) %>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Alerts, modal, tabs</h2>
+    <%- include('../partials/alert', { tone: 'success', message: 'Payment recorded and posted to the ledger.' }) %>
+    <%- include('../partials/alert', { tone: 'error', message: 'Over-payment: $10.00 already paid against a $10.00 order.' }) %>
+
+    <button data-modal-target="demo-modal" data-modal-toggle="demo-modal" type="button"
+            class="mb-4 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+      Open modal
+    </button>
+    <%- include('../partials/modal', {
+      id: 'demo-modal', title: 'Cancel purchase request?',
+      bodyHtml: '<p class="text-sm text-gray-500 dark:text-gray-400">This cannot be undone. The request stays visible with a cancelled status.</p>',
+    }) %>
+
+    <%- include('../partials/tabs', {
+      name: 'demo',
+      tabs: [
+        { id: 'demo-items', label: 'Line items', contentHtml: '<p class="text-sm text-gray-500 dark:text-gray-400">Line items table goes here.</p>' },
+        { id: 'demo-activity', label: 'Activity', contentHtml: '<p class="text-sm text-gray-500 dark:text-gray-400">Activity timeline goes here.</p>' },
+      ],
+    }) %>
+  </section>
+
+  <section>
+    <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Activity timeline</h2>
+    <div class="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+      <%- include('../partials/timeline', {
+        events: [
+          { action: 'created', actorName: 'Eddie Employee', createdAt: new Date() },
+          { action: 'submitted', actorName: 'Eddie Employee', createdAt: new Date() },
+          { action: 'approved', actorName: 'Molly Manager', createdAt: new Date() },
+        ],
+      }) %>
+    </div>
+  </section>
+</div>

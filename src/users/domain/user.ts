@@ -1,7 +1,6 @@
 import { Exclude, Expose } from 'class-transformer';
 import { FileType } from '../../files/domain/file';
 import { Role } from '../../roles/domain/role';
-import { Status } from '../../statuses/domain/status';
 import { ApiProperty } from '@nestjs/swagger';
 
 const idType = Number;
@@ -58,10 +57,36 @@ export class User {
   })
   role?: Role | null;
 
-  @ApiProperty({
-    type: () => Status,
-  })
-  status?: Status;
+  @ApiProperty({ type: Boolean, example: true })
+  active: boolean;
+
+  @Exclude({ toPlainOnly: true })
+  mustChangePassword: boolean;
+
+  @ApiProperty({ type: String, required: false })
+  @Expose({ groups: ['me', 'admin'] })
+  telegramId?: string | null;
+
+  @ApiProperty({ type: String, required: false })
+  @Expose({ groups: ['me', 'admin'] })
+  telegramUsername?: string | null;
+
+  @Exclude({ toPlainOnly: true })
+  telegramLinkToken?: string | null;
+
+  @Exclude({ toPlainOnly: true })
+  telegramLinkExpiresAt?: Date | null;
+
+  @ApiProperty({ type: String, required: false })
+  department?: string | null;
+
+  @ApiProperty({ type: String, required: false })
+  @Expose({ groups: ['me', 'admin'] })
+  paymentLink?: string | null;
+
+  @ApiProperty({ type: String, required: false })
+  @Expose({ groups: ['me', 'admin'] })
+  paymentQrObjectKey?: string | null;
 
   @ApiProperty()
   createdAt: Date;

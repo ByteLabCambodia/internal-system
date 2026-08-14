@@ -1,0 +1,25 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build",
+  "builds": [
+    {
+      "src": "dist/vercel-handler.js",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["public/**", "src/views/**", "dist/i18n/**"]
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "dist/vercel-handler.js"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/accounting/cron/exchange-rates",
+      "schedule": "0 1 * * *"
+    }
+  ]
+}

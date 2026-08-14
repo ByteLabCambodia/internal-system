@@ -10,9 +10,8 @@ import {
   JoinColumn,
   OneToOne,
 } from 'typeorm';
-import { RoleEntity } from '../../../../../roles/infrastructure/persistence/relational/entities/role.entity';
-import { StatusEntity } from '../../../../../statuses/infrastructure/persistence/relational/entities/status.entity';
 import { FileEntity } from '../../../../../files/infrastructure/persistence/relational/entities/file.entity';
+import { RoleEntity } from '../../../../../roles/infrastructure/persistence/relational/entities/role.entity';
 
 import { AuthProvidersEnum } from '../../../../../auth/auth-providers.enum';
 import { EntityRelationalHelper } from '../../../../../utils/relational-entity-helper';
@@ -29,6 +28,8 @@ export class UserEntity extends EntityRelationalHelper {
   @Column({ type: String, unique: true, nullable: true })
   email: string | null;
 
+  // Nullable on purpose: an invited user has none until they set one, and "no password"
+  // must never authenticate.
   @Column({ nullable: true })
   password?: string;
 
@@ -58,10 +59,37 @@ export class UserEntity extends EntityRelationalHelper {
   })
   role?: RoleEntity | null;
 
-  @ManyToOne(() => StatusEntity, {
-    eager: true,
+  @Column({ type: Boolean, default: true })
+  active: boolean;
+
+  // Set when an admin sets a password directly; cleared once the user changes it.
+  @Column({ name: 'must_change_password', type: Boolean, default: false })
+  mustChangePassword: boolean;
+
+  @Column({ name: 'telegram_id', type: 'bigint', unique: true, nullable: true })
+  telegramId: string | null;
+
+  @Column({ name: 'telegram_username', type: String, nullable: true })
+  telegramUsername: string | null;
+
+  @Column({ name: 'telegram_link_token', type: String, nullable: true })
+  telegramLinkToken: string | null;
+
+  @Column({
+    name: 'telegram_link_expires_at',
+    type: 'timestamptz',
+    nullable: true,
   })
-  status?: StatusEntity;
+  telegramLinkExpiresAt: Date | null;
+
+  @Column({ type: String, nullable: true })
+  department: string | null;
+
+  @Column({ name: 'payment_link', type: String, nullable: true })
+  paymentLink: string | null;
+
+  @Column({ name: 'payment_qr_object_key', type: String, nullable: true })
+  paymentQrObjectKey: string | null;
 
   @CreateDateColumn()
   createdAt: Date;

@@ -1,0 +1,158 @@
+<%- include('../partials/admin-nav') %>
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="lg:col-span-2">
+    <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
+      <%= rows.length %> account<%= rows.length === 1 ? '' : 's' %>. There is no public sign-up — every account is created here.
+    </p>
+
+    <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+      <table class="w-full text-left text-sm text-gray-600 dark:text-gray-300">
+        <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+          <tr>
+            <th class="px-4 py-3">Name</th>
+            <th class="px-4 py-3">Role</th>
+            <th class="px-4 py-3">Status</th>
+            <th class="px-4 py-3"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+          <% rows.forEach(function (row) { %>
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+              <td class="px-4 py-2.5">
+                <span class="font-medium text-gray-900 dark:text-white"><%= row.firstName %> <%= row.lastName %></span>
+                <span class="block text-xs text-gray-400"><%= row.email %></span>
+                <% if (row.telegramId) { %>
+                  <span class="block text-xs text-gray-400">Telegram<%= row.telegramUsername ? ' @' + row.telegramUsername : '' %></span>
+                <% } %>
+              </td>
+              <td class="px-4 py-2.5">
+                <%= (roles.find(function (role) { return role.id === (row.role && row.role.id); }) || {}).label || '—' %>
+                <% if (row.department) { %><span class="block text-xs text-gray-400"><%= row.department %></span><% } %>
+              </td>
+              <td class="px-4 py-2.5">
+                <% if (!row.active) { %>
+                  <%- include('../partials/status-badge', { status: 'cancelled' }) %>
+                <% } else if (row.pendingInvite) { %>
+                  <span class="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900 dark:text-amber-300">Pending invite</span>
+                <% } else if (row.stranded) { %>
+                  <span class="inline-flex items-center rounded-md bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900 dark:text-red-300">No password set</span>
+                <% } else { %>
+                  <%- include('../partials/status-badge', { status: 'confirmed' }) %>
+                <% } %>
+                <% if (row.must_change_password || row.mustChangePassword) { %>
+                  <span class="mt-1 block text-xs text-gray-400">Must change password</span>
+                <% } %>
+              </td>
+              <td class="px-4 py-2.5 text-right text-xs">
+                <a href="/admin/users/<%= row.id %>/edit" class="text-primary-600 hover:underline dark:text-primary-400">Edit</a>
+
+                <% if (row.pendingInvite || row.stranded) { %>
+                  <form method="post" action="/admin/users/<%= row.id %>/resend-invite" class="inline">
+                    <%- include('../partials/csrf') %>
+                    <button class="ms-2 text-gray-500 hover:underline dark:text-gray-400">Resend invite</button>
+                  </form>
+                <% } %>
+                <% if (row.pendingInvite) { %>
+                  <form method="post" action="/admin/users/<%= row.id %>/revoke-invite" class="inline">
+                    <%- include('../partials/csrf') %>
+                    <button class="ms-2 text-gray-500 hover:underline dark:text-gray-400">Revoke</button>
+                  </form>
+                <% } %>
+                <% if (!row.pendingInvite && !row.stranded) { %>
+                  <form method="post" action="/admin/users/<%= row.id %>/send-reset" class="inline">
+                    <%- include('../partials/csrf') %>
+                    <button class="ms-2 text-gray-500 hover:underline dark:text-gray-400">Send reset</button>
+                  </form>
+                <% } %>
+                <form method="post" action="/admin/users/<%= row.id %>/delete" class="inline">
+                  <%- include('../partials/csrf') %>
+                  <button class="ms-2 text-gray-400 hover:text-red-600 hover:underline">Delete</button>
+                </form>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+    <h2 class="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+      <%= editing ? 'Edit user' : 'Add user' %>
+    </h2>
+
+    <form method="post" action="<%= editing ? '/admin/users/' + editing.id : '/admin/users' %>"
+          x-data='<%- JSON.stringify({ mode: values.mode || "invite" }) %>'>
+      <%- include('../partials/csrf') %>
+
+      <div class="grid gap-3 sm:grid-cols-2">
+        <%- include('../partials/form-field', { name: 'firstName', label: 'First name', value: values.firstName, errors, required: true }) %>
+        <%- include('../partials/form-field', { name: 'lastName', label: 'Last name', value: values.lastName, errors, required: true }) %>
+      </div>
+
+      <%- include('../partials/form-field', { name: 'email', label: 'Email', type: 'email', value: values.email, errors, required: true, autocomplete: 'off' }) %>
+
+      <div class="mb-4">
+        <label for="roleId" class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Role<span class="text-red-600"> *</span></label>
+        <select id="roleId" name="roleId" class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+          <% roles.forEach(function (role) { %>
+            <option value="<%= role.id %>" <%- String(values.roleId) === String(role.id) ? 'selected' : '' %>><%= role.label %></option>
+          <% }); %>
+        </select>
+      </div>
+
+      <%- include('../partials/form-field', { name: 'department', label: 'Department', value: values.department, errors }) %>
+
+      <% if (!editing) { %>
+        <!-- The two creation modes: only one of them is ever submitted. -->
+        <fieldset class="mb-4">
+          <legend class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">How should they get a password?</legend>
+          <label class="mb-2 flex items-start gap-2 text-sm">
+            <input type="radio" name="mode" value="invite" x-model="mode" class="mt-1" />
+            <span><span class="font-medium">Send invite email</span>
+              <span class="block text-xs text-gray-500 dark:text-gray-400">A single-use link, valid 7 days. They choose their own password.</span></span>
+          </label>
+          <label class="flex items-start gap-2 text-sm">
+            <input type="radio" name="mode" value="password" x-model="mode" class="mt-1" />
+            <span><span class="font-medium">Set a password now</span>
+              <span class="block text-xs text-gray-500 dark:text-gray-400">Pass it on out of band. They must change it at first sign-in.</span></span>
+          </label>
+        </fieldset>
+
+        <div x-show="mode === 'password'" x-cloak>
+          <%- include('../partials/form-field', {
+            name: 'password', label: 'Initial password', type: 'password',
+            value: '', errors, hint: 'At least 8 characters.', autocomplete: 'new-password',
+          }) %>
+        </div>
+      <% } else { %>
+        <div class="mb-4">
+          <label for="active" class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Status</label>
+          <select id="active" name="active" class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+            <option value="true" <%- values.active !== false ? 'selected' : '' %>>Active</option>
+            <option value="false" <%- values.active === false ? 'selected' : '' %>>Deactivated</option>
+          </select>
+          <p class="mt-1.5 text-sm text-gray-500 dark:text-gray-400">Deactivating signs them out immediately.</p>
+        </div>
+
+        <%- include('../partials/form-field', { name: 'telegramId', label: 'Telegram ID', value: values.telegramId, errors }) %>
+
+        <%- include('../partials/form-field', {
+          name: 'password', label: 'Set a new password', type: 'password', value: '', errors,
+          hint: 'Leave blank to keep the current one. Setting it here signs them out and forces a change.',
+          autocomplete: 'new-password',
+        }) %>
+      <% } %>
+
+      <div class="flex gap-2">
+        <button type="submit" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">
+          <%= editing ? 'Save changes' : 'Create user' %>
+        </button>
+        <% if (editing) { %>
+          <a href="/admin/users" class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Cancel</a>
+        <% } %>
+      </div>
+    </form>
+  </div>
+</div>

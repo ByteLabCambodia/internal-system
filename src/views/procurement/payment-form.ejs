@@ -1,0 +1,195 @@
+<%
+/*
+ * Upload a receipt, OCR fills in what it can read, and method-dependent fields appear only
+ * where they make sense. Every OCR field may come back null — the form stays usable either
+ * way, and nothing here is required except the amount and currency.
+ */
+const orderOptions = orders.map(function (po) {
+  return {
+    id: po.id,
+    poNumber: po.poNumber,
+    currency: po.currency,
+    totalUsd: po.totalUsd,
+    supplier: (po.supplier && po.supplier.name) || po.supplierName || '',
+  };
+});
+%>
+
+<% if (locals.alert) { %><%- include('../partials/alert', { tone: 'error', message: alert }) %><% } %>
+
+<form method="post" action="/accounting/payments"
+      x-data='<%- JSON.stringify({
+        orders: orderOptions,
+        poId: values.poId ? String(values.poId) : "",
+        currency: values.currency || "USD",
+        method: values.method || "",
+        receiptKey: values.receiptObjectKey ? String(values.receiptObjectKey) : "",
+        ocrRunning: false,
+        ocrMessage: "",
+      }) %>'
+      @upload:done="receiptKey = $event.detail.objectKey; ocrMessage = ''">
+  <%- include('../partials/csrf') %>
+
+  <div class="grid gap-6 lg:grid-cols-3">
+    <div class="space-y-4 lg:col-span-2">
+      <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+        <div class="mb-4">
+          <label for="poId" class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Purchase order</label>
+          <select id="poId" name="poId" x-model="poId"
+                  class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+            <option value="">Direct expense — no purchase order</option>
+            <% orderOptions.forEach(function (option) { %>
+              <option value="<%= option.id %>" <%- String(values.poId) === String(option.id) ? 'selected' : '' %>>
+                <%= option.poNumber %><%= option.supplier ? ' — ' + option.supplier : '' %> (<%= money.formatUsd(option.totalUsd) %>)
+              </option>
+            <% }); %>
+          </select>
+          <p class="mt-1.5 text-sm text-gray-500 dark:text-gray-400">
+            Paying against an order rolls up its payment status. Over-paying it is refused.
+          </p>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <%- include('../partials/form-field', {
+            name: 'amountOriginal', label: 'Amount', type: 'number', step: '0.0001',
+            value: values.amountOriginal, errors, required: true,
+          }) %>
+
+          <div class="mb-4">
+            <label for="currency" class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">
+              Currency<span class="text-red-600" aria-hidden="true"> *</span>
+            </label>
+            <select id="currency" name="currency" x-model="currency"
+                    class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+              <% currencies.forEach(function (currency) { %>
+                <option value="<%= currency %>" <%- values.currency === currency ? 'selected' : '' %>><%= currency %></option>
+              <% }); %>
+            </select>
+            <p class="mt-1.5 text-sm text-gray-500 dark:text-gray-400">
+              <span x-show="currency === 'USD'">Recorded at 1.00.</span>
+              <span x-show="currency !== 'USD'" x-cloak>
+                Locked at today's rate: <span x-text="<%- JSON.stringify(rates) %>[currency] || 'no rate on file'"></span>
+              </span>
+            </p>
+          </div>
+        </div>
+
+        <!-- C1: with no order to inherit from, the account must be stated. -->
+        <div class="mb-4" x-show="!poId" x-cloak>
+          <label for="expenseAccountId" class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">
+            Expense account<span class="text-red-600" aria-hidden="true"> *</span>
+          </label>
+          <select id="expenseAccountId" name="expenseAccountId"
+                  class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+            <option value="">Choose an account…</option>
+            <% expenseAccounts.forEach(function (account) { %>
+              <option value="<%= account.id %>" <%- String(values.expenseAccountId) === String(account.id) ? 'selected' : '' %>>
+                <%= account.code %> <%= account.name %>
+              </option>
+            <% }); %>
+          </select>
+          <p class="mt-1.5 text-sm text-gray-500 dark:text-gray-400">A payment with no order needs an account to debit.</p>
+        </div>
+
+        <div class="mb-4">
+          <label for="method" class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Method</label>
+          <select id="method" name="method" x-model="method"
+                  class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm capitalize dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+            <option value="">—</option>
+            <% methods.forEach(function (method) { %>
+              <option value="<%= method %>" <%- values.method === method ? 'selected' : '' %>><%= String(method).replace(/_/g, ' ') %></option>
+            <% }); %>
+          </select>
+        </div>
+
+        <%- include('../partials/form-field', {
+          name: 'paidAt', label: 'Paid at', type: 'datetime-local',
+          value: values.paidAt, errors,
+        }) %>
+      </div>
+
+      <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+        <h2 class="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Reconciliation</h2>
+
+        <!-- Bank-ish methods carry an account and a transfer counterparty; cash does not. -->
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div x-show="method !== 'cash'" x-cloak>
+            <%- include('../partials/form-field', { name: 'bankAccount', label: 'Bank account', value: values.bankAccount, errors }) %>
+          </div>
+          <%- include('../partials/form-field', { name: 'reference', label: 'Reference', value: values.reference, errors }) %>
+          <%- include('../partials/form-field', { name: 'trxId', label: 'Transaction ID', value: values.trxId, errors }) %>
+          <%- include('../partials/form-field', { name: 'sender', label: 'Sender', value: values.sender, errors }) %>
+          <div x-show="method !== 'cash'" x-cloak>
+            <%- include('../partials/form-field', { name: 'transferTo', label: 'Transfer to', value: values.transferTo, errors }) %>
+          </div>
+          <%- include('../partials/form-field', { name: 'remark', label: 'Remark', value: values.remark, errors }) %>
+        </div>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+        <%- include('../partials/file-upload', {
+          name: 'receiptObjectKey', label: 'Receipt', prefix: 'receipts',
+          value: values.receiptObjectKey, enabled: storageEnabled,
+        }) %>
+        <% if (storageEnabled) { %>
+          <button type="button" x-show="receiptKey" x-cloak :disabled="ocrRunning"
+                  @click="
+                    ocrRunning = true;
+                    ocrMessage = 'Reading the receipt…';
+                    fetch('/accounting/payments/ocr', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', 'x-csrf-token': document.querySelector('input[name=_csrf]').value },
+                      body: JSON.stringify({ objectKey: receiptKey }),
+                    })
+                      .then(function (r) { return r.json(); })
+                      .then(function (payload) {
+                        ocrRunning = false;
+                        if (!payload.ok || !payload.fields) { ocrMessage = 'Could not read this receipt — fill the fields in by hand.'; return; }
+                        var filled = 0;
+                        Object.keys(payload.fields).forEach(function (key) {
+                          var value = payload.fields[key];
+                          if (value === null || value === undefined || value === '') return;
+                          var field = $el.closest('form').querySelector('[name=' + key + ']');
+                          if (key === 'amount') field = $el.closest('form').querySelector('[name=amountOriginal]');
+                          if (key === 'paidAt') field = $el.closest('form').querySelector('[name=paidAt]');
+                          if (field) { field.value = value; filled++; }
+                          if (key === 'currency') { currency = value; }
+                        });
+                        ocrMessage = filled ? 'Filled ' + filled + ' field' + (filled === 1 ? '' : 's') + ' from the receipt — check them before saving.' : 'Nothing readable on this receipt.';
+                      })
+                      .catch(function () { ocrRunning = false; ocrMessage = 'Receipt reading failed — fill the fields in by hand.'; });
+                  "
+                  class="mt-2 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+            <span x-show="!ocrRunning">Scan receipt</span>
+            <span x-show="ocrRunning" x-cloak>Reading…</span>
+          </button>
+        <% } %>
+        <p class="mt-2 text-sm" :class="ocrRunning ? 'text-gray-500' : 'text-primary-600 dark:text-primary-400'" x-text="ocrMessage" x-cloak></p>
+        <% if (storageEnabled) { %>
+          <p class="mt-2 text-xs text-gray-400">OCR only runs when you click "Scan receipt" — it isn't triggered automatically on upload.</p>
+        <% } %>
+      </div>
+
+      <div class="rounded-lg border border-gray-200 bg-white p-4 text-sm dark:border-gray-700 dark:bg-gray-800" x-show="poId" x-cloak>
+        <template x-if="orders.find(o => String(o.id) === String(poId))">
+          <dl class="space-y-1">
+            <div class="flex justify-between">
+              <dt class="text-gray-500 dark:text-gray-400">Order total</dt>
+              <dd class="tabular text-gray-900 dark:text-white"
+                  x-text="'$' + Number(orders.find(o => String(o.id) === String(poId)).totalUsd).toFixed(2)"></dd>
+            </div>
+          </dl>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <div class="sticky bottom-0 mt-6 flex items-center justify-end gap-2 border-t border-gray-200 bg-gray-50/95 py-3 backdrop-blur dark:border-gray-700 dark:bg-gray-900/95">
+    <a href="/purchase-orders" class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Cancel</a>
+    <button type="submit" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">Record payment</button>
+  </div>
+</form>
+
+<script src="/js/r2-upload.js" defer></script>

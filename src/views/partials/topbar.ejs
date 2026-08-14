@@ -1,0 +1,59 @@
+<!-- Page title, the page's single primary action, and the user menu. -->
+<header class="sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur dark:border-gray-700 dark:bg-gray-800/95">
+  <div class="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-3 sm:px-6">
+    <button type="button"
+            data-drawer-target="app-sidebar"
+            data-drawer-toggle="app-sidebar"
+            aria-controls="app-sidebar"
+            class="inline-flex items-center rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 sm:hidden">
+      <span class="sr-only">Open navigation</span>
+      <%- include('icon', { name: 'menu', size: 'h-6 w-6' }) %>
+    </button>
+
+    <div class="min-w-0 flex-1">
+      <h1 class="truncate text-base font-semibold text-gray-900 dark:text-white">
+        <%= locals.title || 'Dashboard' %>
+      </h1>
+    </div>
+
+    <% if (locals.primaryAction) { %>
+      <a href="<%= primaryAction.href %>"
+         class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 dark:focus:ring-primary-800">
+        <%= primaryAction.label %>
+      </a>
+    <% } %>
+
+    <button type="button" onclick="toggleTheme()"
+            class="rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700">
+      <span class="sr-only">Toggle dark mode</span>
+      <span class="dark:hidden"><%- include('icon', { name: 'moon' }) %></span>
+      <span class="hidden dark:inline"><%- include('icon', { name: 'sun' }) %></span>
+    </button>
+
+    <button id="user-menu-button" data-dropdown-toggle="user-menu" type="button"
+            class="flex items-center gap-2 rounded-lg p-1.5 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">
+      <span class="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-700 dark:bg-gray-600 dark:text-gray-200">
+        <%= (currentUser.firstName || '?').slice(0, 1) %><%= (currentUser.lastName || '').slice(0, 1) %>
+      </span>
+      <span class="sr-only">Open user menu</span>
+    </button>
+
+    <div id="user-menu" class="z-50 hidden w-48 divide-y divide-gray-100 rounded-lg bg-white shadow-sm dark:divide-gray-600 dark:bg-gray-700">
+      <div class="px-4 py-3 text-sm text-gray-900 dark:text-white">
+        <div class="truncate font-medium"><%= currentUser.firstName %> <%= currentUser.lastName %></div>
+        <div class="truncate text-xs text-gray-500 dark:text-gray-400"><%= currentUser.email %></div>
+      </div>
+      <ul class="py-1 text-sm text-gray-700 dark:text-gray-200" aria-labelledby="user-menu-button">
+        <li><a href="/profile" class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Profile</a></li>
+      </ul>
+      <div class="py-1">
+        <form method="post" action="/logout">
+          <%- include('csrf') %>
+          <button type="submit" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600 dark:hover:text-white">
+            Sign out
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</header>

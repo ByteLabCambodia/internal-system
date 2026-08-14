@@ -37,6 +37,7 @@ export default registerAs<FileConfig>('file', () => {
   validateConfig(process.env, EnvironmentVariablesValidator);
 
   return {
+    r2Endpoint: process.env.R2_ENDPOINT,
     driver:
       (process.env.FILE_DRIVER as FileDriver | undefined) ?? FileDriver.LOCAL,
     accessKeyId: process.env.ACCESS_KEY_ID,

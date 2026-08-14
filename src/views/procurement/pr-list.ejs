@@ -1,0 +1,45 @@
+<%- include('../partials/filter-toolbar', {
+  statuses, filters, exportHref: '/purchase-requests/export.csv?' + baseQuery,
+}) %>
+
+<p class="mb-3 text-sm text-gray-500 dark:text-gray-400"><%= count %> request<%= count === 1 ? '' : 's' %></p>
+
+<% if (!rows.length) { %>
+  <div class="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+    <%- include('../partials/empty-state', {
+      title: 'No purchase requests match these filters',
+      description: 'Raise a request to buy something, and it goes to a manager for approval.',
+      action: can['pr.create'] ? { href: '/purchase-requests/new', label: 'New request' } : null,
+    }) %>
+  </div>
+<% } else { %>
+  <%
+    let rowsHtml = '';
+    rows.forEach(function (row) {
+      const requester = [row.requester && row.requester.firstName, row.requester && row.requester.lastName].filter(Boolean).join(' ');
+      rowsHtml += `
+        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+          <td class="px-4 py-2.5">
+            <a class="font-medium text-primary-600 hover:underline dark:text-primary-400" href="/purchase-requests/${row.id}">${row.prNumber}</a>
+          </td>
+          <td class="px-4 py-2.5">${requester}${row.department ? `<span class="block text-xs text-gray-400">${row.department.name}</span>` : ''}</td>
+          <td class="px-4 py-2.5 text-right">${include('../partials/money', { amount: row.totalOriginal, currency: row.currency, amountUsd: row.totalUsd, money })}</td>
+          <td class="px-4 py-2.5">${include('../partials/status-badge', { status: row.status })}</td>
+          <td class="px-4 py-2.5 text-gray-500 dark:text-gray-400">${new Date(row.createdAt).toLocaleDateString()}</td>
+        </tr>`;
+    });
+  %>
+  <%- include('../partials/table', {
+    columns: [
+      { key: 'pr_number', label: 'Number', sortable: true },
+      { key: 'requester', label: 'Requester' },
+      { key: 'total_usd', label: 'Total', align: 'right', sortable: true },
+      { key: 'status', label: 'Status', sortable: true },
+      { key: 'created_at', label: 'Raised', sortable: true },
+    ],
+    sort: { orderBy: filters.orderBy, order: filters.order },
+    baseQuery: sortQuery,
+    rowsHtml,
+  }) %>
+  <%- include('../partials/pagination', { page: filters.page, limit: filters.limit, count, baseQuery }) %>
+<% } %>

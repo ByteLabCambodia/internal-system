@@ -1,0 +1,96 @@
+<div class="grid max-w-4xl gap-6 lg:grid-cols-2">
+  <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+    <h2 class="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Account</h2>
+    <dl class="mb-4 space-y-3 text-sm">
+      <div><dt class="text-gray-500 dark:text-gray-400">Name</dt>
+        <dd class="text-gray-900 dark:text-white"><%= user.firstName %> <%= user.lastName %></dd></div>
+      <div><dt class="text-gray-500 dark:text-gray-400">Email</dt>
+        <dd class="text-gray-900 dark:text-white"><%= user.email %></dd></div>
+      <div><dt class="text-gray-500 dark:text-gray-400">Role</dt>
+        <dd class="capitalize text-gray-900 dark:text-white"><%= roleName %></dd></div>
+    </dl>
+    <p class="text-sm text-gray-500 dark:text-gray-400">
+      Name, email and role are set by an admin. Ask them if something here is wrong.
+    </p>
+  </div>
+
+  <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+    <h2 class="mb-1 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Payment destination</h2>
+    <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+      Where finance sends money back to you. Shown on your requests and orders so nobody has to ask.
+    </p>
+
+    <form method="post" action="/profile/details">
+      <%- include('../partials/csrf') %>
+
+      <%- include('../partials/form-field', { name: 'department', label: 'Department', value: user.department, errors }) %>
+      <%- include('../partials/form-field', {
+        name: 'paymentLink', label: 'Payment link', value: user.paymentLink, errors,
+        placeholder: 'https://…', hint: 'A bank or wallet link.',
+      }) %>
+
+      <%- include('../partials/file-upload', {
+        name: 'paymentQrObjectKey', label: 'Payment QR code', prefix: 'profile',
+        value: '', enabled: storageEnabled,
+      }) %>
+
+      <% if (paymentQrUrl) { %>
+        <img src="<%= paymentQrUrl %>" alt="Your payment QR code"
+             class="mb-4 h-40 w-40 rounded-lg border border-gray-200 object-contain dark:border-gray-700" />
+      <% } %>
+
+      <button type="submit" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">Save</button>
+    </form>
+  </div>
+
+  <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+    <h2 class="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Change password</h2>
+
+    <form method="post" action="/profile/password">
+      <%- include('../partials/csrf') %>
+      <%- include('../partials/password-field', {
+        name: 'password', label: 'New password', errors,
+        autocomplete: 'new-password', hint: 'At least 8 characters.',
+      }) %>
+      <%- include('../partials/password-field', {
+        name: 'passwordConfirmation', label: 'Confirm new password', errors,
+        autocomplete: 'new-password',
+      }) %>
+      <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">Changing your password signs you out everywhere else.</p>
+      <button type="submit" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">Change password</button>
+    </form>
+  </div>
+
+  <div class="rounded-lg border border-gray-200 bg-white p-4 lg:col-span-2 dark:border-gray-700 dark:bg-gray-800">
+    <h2 class="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Telegram</h2>
+
+    <% if (!telegramEnabled) { %>
+      <%- include('../partials/alert', { tone: 'info', message: 'The Telegram bot is not configured on this environment.' }) %>
+    <% } else if (user.telegramId) { %>
+      <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">
+        Linked<% if (user.telegramUsername) { %> to <span class="font-medium">@<%= user.telegramUsername %></span><% } %>.
+        You will get approvals and updates in Telegram, and can act on them from there.
+      </p>
+      <form method="post" action="/profile/telegram/unlink">
+        <%- include('../partials/csrf') %>
+        <button class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Unlink Telegram</button>
+      </form>
+    <% } else if (linkToken) { %>
+      <p class="mb-2 text-sm text-gray-600 dark:text-gray-300">Send this to the bot in a direct message:</p>
+      <p class="mb-3 rounded-lg bg-gray-50 p-3 font-mono text-sm dark:bg-gray-700">/link <%= linkToken.token %></p>
+      <p class="text-sm text-gray-500 dark:text-gray-400">
+        Expires at <%= new Date(linkToken.expiresAt).toLocaleTimeString() %>. Generate a new code if it runs out.
+      </p>
+    <% } else { %>
+      <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">
+        Link your Telegram account to receive approvals in chat and to use the mobile Mini App.
+      </p>
+      <form method="post" action="/profile/telegram/link">
+        <%- include('../partials/csrf') %>
+        <button class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">Generate link code</button>
+      </form>
+    <% } %>
+  </div>
+</div>
+
+<script src="/js/r2-upload.js" defer></script>

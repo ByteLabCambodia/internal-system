@@ -1,0 +1,20 @@
+<%
+/* One nav for every Admin screen, so they read as one section. */
+const tabs = [
+  { href: '/admin/users', label: 'Users' },
+  { href: '/admin/org', label: 'Departments & projects' },
+  { href: '/admin/suppliers', label: 'Suppliers' },
+  { href: '/inventory/categories', label: 'Categories' },
+  { href: '/admin/settings', label: 'Settings' },
+];
+%>
+<div class="mb-5 flex flex-wrap gap-2 border-b border-gray-200 pb-3 dark:border-gray-700">
+  <% tabs.forEach(function (tab) { %>
+    <a href="<%= tab.href %>"
+       class="rounded-lg px-3 py-1.5 text-sm <%= currentPath.startsWith(tab.href)
+         ? 'bg-primary-50 font-medium text-primary-700 dark:bg-gray-700 dark:text-white'
+         : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' %>">
+      <%= tab.label %>
+    </a>
+  <% }); %>
+</div>

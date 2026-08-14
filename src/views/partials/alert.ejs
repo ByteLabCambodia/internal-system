@@ -1,0 +1,13 @@
+<%
+/* Page-level alert, above the form. tone: success | error | info | warning */
+const tone = locals.tone || 'error';
+const CLASSES = {
+  success: 'text-green-800 bg-green-50 dark:bg-gray-800 dark:text-green-400',
+  error: 'text-red-800 bg-red-50 dark:bg-gray-800 dark:text-red-400',
+  info: 'text-primary-800 bg-primary-50 dark:bg-gray-800 dark:text-primary-300',
+  warning: 'text-yellow-800 bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300',
+};
+%>
+<div class="mb-4 rounded-lg p-4 text-sm <%= CLASSES[tone] %>" role="alert">
+  <%- message %>
+</div>

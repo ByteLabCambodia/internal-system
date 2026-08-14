@@ -1,0 +1,7 @@
+<%
+/*
+ * Money always shows its currency, and USD alongside when the record is in KHR or CNY.
+ * Right-aligned tabular figures are the caller's job (the cell class).
+ */
+const currency = locals.currency || 'USD';
+%><span class="tabular"><%= money.format(amount, currency) %></span><% if (currency !== 'USD' && locals.amountUsd !== undefined && locals.amountUsd !== null) { %><span class="block text-xs text-gray-400 tabular"><%= money.formatUsd(amountUsd) %></span><% } %>

@@ -1,0 +1,105 @@
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+  <a href="/purchase-requests" class="rounded-lg border border-gray-200 bg-white p-4 hover:border-primary-300 dark:border-gray-700 dark:bg-gray-800">
+    <p class="text-sm text-gray-500 dark:text-gray-400">My open requests</p>
+    <p class="mt-1 text-2xl font-semibold tabular text-gray-900 dark:text-white"><%= kpis.myPendingRequests %></p>
+  </a>
+  <a href="/inventory?lowStock=true" class="rounded-lg border border-gray-200 bg-white p-4 hover:border-primary-300 dark:border-gray-700 dark:bg-gray-800">
+    <p class="text-sm text-gray-500 dark:text-gray-400">Low-stock items</p>
+    <p class="mt-1 text-2xl font-semibold tabular <%= kpis.lowStockItems ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white' %>">
+      <%= kpis.lowStockItems %>
+    </p>
+  </a>
+  <a href="/purchase-orders" class="rounded-lg border border-gray-200 bg-white p-4 hover:border-primary-300 dark:border-gray-700 dark:bg-gray-800">
+    <p class="text-sm text-gray-500 dark:text-gray-400">Open purchase orders</p>
+    <p class="mt-1 text-2xl font-semibold tabular text-gray-900 dark:text-white"><%= kpis.openPurchaseOrders %></p>
+  </a>
+  <% if (pendingApprovals !== null) { %>
+    <a href="/purchase-requests?status=pending" class="rounded-lg border border-gray-200 bg-white p-4 hover:border-primary-300 dark:border-gray-700 dark:bg-gray-800">
+      <p class="text-sm text-gray-500 dark:text-gray-400">Waiting on a decision</p>
+      <p class="mt-1 text-2xl font-semibold tabular <%= pendingApprovals ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white' %>">
+        <%= pendingApprovals %>
+      </p>
+    </a>
+  <% } %>
+  <% if (cashBalance !== null) { %>
+    <a href="/accounting" class="rounded-lg border border-gray-200 bg-white p-4 hover:border-primary-300 dark:border-gray-700 dark:bg-gray-800">
+      <p class="text-sm text-gray-500 dark:text-gray-400">Expense this month</p>
+      <p class="mt-1 text-2xl font-semibold tabular text-gray-900 dark:text-white"><%= money.formatUsd(expenseThisMonth) %></p>
+      <p class="mt-1 text-xs text-gray-400">Cash balance <%= money.formatUsd(cashBalance) %></p>
+    </a>
+  <% } %>
+</div>
+
+<% if (charts) { %>
+  <div class="mt-6 grid gap-4 lg:grid-cols-2">
+    <div class="rounded-lg border border-gray-200 bg-white p-4 lg:col-span-2 dark:border-gray-700 dark:bg-gray-800">
+      <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Income vs expense</h2>
+      <div class="h-64"><canvas id="chart-pnl"></canvas></div>
+    </div>
+    <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+      <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Expense by category</h2>
+      <div class="h-64"><canvas id="chart-category"></canvas></div>
+    </div>
+    <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+      <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Expense by department</h2>
+      <div class="h-64"><canvas id="chart-department"></canvas></div>
+    </div>
+  </div>
+<% } %>
+
+<div class="mt-6 grid gap-4 lg:grid-cols-3">
+  <div class="rounded-lg border border-gray-200 bg-white lg:col-span-2 dark:border-gray-700 dark:bg-gray-800">
+    <div class="border-b border-gray-200 px-4 py-3 dark:border-gray-700">
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Recent activity</h2>
+    </div>
+    <% if (!feed.length) { %>
+      <%- include('../partials/empty-state', { title: 'Nothing has happened yet', description: 'Orders, payments, claims and stock requests show up here as they are raised.' }) %>
+    <% } else { %>
+      <table class="w-full text-left text-sm text-gray-600 dark:text-gray-300">
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+          <% feed.forEach(function (item) { %>
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+              <td class="px-4 py-2.5 text-xs uppercase tracking-wide text-gray-400"><%= item.kind %></td>
+              <td class="px-4 py-2.5">
+                <a href="<%= item.href %>" class="font-medium text-primary-600 hover:underline dark:text-primary-400"><%= item.label %></a>
+                <% if (item.detail) { %><span class="block text-xs text-gray-400"><%= item.detail %></span><% } %>
+              </td>
+              <td class="px-4 py-2.5"><% if (item.status) { %><%- include('../partials/status-badge', { status: item.status }) %><% } %></td>
+              <td class="px-4 py-2.5 text-right text-xs text-gray-400"><%= new Date(item.createdAt).toLocaleDateString() %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+
+  <div class="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+    <div class="border-b border-gray-200 px-4 py-3 dark:border-gray-700">
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Notifications</h2>
+    </div>
+    <% if (!notifications.length) { %>
+      <%- include('../partials/empty-state', { title: 'Nothing needs you', description: 'Low stock and pending approvals appear here.' }) %>
+    <% } else { %>
+      <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+        <% notifications.forEach(function (notification) { %>
+          <li class="px-4 py-3">
+            <p class="text-sm font-medium capitalize text-gray-900 dark:text-white"><%= String(notification.event).replace(/_/g, ' ') %></p>
+            <% if (notification.payload && notification.payload.sku) { %>
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                <%= notification.payload.name || notification.payload.sku %> at <%= Number(notification.payload.balance_after) %>,
+                reorder point <%= Number(notification.payload.reorder_point) %>
+              </p>
+            <% } %>
+            <p class="mt-0.5 text-xs text-gray-400"><%= new Date(notification.created_at).toLocaleString() %></p>
+          </li>
+        <% }); %>
+      </ul>
+    <% } %>
+  </div>
+</div>
+
+<% if (charts) { %>
+  <script id="dashboard-data" type="application/json"><%- JSON.stringify(charts) %></script>
+  <script src="/js/chart.umd.js"></script>
+  <script src="/js/dashboard-charts.js" defer></script>
+<% } %>

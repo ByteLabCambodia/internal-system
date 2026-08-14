@@ -1,0 +1,46 @@
+<%- include('../partials/filter-toolbar', { statuses, filters, exportHref: '/stock-requests/export.csv?' + baseQuery }) %>
+
+<p class="mb-3 text-sm text-gray-500 dark:text-gray-400"><%= count %> request<%= count === 1 ? '' : 's' %></p>
+
+<% if (!rows.length) { %>
+  <div class="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+    <%- include('../partials/empty-state', {
+      title: 'No stock requests yet',
+      description: 'Ask for something already held in stock. Fulfilling a request issues it and appends to the movement ledger.',
+      action: { href: '/stock-requests/new', label: 'Request stock' },
+    }) %>
+  </div>
+<% } else { %>
+  <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+    <table class="w-full text-left text-sm text-gray-600 dark:text-gray-300">
+      <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+        <tr>
+          <th class="px-4 py-3">Item</th>
+          <th class="px-4 py-3 text-right">Qty</th>
+          <th class="px-4 py-3">Requester</th>
+          <th class="px-4 py-3">Priority</th>
+          <th class="px-4 py-3">Status</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+        <% rows.forEach(function (row) { %>
+          <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+            <td class="px-4 py-2.5">
+              <a href="/stock-requests/<%= row.id %>" class="font-medium text-primary-600 hover:underline dark:text-primary-400">
+                <%= row.inventoryItem ? row.inventoryItem.name : 'Item #' + row.id %>
+              </a>
+              <% if (row.inventoryItem) { %><span class="block text-xs text-gray-400"><%= row.inventoryItem.sku %></span><% } %>
+            </td>
+            <td class="px-4 py-2.5 text-right tabular"><%= Number(row.qty) %></td>
+            <td class="px-4 py-2.5"><%= row.requester ? row.requester.firstName + ' ' + row.requester.lastName : '—' %>
+              <% if (row.department) { %><span class="block text-xs text-gray-400"><%= row.department %></span><% } %>
+            </td>
+            <td class="px-4 py-2.5"><%- include('../partials/status-badge', { status: row.priority }) %></td>
+            <td class="px-4 py-2.5"><%- include('../partials/status-badge', { status: row.status }) %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+  <%- include('../partials/pagination', { page: filters.page, limit: filters.limit, count, baseQuery }) %>
+<% } %>

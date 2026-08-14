@@ -20,9 +20,23 @@ DATABASE_REJECT_UNAUTHORIZED=false
 DATABASE_CA=
 DATABASE_KEY=
 DATABASE_CERT=
+# On Vercel/Heroku, set DATABASE_URL to the Heroku Postgres add-on's connection string
+# (`heroku config:get DATABASE_URL -a <app>`) instead of the DATABASE_HOST/PORT/etc above —
+# database.config.ts prefers DATABASE_URL when it's set. Heroku Postgres terminates TLS with
+# a self-signed cert, so also set DATABASE_SSL_ENABLED=true (DATABASE_REJECT_UNAUTHORIZED
+# stays false, since Heroku's cert isn't in a public CA chain).
+
+# Shared secret Vercel Cron sends as `Authorization: Bearer $CRON_SECRET` when it calls
+# GET /accounting/cron/exchange-rates — the HTTP-triggered stand-in for the @Cron job, which
+# never fires on Vercel because no process stays alive between requests. Generate with
+# `openssl rand -hex 32`; required in production, otherwise that endpoint always 403s.
+CRON_SECRET=
 DATABASE_URL=
 
 # Support "local", "s3", "s3-presigned"
+# On Vercel, "local" won't work in production — each invocation gets a fresh, mostly
+# read-only filesystem, so uploaded files vanish (or fail to write) between requests.
+# Use "s3" or "s3-presigned" (R2_ENDPOINT below covers Cloudflare R2's S3-compatible API).
 FILE_DRIVER=local
 ACCESS_KEY_ID=
 SECRET_ACCESS_KEY=
@@ -58,3 +72,20 @@ GOOGLE_CLIENT_SECRET=
 APPLE_APP_AUDIENCE=[]
 
 WORKER_HOST=redis://redis:6379/1
+
+# Bootstraps the first admin account via `npm run seed:run:relational`.
+# Leave blank to skip. The account is created with must_change_password=true.
+ADMIN_EMAIL=
+ADMIN_PASSWORD=
+ADMIN_FIRST_NAME=
+ADMIN_LAST_NAME=
+
+OCR_SPACE_API_KEY=
+R2_ENDPOINT=
+
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_WEBHOOK_SECRET=
+# Public HTTPS URL of the Mini App shell, e.g. https://your-domain.com/miniapp
+# (must be HTTPS — Telegram rejects http:// and localhost). Setting this also makes
+# POST /telegram/setup register the bot's "Open app" menu button.
+TELEGRAM_MINIAPP_URL=

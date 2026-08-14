@@ -1,0 +1,17 @@
+<%
+/* Query-param pagination. Pass page, limit, count, and the query string without `page`. */
+const totalPages = Math.max(1, Math.ceil(count / limit));
+const query = locals.baseQuery || '';
+const link = (p) => `?${query}page=${p}`;
+%>
+<nav class="flex items-center justify-between px-1 pt-3 text-sm" aria-label="Pagination">
+  <span class="text-gray-500 dark:text-gray-400">
+    <%= count === 0 ? 0 : (page - 1) * limit + 1 %>–<%= Math.min(page * limit, count) %> of <%= count %>
+  </span>
+  <div class="inline-flex gap-1">
+    <a href="<%= link(Math.max(1, page - 1)) %>"
+       class="rounded-lg border border-gray-300 px-3 py-1.5 <%= page <= 1 ? 'pointer-events-none opacity-40' : 'hover:bg-gray-100 dark:hover:bg-gray-700' %> dark:border-gray-600">Previous</a>
+    <a href="<%= link(Math.min(totalPages, page + 1)) %>"
+       class="rounded-lg border border-gray-300 px-3 py-1.5 <%= page >= totalPages ? 'pointer-events-none opacity-40' : 'hover:bg-gray-100 dark:hover:bg-gray-700' %> dark:border-gray-600">Next</a>
+  </div>
+</nav>

@@ -1,0 +1,77 @@
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="lg:col-span-2">
+    <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
+      A category's expense account is what its purchase orders debit in the ledger.
+    </p>
+
+    <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+      <table class="w-full text-left text-sm text-gray-600 dark:text-gray-300">
+        <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+          <tr>
+            <th class="px-4 py-3">Category</th>
+            <th class="px-4 py-3">Expense account</th>
+            <th class="px-4 py-3"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+          <% rows.forEach(function (row) { %>
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+              <td class="px-4 py-2.5 font-medium text-gray-900 dark:text-white"><%= row.name %>
+                <% if (row.description) { %><span class="block text-xs text-gray-400"><%= row.description %></span><% } %>
+              </td>
+              <td class="px-4 py-2.5">
+                <% if (row.expenseAccount) { %>
+                  <%= row.expenseAccount.code %> <%= row.expenseAccount.name %>
+                <% } else { %>
+                  <span class="text-amber-600 dark:text-amber-400">Unmapped — falls back to 6900</span>
+                <% } %>
+              </td>
+              <td class="px-4 py-2.5 text-right">
+                <a href="/inventory/categories/<%= row.id %>/edit" class="text-primary-600 hover:underline dark:text-primary-400">Edit</a>
+                <form method="post" action="/inventory/categories/<%= row.id %>/delete" class="inline">
+                  <%- include('../partials/csrf') %>
+                  <button class="ms-2 text-gray-400 hover:text-red-600 hover:underline">Delete</button>
+                </form>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+    <h2 class="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+      <%= editing ? 'Edit category' : 'Add category' %>
+    </h2>
+
+    <form method="post" action="<%= editing ? '/inventory/categories/' + editing.id : '/inventory/categories' %>">
+      <%- include('../partials/csrf') %>
+
+      <%- include('../partials/form-field', { name: 'name', label: 'Name', value: values.name, errors, required: true }) %>
+      <%- include('../partials/form-field', { name: 'description', label: 'Description', value: values.description, errors }) %>
+
+      <div class="mb-4">
+        <label for="expenseAccountId" class="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">Expense account</label>
+        <select id="expenseAccountId" name="expenseAccountId"
+                class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+          <option value="">Unmapped (falls back to 6900)</option>
+          <% expenseAccounts.forEach(function (account) { %>
+            <option value="<%= account.id %>" <%- String(values.expenseAccountId) === String(account.id) ? 'selected' : '' %>>
+              <%= account.code %> <%= account.name %>
+            </option>
+          <% }); %>
+        </select>
+      </div>
+
+      <div class="flex gap-2">
+        <button type="submit" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">
+          <%= editing ? 'Save changes' : 'Add category' %>
+        </button>
+        <% if (editing) { %>
+          <a href="/inventory/categories" class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Cancel</a>
+        <% } %>
+      </div>
+    </form>
+  </div>
+</div>

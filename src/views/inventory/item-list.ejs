@@ -1,0 +1,62 @@
+<form method="get" class="mb-4 flex flex-wrap items-end gap-3">
+  <div class="min-w-[14rem] flex-1">
+    <label for="search" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Search</label>
+    <input type="search" id="search" name="search" value="<%= filters.search || '' %>" placeholder="SKU or name"
+           class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+  </div>
+  <div class="flex items-center gap-2 pb-2">
+    <input type="checkbox" id="lowStock" name="lowStock" value="true" <%- filters.lowStock ? 'checked' : '' %>
+           class="h-4 w-4 rounded border-gray-300 text-primary-600 dark:border-gray-600 dark:bg-gray-700" />
+    <label for="lowStock" class="text-sm text-gray-900 dark:text-white">At or below reorder point</label>
+  </div>
+  <button type="submit" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">Filter</button>
+  <a href="?" class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Reset</a>
+  <a href="/inventory/export.csv?<%= baseQuery %>" class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Export CSV</a>
+  <% if (can['inventory.manage']) { %>
+    <a href="/inventory/categories" class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Categories</a>
+  <% } %>
+</form>
+
+<p class="mb-3 text-sm text-gray-500 dark:text-gray-400"><%= count %> item<%= count === 1 ? '' : 's' %></p>
+
+<% if (!rows.length) { %>
+  <div class="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+    <%- include('../partials/empty-state', {
+      title: 'Nothing in the catalog yet',
+      description: 'Catalog items carry the stock balance, the reorder point and the reorder quantity that drives auto-reorder.',
+      action: can['inventory.manage'] ? { href: '/inventory/new', label: 'New item' } : null,
+    }) %>
+  </div>
+<% } else { %>
+  <%
+    let rowsHtml = '';
+    rows.forEach(function (row) {
+      const low = Number(row.stockQty) <= Number(row.reorderPoint);
+      rowsHtml += `
+        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+          <td class="px-4 py-2.5">
+            <a class="font-medium text-primary-600 hover:underline dark:text-primary-400" href="/inventory/${row.id}">${row.sku}</a>
+          </td>
+          <td class="px-4 py-2.5 text-gray-900 dark:text-white">${row.name}${row.category ? `<span class="block text-xs text-gray-400">${row.category}</span>` : ''}</td>
+          <td class="px-4 py-2.5 text-right tabular ${low ? 'font-semibold text-red-600 dark:text-red-400' : ''}">${Number(row.stockQty)} ${row.unit}</td>
+          <td class="px-4 py-2.5 text-right tabular text-gray-500">${Number(row.reorderPoint)}</td>
+          <td class="px-4 py-2.5 text-right tabular text-gray-500">${Number(row.reorderQty)}</td>
+          <td class="px-4 py-2.5">${low ? include('../partials/status-badge', { status: 'urgent' }) : include('../partials/status-badge', { status: 'confirmed' })}</td>
+        </tr>`;
+    });
+  %>
+  <%- include('../partials/table', {
+    columns: [
+      { key: 'sku', label: 'SKU', sortable: true },
+      { key: 'name', label: 'Item', sortable: true },
+      { key: 'stock_qty', label: 'In stock', align: 'right', sortable: true },
+      { key: 'reorder_point', label: 'Reorder at', align: 'right', sortable: true },
+      { key: 'reorder_qty', label: 'Reorder qty', align: 'right' },
+      { key: 'state', label: 'Stock level' },
+    ],
+    sort: { orderBy: filters.orderBy, order: filters.order },
+    baseQuery: sortQuery,
+    rowsHtml,
+  }) %>
+  <%- include('../partials/pagination', { page: filters.page, limit: filters.limit, count, baseQuery }) %>
+<% } %>

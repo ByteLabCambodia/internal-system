@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title><%= locals.title ? title + ' · ' : '' %><%= appName %></title>
+    <link rel="stylesheet" href="/css/app.css" />
+    <%- include('../partials/theme-init') %>
+  </head>
+  <!-- The four auth pages sit outside the app shell: no sidebar, no top bar. -->
+  <body class="flex h-full items-center justify-center bg-gray-50 px-4 py-10 dark:bg-gray-900">
+    <div class="w-full max-w-[400px]">
+      <div class="mb-6 flex items-center justify-center gap-2">
+        <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-600 text-sm font-bold text-white">
+          <%= appName.slice(0, 2).toUpperCase() %>
+        </span>
+        <span class="text-lg font-semibold text-gray-900 dark:text-white"><%= appName %></span>
+      </div>
+
+      <div class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <%- body %>
+      </div>
+    </div>
+
+    <%- include('../partials/toasts') %>
+    <script src="/js/alpine.min.js" defer></script>
+    <script src="/js/flowbite.min.js"></script>
+  </body>
+</html>

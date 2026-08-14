@@ -1,0 +1,47 @@
+<%- include('../partials/filter-toolbar', {
+  statuses, filters, exportHref: '/purchase-orders/export.csv?' + baseQuery,
+}) %>
+
+<p class="mb-3 text-sm text-gray-500 dark:text-gray-400"><%= count %> order<%= count === 1 ? '' : 's' %></p>
+
+<% if (!rows.length) { %>
+  <div class="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+    <%- include('../partials/empty-state', {
+      title: 'No purchase orders match these filters',
+      description: 'Orders are raised from an approved purchase request.',
+      action: can['po.create'] ? { href: '/purchase-orders/new', label: 'New order' } : null,
+    }) %>
+  </div>
+<% } else { %>
+  <%
+    let rowsHtml = '';
+    rows.forEach(function (row) {
+      const supplier = (row.supplier && row.supplier.name) || row.supplierName || '<span class="text-gray-400">No supplier</span>';
+      rowsHtml += `
+        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+          <td class="px-4 py-2.5">
+            <a class="font-medium text-primary-600 hover:underline dark:text-primary-400" href="/purchase-orders/${row.id}">${row.poNumber}</a>
+          </td>
+          <td class="px-4 py-2.5">${supplier}<span class="block text-xs capitalize text-gray-400">${row.type}</span></td>
+          <td class="px-4 py-2.5 text-right">${include('../partials/money', { amount: row.totalOriginal, currency: row.currency, amountUsd: row.totalUsd, money })}</td>
+          <td class="px-4 py-2.5">${include('../partials/status-badge', { status: row.status })}</td>
+          <td class="px-4 py-2.5">${include('../partials/status-badge', { status: row.paymentStatus })}</td>
+          <td class="px-4 py-2.5 text-gray-500 dark:text-gray-400">${new Date(row.createdAt).toLocaleDateString()}</td>
+        </tr>`;
+    });
+  %>
+  <%- include('../partials/table', {
+    columns: [
+      { key: 'po_number', label: 'Number', sortable: true },
+      { key: 'supplier', label: 'Supplier' },
+      { key: 'total_usd', label: 'Total', align: 'right', sortable: true },
+      { key: 'status', label: 'Status', sortable: true },
+      { key: 'payment_status', label: 'Payment', sortable: true },
+      { key: 'created_at', label: 'Raised', sortable: true },
+    ],
+    sort: { orderBy: filters.orderBy, order: filters.order },
+    baseQuery: sortQuery,
+    rowsHtml,
+  }) %>
+  <%- include('../partials/pagination', { page: filters.page, limit: filters.limit, count, baseQuery }) %>
+<% } %>

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title><%= appName %></title>
+    <link rel="stylesheet" href="/css/app.css" />
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  </head>
+  <body class="h-full bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+    <!--
+      One shell, client-rendered screens. Full page loads feel wrong inside a Telegram
+      webview, so navigation here is JS swapping sections against /api/v1/miniapp/*.
+    -->
+    <div id="app" class="mx-auto flex min-h-full max-w-md flex-col">
+      <header class="sticky top-0 z-10 border-b border-gray-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-gray-700 dark:bg-gray-800/95">
+        <div class="flex items-center gap-2">
+          <button id="back" hidden class="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700">
+            <span aria-hidden="true">←</span><span class="sr-only">Back</span>
+          </button>
+          <h1 id="screen-title" class="flex-1 truncate text-base font-semibold"><%= appName %></h1>
+        </div>
+      </header>
+
+      <main id="screen" class="flex-1 px-4 py-4">
+        <p class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">Loading…</p>
+      </main>
+
+      <nav id="tabs" hidden class="sticky bottom-0 grid grid-cols-4 border-t border-gray-200 bg-white text-xs dark:border-gray-700 dark:bg-gray-800">
+        <button data-screen="home" class="py-3 font-medium">Home</button>
+        <button data-screen="pr" class="py-3">Request</button>
+        <button data-screen="stock" class="py-3">Stock</button>
+        <button data-screen="history" class="py-3">History</button>
+      </nav>
+    </div>
+
+    <script src="/js/miniapp.js"></script>
+  </body>
+</html>
