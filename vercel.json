@@ -1,19 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm run build",
-  "builds": [
-    {
-      "src": "dist/vercel-handler.js",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["public/**", "src/views/**", "dist/i18n/**"]
-      }
+  "functions": {
+    "api/index.ts": {
+      "includeFiles": "{public/**,src/views/**,src/i18n/**}"
     }
-  ],
-  "routes": [
+  },
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "dist/vercel-handler.js"
+      "source": "/(.*)",
+      "destination": "/api/index"
     }
   ],
   "crons": [

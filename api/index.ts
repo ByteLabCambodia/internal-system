@@ -14,20 +14,22 @@ import path from 'path';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { useContainer } from 'class-validator';
 import serverlessExpress from 'serverless-http';
-import { AppModule } from './app.module';
-import validationOptions from './utils/validation-options';
-import { AllConfigType } from './config/config.type';
-import { ResolvePromisesInterceptor } from './utils/serializer.interceptor';
+import { AppModule } from '../src/app.module';
+import validationOptions from '../src/utils/validation-options';
+import { AllConfigType } from '../src/config/config.type';
+import { ResolvePromisesInterceptor } from '../src/utils/serializer.interceptor';
 import {
   MINIAPP_SHELL_PATH,
   WEB_ROUTE_PREFIXES,
-} from './common/web/web.constants';
+} from '../src/common/web/web.constants';
 
 /**
- * Vercel serverless entry point. Mirrors main.ts's bootstrap but never calls .listen() —
- * Vercel's Node runtime hands requests to the exported handler directly instead of a
- * listening socket. The Nest app is built once per cold start and cached across warm
- * invocations of the same function instance.
+ * Vercel serverless entry point (zero-config: Vercel treats any file under /api as a
+ * Node.js function and compiles its TypeScript itself, honoring this repo's tsconfig —
+ * including emitDecoratorMetadata, which Nest's DI depends on). Mirrors main.ts's
+ * bootstrap but never calls .listen() — Vercel hands requests to the exported handler
+ * directly instead of a listening socket. The Nest app is built once per cold start and
+ * cached across warm invocations of the same function instance.
  */
 let cachedHandler: ReturnType<typeof serverlessExpress>;
 
