@@ -20,24 +20,28 @@ describe('Users Module', () => {
     let newUser;
     const newUserEmail = `user-first.${Date.now()}@example.com`;
     const newUserChangedEmail = `user-first-changed.${Date.now()}@example.com`;
-    const newUserPassword = `secret`;
+    const newUserPassword = `secret123`;
     const newUserChangedPassword = `new-secret`;
 
     beforeAll(async () => {
       await request(app)
-        .post('/api/v1/auth/email/register')
+        .post('/api/v1/users')
+        .auth(apiToken, {
+          type: 'bearer',
+        })
         .send({
           email: newUserEmail,
           password: newUserPassword,
           firstName: `First${Date.now()}`,
           lastName: 'E2E',
-        });
-
-      await request(app)
-        .post('/api/v1/auth/email/login')
-        .send({ email: newUserEmail, password: newUserPassword })
+          role: {
+            id: RoleEnum.employee,
+          },
+          active: true,
+        })
+        .expect(201)
         .then(({ body }) => {
-          newUser = body.user;
+          newUser = body;
         });
     });
 
@@ -74,7 +78,7 @@ describe('Users Module', () => {
 
   describe('Create', () => {
     const newUserByAdminEmail = `user-created-by-admin.${Date.now()}@example.com`;
-    const newUserByAdminPassword = `secret`;
+    const newUserByAdminPassword = `secret123`;
 
     describe('User with "Admin" role', () => {
       it('should fail to create new user with invalid email: /api/v1/users (POST)', () => {
