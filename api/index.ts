@@ -42,6 +42,29 @@ import {
  * which hung forever instead of erroring. An Express app instance is itself a valid
  * (req, res) handler, so it can be called directly.
  */
+
+// Every `response.redirect(url)` call across this app (60+ call sites — login,
+// create/cancel/submit actions, etc.) relies on Express's implicit default status, which
+// is 302. On Vercel that comes back to the browser as 307 instead (confirmed via curl and
+// DevTools — something in Vercel's platform layer normalizes it), and 307 preserves the
+// original request method, so a POST action's redirect to a GET-only view route gets
+// replayed as POST and 404s ("Cannot POST /purchase-requests/4"). Patching the shared
+// Express response prototype once here, rather than touching every call site, forces the
+// *correct* status for this Post/Redirect/Get pattern regardless: 303 See Other
+// unambiguously means "fetch this via GET," which every client (including whatever is
+// doing the 302→307 coercion) has to respect. Scoped to this Vercel entry point only —
+// main.ts/Heroku isn't affected by the platform behavior this works around.
+const originalRedirect = express.response.redirect;
+express.response.redirect = function patchedRedirect(
+  this: express.Response,
+  ...args: [string] | [number, string]
+) {
+  if (args.length === 1) {
+    return originalRedirect.call(this, 303, args[0]);
+  }
+  return originalRedirect.apply(this, args);
+} as typeof express.response.redirect;
+
 let cachedAppPromise: Promise<express.Express>;
 
 async function bootstrap(): Promise<express.Express> {
