@@ -13,7 +13,6 @@ import express from 'express';
 import path from 'path';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { useContainer } from 'class-validator';
-import serverlessExpress from 'serverless-http';
 import { AppModule } from '../src/app.module';
 import validationOptions from '../src/utils/validation-options';
 import { AllConfigType } from '../src/config/config.type';
@@ -30,10 +29,17 @@ import {
  * bootstrap but never calls .listen() — Vercel hands requests to the exported handler
  * directly instead of a listening socket. The Nest app is built once per cold start and
  * cached across warm invocations of the same function instance.
+ *
+ * No serverless-http here: that package translates AWS Lambda/API-Gateway-style event
+ * objects into an Express-compatible request — it isn't in serverless-http's own list of
+ * supported providers, and Vercel's Node.js runtime already hands us real req/res
+ * objects. Wrapping them through serverless-http fed it a shape it doesn't understand,
+ * which hung forever instead of erroring. An Express app instance is itself a valid
+ * (req, res) handler, so it can be called directly.
  */
-let cachedHandlerPromise: Promise<ReturnType<typeof serverlessExpress>>;
+let cachedAppPromise: Promise<express.Express>;
 
-async function bootstrap() {
+async function bootstrap(): Promise<express.Express> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     cors: true,
   });
@@ -85,7 +91,7 @@ async function bootstrap() {
 
   await app.init();
 
-  return serverlessExpress(app.getHttpAdapter().getInstance());
+  return app.getHttpAdapter().getInstance();
 }
 
 export default async function handler(
@@ -93,13 +99,13 @@ export default async function handler(
   res: express.Response,
 ) {
   // Cache the in-flight promise, not the resolved value — otherwise concurrent requests
-  // arriving before the first bootstrap() finishes each see cachedHandler as still unset
-  // and each kick off their own full Nest app boot (including a fresh DB connection),
-  // multiplying cold-start cost instead of sharing it.
-  if (!cachedHandlerPromise) {
-    cachedHandlerPromise = bootstrap();
+  // arriving before the first bootstrap() finishes each see cachedAppPromise as still
+  // unset and each kick off their own full Nest app boot (including a fresh DB
+  // connection), multiplying cold-start cost instead of sharing it.
+  if (!cachedAppPromise) {
+    cachedAppPromise = bootstrap();
   }
 
-  const cachedHandler = await cachedHandlerPromise;
-  return cachedHandler(req, res);
+  const expressApp = await cachedAppPromise;
+  return expressApp(req, res);
 }
