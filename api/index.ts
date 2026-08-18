@@ -31,7 +31,7 @@ import {
  * directly instead of a listening socket. The Nest app is built once per cold start and
  * cached across warm invocations of the same function instance.
  */
-let cachedHandler: ReturnType<typeof serverlessExpress>;
+let cachedHandlerPromise: Promise<ReturnType<typeof serverlessExpress>>;
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -92,9 +92,14 @@ export default async function handler(
   req: express.Request,
   res: express.Response,
 ) {
-  if (!cachedHandler) {
-    cachedHandler = await bootstrap();
+  // Cache the in-flight promise, not the resolved value — otherwise concurrent requests
+  // arriving before the first bootstrap() finishes each see cachedHandler as still unset
+  // and each kick off their own full Nest app boot (including a fresh DB connection),
+  // multiplying cold-start cost instead of sharing it.
+  if (!cachedHandlerPromise) {
+    cachedHandlerPromise = bootstrap();
   }
 
+  const cachedHandler = await cachedHandlerPromise;
   return cachedHandler(req, res);
 }
