@@ -51,6 +51,22 @@ async function bootstrap(): Promise<express.Express> {
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
   const configService = app.get(ConfigService<AllConfigType>);
 
+  // Every response defaults to no-store — this is a cookie/session-driven app, not a
+  // static site, and neither Vercel's edge cache nor the browser should ever cache a
+  // redirect or rendered page here. Registered before useStaticAssets so its own
+  // middleware (which runs next) still sets its own correct caching headers for actual
+  // static files, overriding this default for just those responses.
+  app.use(
+    (
+      _req: express.Request,
+      res: express.Response,
+      next: express.NextFunction,
+    ) => {
+      res.setHeader('Cache-Control', 'no-store');
+      next();
+    },
+  );
+
   app.useStaticAssets(path.join(__dirname, '..', 'public'));
   app.setBaseViewsDir(path.join(__dirname, '..', 'src', 'views'));
   app.setViewEngine('ejs');
