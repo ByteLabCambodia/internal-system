@@ -11,6 +11,11 @@ import cookieParser from 'cookie-parser';
 import expressLayouts from 'express-ejs-layouts';
 import express from 'express';
 import path from 'path';
+// Express loads the view engine dynamically (`require(engine)` built from the
+// 'view engine' setting string), which Vercel's dependency tracer can't follow — so it
+// silently drops `ejs` from the deployed bundle despite it being a direct dependency.
+// This unused import forces the tracer to see it and include it.
+import 'ejs';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { useContainer } from 'class-validator';
 import { AppModule } from '../src/app.module';
