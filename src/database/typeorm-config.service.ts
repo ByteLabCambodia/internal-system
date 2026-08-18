@@ -34,6 +34,10 @@ export class TypeOrmConfigService implements TypeOrmOptionsFactory {
         // based on https://node-postgres.com/apis/pool
         // max connection pool size
         max: this.configService.get('database.maxConnections', { infer: true }),
+        // node-postgres has no connection timeout by default — if the DB is unreachable
+        // (wrong host, network path blocked, etc.) it hangs forever instead of erroring,
+        // which on a serverless platform just looks like the request never responding.
+        connectionTimeoutMillis: 10_000,
         ssl: this.configService.get('database.sslEnabled', { infer: true })
           ? {
               rejectUnauthorized: this.configService.get(
