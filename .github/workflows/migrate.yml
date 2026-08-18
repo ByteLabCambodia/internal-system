@@ -28,6 +28,10 @@ jobs:
 
       - name: Run migrations against Heroku Postgres
         env:
+          # data-source.ts reads DATABASE_TYPE to pick a driver even when DATABASE_URL is
+          # set — TypeORM doesn't infer it from the URL scheme.
+          DATABASE_TYPE: postgres
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DATABASE_SSL_ENABLED: 'true'
+          DATABASE_REJECT_UNAUTHORIZED: 'false'
         run: npx ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js --dataSource=src/database/data-source.ts migration:run
