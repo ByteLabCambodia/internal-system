@@ -10,13 +10,16 @@
         }[item.kind] || { wrap: 'text-gray-500 bg-gray-100', label: 'Notice' };
       %>
       <div id="toast-<%= index %>" role="alert"
+           x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 4000)"
+           x-transition:leave="transition ease-in duration-200"
+           x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
            class="flex w-full max-w-xs items-center rounded-lg bg-white p-4 text-gray-500 shadow-sm dark:bg-gray-800 dark:text-gray-400">
         <div class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg <%= tone.wrap %>">
           <span class="text-sm font-bold"><%= tone.label.slice(0, 1) %></span>
           <span class="sr-only"><%= tone.label %></span>
         </div>
         <div class="ms-3 text-sm font-normal"><%= item.message %></div>
-        <button type="button" data-dismiss-target="#toast-<%= index %>" aria-label="Close"
+        <button type="button" @click="show = false" aria-label="Close"
                 class="ms-auto -mx-1.5 -my-1.5 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-900 dark:bg-gray-800 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-white">
           <span class="sr-only">Close</span>
           <svg class="h-3 w-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
