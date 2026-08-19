@@ -262,11 +262,18 @@ then work from `llms-full.txt` for every component.
 ### Brand palette
 
 ```
-primary   #213a63   deep navy — nav, primary buttons, links, active states
-neutral   #000000 / #ffffff   text and surfaces, light and dark mode
+primary (light)   #213a63   deep navy — nav, primary buttons, links, active states
+primary (dark)    #262626   near-black/gray — same roles, dark mode only
+neutral           #000000 / #ffffff   text and surfaces, light and dark mode
 ```
 
-Black, white and the navy are the whole identity — status colours (Part 1c's one status
-colour map: grey / amber / blue / indigo / green / red / orange) are functional, not brand,
-and are the only other hues on screen. Navy is reserved for interactive and navigational
-elements so it never competes with a status badge for attention.
+`primary-*` is defined as CSS variables in `app.css` (`:root` for light, `.dark` for dark)
+rather than a single static Tailwind palette, so the same `bg-primary-600`/`text-primary-500`
+etc. classes resolve to navy in light mode and black/gray in dark mode automatically — no
+`dark:` variant needed per usage.
+
+Black, white and the navy/near-black primary are the whole identity — status colours
+(Part 1c's one status colour map: grey / amber / blue / indigo / green / red / orange) are
+functional, not brand, and are the only other hues on screen. Primary is reserved for
+interactive and navigational elements so it never competes with a status badge for
+attention.

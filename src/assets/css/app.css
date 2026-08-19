@@ -3,6 +3,37 @@
 @tailwind utilities;
 
 @layer base {
+  /* primary-* resolves through these — navy in light mode, black/gray in dark mode.
+     Triplets are space-separated R G B so Tailwind's <alpha-value> opacity modifiers
+     (bg-primary-600/50 etc.) keep working. See AGENTS.md for the brand color rationale. */
+  :root {
+    --color-primary-50: 238 243 250;
+    --color-primary-100: 214 226 242;
+    --color-primary-200: 174 196 228;
+    --color-primary-300: 125 158 207;
+    --color-primary-400: 78 119 179;
+    --color-primary-500: 47 85 144;
+    --color-primary-600: 33 58 99;
+    --color-primary-700: 28 49 84;
+    --color-primary-800: 22 39 67;
+    --color-primary-900: 17 29 50;
+    --color-primary-950: 10 18 32;
+  }
+
+  .dark {
+    --color-primary-50: 245 245 245;
+    --color-primary-100: 229 229 229;
+    --color-primary-200: 212 212 212;
+    --color-primary-300: 163 163 163;
+    --color-primary-400: 115 115 115;
+    --color-primary-500: 64 64 64;
+    --color-primary-600: 38 38 38;
+    --color-primary-700: 23 23 23;
+    --color-primary-800: 10 10 10;
+    --color-primary-900: 5 5 5;
+    --color-primary-950: 0 0 0;
+  }
+
   /* Numbers in tables line up: one row per record, right-aligned, tabular figures. */
   .tabular {
     font-variant-numeric: tabular-nums;
