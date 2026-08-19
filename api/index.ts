@@ -42,6 +42,7 @@ import {
  * which hung forever instead of erroring. An Express app instance is itself a valid
  * (req, res) handler, so it can be called directly.
  */
+let cachedAppPromise: Promise<express.Express>;
 
 // Every `response.redirect(url)` call across this app (60+ call sites — login,
 // create/cancel/submit actions, etc.) relies on Express's implicit default status, which
@@ -54,31 +55,33 @@ import {
 // that, don't use an HTTP redirect status at all: send a normal 200 HTML page that
 // navigates the browser via <meta refresh> + a JS fallback. That's not a "redirect" from
 // the protocol's perspective, so there's nothing for Vercel's platform to coerce — the
-// follow-up navigation is always a fresh top-level GET, unconditionally. Confirmed no
-// call site in this app ever passes an explicit status (grepped for it), so this is safe
-// to apply unconditionally. Scoped to this Vercel entry point only — main.ts/Heroku isn't
-// affected by the platform behavior this works around.
-express.response.redirect = function patchedRedirect(
-  this: express.Response,
-  ...args: [string] | [number, string]
+// follow-up navigation is always a fresh top-level GET, unconditionally.
+//
+// A prototype-level patch (mutating express.response.redirect once at module load) looked
+// right in an isolated test but silently didn't take effect once actually deployed —
+// Vercel's bundler almost certainly tree-shook that bare property assignment away since
+// nothing visibly depends on it. Overriding res.redirect as an own-property inside real
+// middleware avoids that: Express calls this function for every request, so a bundler has
+// no way to prove it's unused and can't drop it.
+function noRedirectStatusMiddleware(
+  _req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
 ) {
-  const url = args.length === 1 ? args[0] : args[1];
-  const safeUrl = JSON.stringify(url);
+  res.redirect = ((url: string) => {
+    const escaped = url.replace(/"/g, '&quot;');
+    res.status(200);
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(
+      `<!doctype html><html><head><meta http-equiv="refresh" content="0;url=${escaped}">` +
+        `<script>location.replace(${JSON.stringify(url)})</script></head>` +
+        `<body>Redirecting… <a href="${escaped}">Continue</a></body></html>`,
+    );
+    return res;
+  }) as unknown as typeof res.redirect;
 
-  this.status(200);
-  this.set('Content-Type', 'text/html; charset=utf-8');
-  this.send(
-    `<!doctype html><html><head><meta http-equiv="refresh" content="0;url=${url.replace(
-      /"/g,
-      '&quot;',
-    )}"><script>location.replace(${safeUrl})</script></head>` +
-      `<body>Redirecting… <a href="${url.replace(/"/g, '&quot;')}">Continue</a></body></html>`,
-  );
-
-  return this;
-} as typeof express.response.redirect;
-
-let cachedAppPromise: Promise<express.Express>;
+  next();
+}
 
 async function bootstrap(): Promise<express.Express> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -102,6 +105,7 @@ async function bootstrap(): Promise<express.Express> {
       next();
     },
   );
+  app.use(noRedirectStatusMiddleware);
 
   app.useStaticAssets(path.join(__dirname, '..', 'public'));
   app.setBaseViewsDir(path.join(__dirname, '..', 'src', 'views'));
