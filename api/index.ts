@@ -48,14 +48,18 @@ let cachedAppPromise: Promise<express.Express>;
 // create/cancel/submit actions, etc.) relies on Express's implicit default status, which
 // is 302 — a Post/Redirect/Get pattern that needs the browser to switch to GET on the
 // follow-up. Confirmed via curl and DevTools that Vercel's platform coerces *any* redirect
-// status our function sends (tried the implicit 302, then an explicit 303 — both) into
-// 307 on the wire, which preserves the original method instead of switching to GET. A
-// POST action's redirect to a GET-only view route then gets replayed as POST and 404s
-// ("Cannot POST /purchase-requests/4"). Since no status code survives whatever is doing
-// that, don't use an HTTP redirect status at all: send a normal 200 HTML page that
-// navigates the browser via <meta refresh> + a JS fallback. That's not a "redirect" from
-// the protocol's perspective, so there's nothing for Vercel's platform to coerce — the
-// follow-up navigation is always a fresh top-level GET, unconditionally.
+// status sent through Express's/Vercel's `.redirect()` convenience method (tried the
+// implicit 302, then an explicit 303 — both) into 307 on the wire, which preserves the
+// original method instead of switching to GET. A POST action's redirect to a GET-only view
+// route then gets replayed as POST and 404s ("Cannot POST /purchase-requests/4").
+//
+// Per Vercel's own docs, their Node.js runtime attaches a `res.redirect()` helper directly
+// onto the response object before a function's code runs — every one of Vercel's own
+// examples for it uses 307/308, never 301/302/303, which is a strong signal that helper is
+// what's opinionated toward 307. Bypassing it — calling the raw, native
+// http.ServerResponse writeHead()/end() directly instead of any `.redirect()` convenience
+// method, Express's or Vercel's — is the last real attempt at getting a standards-default
+// 302 to survive, since nothing instruments the native API the same way.
 //
 // A prototype-level patch (mutating express.response.redirect once at module load) looked
 // right in an isolated test but silently didn't take effect once actually deployed —
@@ -63,20 +67,14 @@ let cachedAppPromise: Promise<express.Express>;
 // nothing visibly depends on it. Overriding res.redirect as an own-property inside real
 // middleware avoids that: Express calls this function for every request, so a bundler has
 // no way to prove it's unused and can't drop it.
-function noRedirectStatusMiddleware(
+function realRedirectMiddleware(
   _req: express.Request,
   res: express.Response,
   next: express.NextFunction,
 ) {
   res.redirect = ((url: string) => {
-    const escaped = url.replace(/"/g, '&quot;');
-    res.status(200);
-    res.set('Content-Type', 'text/html; charset=utf-8');
-    res.send(
-      `<!doctype html><html><head><meta http-equiv="refresh" content="0;url=${escaped}">` +
-        `<script>location.replace(${JSON.stringify(url)})</script></head>` +
-        `<body>Redirecting… <a href="${escaped}">Continue</a></body></html>`,
-    );
+    res.writeHead(302, { Location: url });
+    res.end();
     return res;
   }) as unknown as typeof res.redirect;
 
@@ -105,7 +103,7 @@ async function bootstrap(): Promise<express.Express> {
       next();
     },
   );
-  app.use(noRedirectStatusMiddleware);
+  app.use(realRedirectMiddleware);
 
   app.useStaticAssets(path.join(__dirname, '..', 'public'));
   app.setBaseViewsDir(path.join(__dirname, '..', 'src', 'views'));
