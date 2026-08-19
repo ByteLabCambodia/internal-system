@@ -1,3 +1,5 @@
+const colors = require('tailwindcss/colors');
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: 'class',
@@ -9,6 +11,12 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Tailwind's stock `gray` has a cool blue undertone baked in — not the true
+        // black/white neutral AGENTS.md documents. Remapping the `gray` key itself to
+        // Tailwind's true-neutral `neutral` scale means every existing dark:bg-gray-800,
+        // text-gray-500, border-gray-200, etc. across the whole app (dozens of files)
+        // renders properly neutral/black in dark mode without touching each usage.
+        gray: colors.neutral,
         // Brand navy in light mode, black/gray in dark mode — nav, primary actions,
         // links, active states. See AGENTS.md. Values come from CSS variables (defined
         // in app.css) so the same primary-600 etc. classes resolve to a different actual
