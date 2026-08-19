@@ -45,24 +45,37 @@ import {
 
 // Every `response.redirect(url)` call across this app (60+ call sites — login,
 // create/cancel/submit actions, etc.) relies on Express's implicit default status, which
-// is 302. On Vercel that comes back to the browser as 307 instead (confirmed via curl and
-// DevTools — something in Vercel's platform layer normalizes it), and 307 preserves the
-// original request method, so a POST action's redirect to a GET-only view route gets
-// replayed as POST and 404s ("Cannot POST /purchase-requests/4"). Patching the shared
-// Express response prototype once here, rather than touching every call site, forces the
-// *correct* status for this Post/Redirect/Get pattern regardless: 303 See Other
-// unambiguously means "fetch this via GET," which every client (including whatever is
-// doing the 302→307 coercion) has to respect. Scoped to this Vercel entry point only —
-// main.ts/Heroku isn't affected by the platform behavior this works around.
-const originalRedirect = express.response.redirect;
+// is 302 — a Post/Redirect/Get pattern that needs the browser to switch to GET on the
+// follow-up. Confirmed via curl and DevTools that Vercel's platform coerces *any* redirect
+// status our function sends (tried the implicit 302, then an explicit 303 — both) into
+// 307 on the wire, which preserves the original method instead of switching to GET. A
+// POST action's redirect to a GET-only view route then gets replayed as POST and 404s
+// ("Cannot POST /purchase-requests/4"). Since no status code survives whatever is doing
+// that, don't use an HTTP redirect status at all: send a normal 200 HTML page that
+// navigates the browser via <meta refresh> + a JS fallback. That's not a "redirect" from
+// the protocol's perspective, so there's nothing for Vercel's platform to coerce — the
+// follow-up navigation is always a fresh top-level GET, unconditionally. Confirmed no
+// call site in this app ever passes an explicit status (grepped for it), so this is safe
+// to apply unconditionally. Scoped to this Vercel entry point only — main.ts/Heroku isn't
+// affected by the platform behavior this works around.
 express.response.redirect = function patchedRedirect(
   this: express.Response,
   ...args: [string] | [number, string]
 ) {
-  if (args.length === 1) {
-    return originalRedirect.call(this, 303, args[0]);
-  }
-  return originalRedirect.apply(this, args);
+  const url = args.length === 1 ? args[0] : args[1];
+  const safeUrl = JSON.stringify(url);
+
+  this.status(200);
+  this.set('Content-Type', 'text/html; charset=utf-8');
+  this.send(
+    `<!doctype html><html><head><meta http-equiv="refresh" content="0;url=${url.replace(
+      /"/g,
+      '&quot;',
+    )}"><script>location.replace(${safeUrl})</script></head>` +
+      `<body>Redirecting… <a href="${url.replace(/"/g, '&quot;')}">Continue</a></body></html>`,
+  );
+
+  return this;
 } as typeof express.response.redirect;
 
 let cachedAppPromise: Promise<express.Express>;
