@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "trailingSlash": false,
   "functions": {
     "api/index.ts": {
       "includeFiles": "{public/**,src/views/**,src/i18n/**}"
