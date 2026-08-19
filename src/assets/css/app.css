@@ -3,9 +3,16 @@
 @tailwind utilities;
 
 @layer base {
-  /* primary-* resolves through these — navy in light mode, black/gray in dark mode.
-     Triplets are space-separated R G B so Tailwind's <alpha-value> opacity modifiers
-     (bg-primary-600/50 etc.) keep working. See AGENTS.md for the brand color rationale. */
+  /* primary-* resolves through these — navy in light mode, a bright blue accent in dark
+     mode. Triplets are space-separated R G B so Tailwind's <alpha-value> opacity modifiers
+     (bg-primary-600/50 etc.) keep working. See AGENTS.md for the brand color rationale.
+
+     Dark mode's surfaces (cards, nav, topbar) are neutral gray/near-black — see the `gray`
+     remap in tailwind.config.js. A black primary blended straight into those surfaces
+     (primary-600 and gray-800 both landed near rgb(38 38 38)), so primary buttons/links
+     lost all contrast against their own background. Standard dark-mode UI pattern instead:
+     keep surfaces dark and neutral, give interactive/primary elements a bright accent color
+     that visibly pops against them — hence blue here, not black. */
   :root {
     --color-primary-50: 238 243 250;
     --color-primary-100: 214 226 242;
@@ -21,17 +28,17 @@
   }
 
   .dark {
-    --color-primary-50: 245 245 245;
-    --color-primary-100: 229 229 229;
-    --color-primary-200: 212 212 212;
-    --color-primary-300: 163 163 163;
-    --color-primary-400: 115 115 115;
-    --color-primary-500: 64 64 64;
-    --color-primary-600: 38 38 38;
-    --color-primary-700: 23 23 23;
-    --color-primary-800: 10 10 10;
-    --color-primary-900: 5 5 5;
-    --color-primary-950: 0 0 0;
+    --color-primary-50: 239 246 255;
+    --color-primary-100: 219 234 254;
+    --color-primary-200: 191 219 254;
+    --color-primary-300: 147 197 253;
+    --color-primary-400: 96 165 250;
+    --color-primary-500: 59 130 246;
+    --color-primary-600: 37 99 235;
+    --color-primary-700: 29 78 216;
+    --color-primary-800: 30 64 175;
+    --color-primary-900: 30 58 138;
+    --color-primary-950: 23 37 84;
   }
 
   /* Numbers in tables line up: one row per record, right-aligned, tabular figures. */

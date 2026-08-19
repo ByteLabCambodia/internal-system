@@ -263,16 +263,24 @@ then work from `llms-full.txt` for every component.
 
 ```
 primary (light)   #213a63   deep navy — nav, primary buttons, links, active states
-primary (dark)    #262626   near-black/gray — same roles, dark mode only
+primary (dark)    #2563eb   bright blue accent — same roles, dark mode only
 neutral           #000000 / #ffffff   text and surfaces, light and dark mode
 ```
 
 `primary-*` is defined as CSS variables in `app.css` (`:root` for light, `.dark` for dark)
 rather than a single static Tailwind palette, so the same `bg-primary-600`/`text-primary-500`
-etc. classes resolve to navy in light mode and black/gray in dark mode automatically — no
-`dark:` variant needed per usage.
+etc. classes resolve to navy in light mode and a bright blue in dark mode automatically —
+no `dark:` variant needed per usage. Dark mode's surfaces (`gray-*`, remapped to a true
+neutral scale — see `tailwind.config.js`) stay dark and neutral; primary needed a color
+that visibly pops against them rather than one closer to black, which blended into
+gray-800/900 backgrounds and lost all contrast as an interactive/CTA color.
 
-Black, white and the navy/near-black primary are the whole identity — status colours
+Note this puts primary's dark-mode value in the same hue family as the "blue" entry in the
+status colour map below — a real, currently-unresolved tension with the original
+"never competes with a status badge" goal, worth revisiting if a blue status badge next to
+a primary button/link reads ambiguously in dark mode.
+
+Black, white and the navy/blue-accent primary are the whole identity — status colours
 (Part 1c's one status colour map: grey / amber / blue / indigo / green / red / orange) are
 functional, not brand, and are the only other hues on screen. Primary is reserved for
 interactive and navigational elements so it never competes with a status badge for
