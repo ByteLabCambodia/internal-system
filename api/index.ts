@@ -47,19 +47,17 @@ let cachedAppPromise: Promise<express.Express>;
 // Every `response.redirect(url)` call across this app (60+ call sites — login,
 // create/cancel/submit actions, etc.) relies on Express's implicit default status, which
 // is 302 — a Post/Redirect/Get pattern that needs the browser to switch to GET on the
-// follow-up. Confirmed via curl and DevTools that Vercel's platform coerces *any* redirect
-// status sent through Express's/Vercel's `.redirect()` convenience method (tried the
-// implicit 302, then an explicit 303 — both) into 307 on the wire, which preserves the
-// original method instead of switching to GET. A POST action's redirect to a GET-only view
-// route then gets replayed as POST and 404s ("Cannot POST /purchase-requests/4").
+// follow-up. Confirmed via curl and DevTools that on Vercel, any redirect sent through a
+// `.redirect()` convenience method — Express's own implementation, or an explicit
+// `redirect(303, url)` — comes back as 307 instead, which preserves the original request
+// method rather than switching to GET. A POST action's redirect to a GET-only view route
+// then gets replayed as POST and 404s ("Cannot POST /purchase-requests/4").
 //
 // Per Vercel's own docs, their Node.js runtime attaches a `res.redirect()` helper directly
-// onto the response object before a function's code runs — every one of Vercel's own
-// examples for it uses 307/308, never 301/302/303, which is a strong signal that helper is
-// what's opinionated toward 307. Bypassing it — calling the raw, native
-// http.ServerResponse writeHead()/end() directly instead of any `.redirect()` convenience
-// method, Express's or Vercel's — is the last real attempt at getting a standards-default
-// 302 to survive, since nothing instruments the native API the same way.
+// onto the response object before a function's code runs, and every one of Vercel's own
+// examples for it uses 307/308, never 301/302/303 — that helper is what's opinionated
+// toward 307. Bypassing it and calling the native http.ServerResponse writeHead()/end()
+// directly gets a real, uncoerced 302 through — confirmed working in production.
 //
 // A prototype-level patch (mutating express.response.redirect once at module load) looked
 // right in an isolated test but silently didn't take effect once actually deployed —
