@@ -69,8 +69,13 @@ jobs:
       - name: Register new task definition
         id: register-task-def
         run: |
+          # AWS CLI's file:// loader needs a real seekable file — a process-substitution
+          # pipe (file://<(...)) reads back empty/invalid JSON, so write to a temp file.
+          jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' \
+            "${{ steps.render-task-def.outputs.task-definition }}" > rendered-task-definition.json
+
           TASK_DEF_ARN=$(aws ecs register-task-definition \
-            --cli-input-json file://<(jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' "${{ steps.render-task-def.outputs.task-definition }}") \
+            --cli-input-json file://rendered-task-definition.json \
             --query 'taskDefinition.taskDefinitionArn' --output text)
           echo "arn=$TASK_DEF_ARN" >> "$GITHUB_OUTPUT"
 
