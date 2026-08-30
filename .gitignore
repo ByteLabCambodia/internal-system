@@ -42,3 +42,21 @@ lerna-debug.log*
 
 # Claude Code runtime state
 .claude/scheduled_tasks.lock
+.vercel
+.env*
+
+# Terraform: .terraform.lock.hcl IS committed (pins provider versions) — everything
+# else here is either regenerable (.terraform/) or contains secrets in plaintext
+# (state files hold the RDS password via random_password.db.result).
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.*
+infra/*.tfplan
+infra/crash.log
+infra/crash.*.log
+infra/*.tfvars
+infra/*.tfvars.json
+infra/override.tf
+infra/override.tf.json
+infra/*_override.tf
+infra/*_override.tf.json

@@ -1,16 +1,4 @@
-import {
-  Body,
-  Controller,
-  ForbiddenException,
-  Get,
-  Headers,
-  HttpCode,
-  HttpStatus,
-  Post,
-  Query,
-  Res,
-} from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Body, Controller, Get, Post, Query, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { JournalService } from './journal.service';
 import { AccountsService } from './accounts.service';
@@ -25,8 +13,6 @@ import { RequirePermission } from '../permissions/require-permission.decorator';
 import { NotificationsService } from '../notifications/notifications.service';
 import { setFlash } from '../common/web/flash';
 import { validateForm } from '../common/web/validate-form';
-import { PublicPage } from '../common/web/public-page.decorator';
-import { AllConfigType } from '../config/config.type';
 
 @Controller('accounting')
 export class AccountingController {
@@ -37,31 +23,7 @@ export class AccountingController {
     private readonly org: OrgService,
     private readonly money: MoneyService,
     private readonly notifications: NotificationsService,
-    private readonly configService: ConfigService<AllConfigType>,
   ) {}
-
-  /**
-   * HTTP-triggered replacement for RatesService's @Cron job. Serverless deployments (e.g.
-   * Vercel) don't keep a process alive between requests, so @nestjs/schedule never fires
-   * there — Vercel Cron calls this instead, as a GET with `Authorization: Bearer
-   * $CRON_SECRET` (Vercel injects that header automatically for jobs it triggers; see
-   * vercel.json's `crons` entry).
-   */
-  @PublicPage()
-  @Get('cron/exchange-rates')
-  @HttpCode(HttpStatus.OK)
-  async runDailyRatesFetch(@Headers('authorization') authorization?: string) {
-    const expected = this.configService.get('app.cronSecret', {
-      infer: true,
-    });
-
-    if (!expected || authorization !== `Bearer ${expected}`) {
-      throw new ForbiddenException('Bad cron secret');
-    }
-
-    await this.rates.fetchDailyRates();
-    return { ok: true };
-  }
 
   @RequirePermission(PermissionEnum['accounting.view'])
   @Get()

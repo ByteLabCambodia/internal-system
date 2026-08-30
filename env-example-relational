@@ -26,11 +26,6 @@ DATABASE_CERT=
 # a self-signed cert, so also set DATABASE_SSL_ENABLED=true (DATABASE_REJECT_UNAUTHORIZED
 # stays false, since Heroku's cert isn't in a public CA chain).
 
-# Shared secret Vercel Cron sends as `Authorization: Bearer $CRON_SECRET` when it calls
-# GET /accounting/cron/exchange-rates — the HTTP-triggered stand-in for the @Cron job, which
-# never fires on Vercel because no process stays alive between requests. Generate with
-# `openssl rand -hex 32`; required in production, otherwise that endpoint always 403s.
-CRON_SECRET=
 DATABASE_URL=
 
 # Support "local", "s3", "s3-presigned"

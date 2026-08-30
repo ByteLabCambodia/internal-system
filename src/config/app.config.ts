@@ -66,8 +66,5 @@ export default registerAs<AppConfig>('app', () => {
     apiPrefix: process.env.API_PREFIX || 'api',
     fallbackLanguage: process.env.APP_FALLBACK_LANGUAGE || 'en',
     headerLanguage: process.env.APP_HEADER_LANGUAGE || 'x-custom-lang',
-    // Authenticates HTTP-triggered cron endpoints (e.g. Vercel Cron), since @nestjs/schedule
-    // jobs don't run in a serverless deployment where no process stays alive between requests.
-    cronSecret: process.env.CRON_SECRET,
   };
 });

@@ -31,6 +31,21 @@ async function bootstrap() {
 
   app.enableShutdownHooks();
 
+  // Every response defaults to no-store — this is a cookie/session-driven app, not a
+  // static site. Registered before useStaticAssets so its own middleware (which runs
+  // next) still sets its own correct caching headers for actual static files,
+  // overriding this default for just those responses.
+  app.use(
+    (
+      _req: express.Request,
+      res: express.Response,
+      next: express.NextFunction,
+    ) => {
+      res.setHeader('Cache-Control', 'no-store');
+      next();
+    },
+  );
+
   // --- EJS page layer -------------------------------------------------------------
   app.useStaticAssets(path.join(__dirname, '..', 'public'));
   app.setBaseViewsDir(path.join(__dirname, '..', 'src', 'views'));

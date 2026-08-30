@@ -20,7 +20,6 @@ import { AllConfigType } from './config/config.type';
 import { SessionModule } from './session/session.module';
 import { MailerModule } from './mailer/mailer.module';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { ScheduleModule } from '@nestjs/schedule';
 import { PermissionsModule } from './permissions/permissions.module';
 import { WebModule } from './common/web/web.module';
 import { AuthWebModule } from './auth/web/auth-web.module';
@@ -64,8 +63,6 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
     }),
     infrastructureDatabaseModule,
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
-    // Daily exchange-rate fetch lives here (RatesService.fetchDailyRates).
-    ScheduleModule.forRoot(),
     I18nModule.forRootAsync({
       useFactory: (configService: ConfigService<AllConfigType>) => ({
         fallbackLanguage: configService.getOrThrow('app.fallbackLanguage', {
