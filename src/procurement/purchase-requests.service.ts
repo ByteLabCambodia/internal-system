@@ -316,6 +316,39 @@ export class PurchaseRequestsService {
     });
   }
 
+  /**
+   * Hard delete — only for requests a Purchase Order was never created from. `approved`
+   * and `converted` requests are excluded because purchase-orders.service.ts links a PO
+   * to its source PR by id; deleting one out from under that link would orphan the PO's
+   * reference. Line items cascade at the DB level (see the FK on
+   * PurchaseRequestItemEntity), so nothing else needs cleaning up here.
+   */
+  async remove(actor: User, id: number): Promise<void> {
+    const pr = await this.findOneForActor(actor, id);
+
+    const deletable: PrStatusEnum[] = [
+      PrStatusEnum.draft,
+      PrStatusEnum.pending,
+      PrStatusEnum.cancelled,
+      PrStatusEnum.rejected,
+    ];
+
+    if (!deletable.includes(pr.status)) {
+      throw new UnprocessableEntityException(
+        `A ${pr.status} request cannot be deleted.`,
+      );
+    }
+
+    await this.repository.delete(id);
+
+    await this.activity.log({
+      entityType: 'purchase_request',
+      entityId: id,
+      action: 'deleted',
+      actorId: Number(actor.id),
+    });
+  }
+
   /** Approved requests with no purchase order yet — the source list for the PO form. */
   findConvertible(): Promise<PurchaseRequestEntity[]> {
     return this.repository

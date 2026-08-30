@@ -18,6 +18,9 @@ if (pr.status === 'approved' && can['po.create']) {
 if (['draft', 'pending', 'approved'].includes(pr.status) && can['pr.cancel']) {
   actions.push(`<button data-modal-target="cancel-pr" data-modal-toggle="cancel-pr" class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Cancel request</button>`);
 }
+if (['draft', 'pending', 'cancelled', 'rejected'].includes(pr.status) && can['pr.delete']) {
+  actions.push(`<button data-modal-target="delete-pr" data-modal-toggle="delete-pr" class="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-gray-700">Delete</button>`);
+}
 %>
 
 <%- include('../partials/page-header', {
@@ -115,5 +118,16 @@ if (['draft', 'pending', 'approved'].includes(pr.status) && can['pr.cancel']) {
       ${include('../partials/csrf')}
       <button type="button" data-modal-hide="cancel-pr" class="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-600 dark:text-gray-300">Keep it</button>
       <button type="submit" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700">Cancel request</button>
+    </form>`,
+}) %>
+
+<%- include('../partials/modal', {
+  id: 'delete-pr',
+  title: 'Delete this purchase request?',
+  bodyHtml: `<p class="mb-4 text-sm text-gray-500 dark:text-gray-400">This permanently removes ${pr.prNumber} and its line items. This cannot be undone.</p>
+    <form method="post" action="/purchase-requests/${pr.id}/delete" class="flex justify-end gap-2">
+      ${include('../partials/csrf')}
+      <button type="button" data-modal-hide="delete-pr" class="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-600 dark:text-gray-300">Keep it</button>
+      <button type="submit" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700">Delete</button>
     </form>`,
 }) %>

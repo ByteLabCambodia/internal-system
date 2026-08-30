@@ -3,6 +3,7 @@ export enum PermissionEnum {
   'pr.create' = 'pr.create',
   'pr.decide' = 'pr.decide',
   'pr.cancel' = 'pr.cancel',
+  'pr.delete' = 'pr.delete',
   'po.create' = 'po.create',
   'po.cancel' = 'po.cancel',
   'payment.record' = 'payment.record',

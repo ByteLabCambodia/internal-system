@@ -285,6 +285,22 @@ export class PurchaseRequestsController {
 
     return response.redirect(`/purchase-requests/${id}`);
   }
+
+  @RequirePermission(PermissionEnum['pr.delete'])
+  @Post(':id/delete')
+  async remove(
+    @Param('id', ParseIntPipe) id: number,
+    @Res() response: Response,
+  ) {
+    try {
+      await this.service.remove(response.locals.currentUser, id);
+      setFlash(response, 'success', 'Purchase request deleted.');
+      return response.redirect('/purchase-requests');
+    } catch (error) {
+      setFlash(response, 'error', (error as Error).message);
+      return response.redirect(`/purchase-requests/${id}`);
+    }
+  }
 }
 
 /** Rebuilds the query string minus the keys the caller is about to set. */
