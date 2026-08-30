@@ -5,8 +5,10 @@
 FROM node:24.14.1-alpine AS build
 WORKDIR /usr/src/app
 
+# --ignore-scripts: the "prepare" script (is-ci || husky) sets up git hooks, which is
+# meaningless in a container build with no .git directory and no devDependencies.
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 COPY . .
 RUN npm run build
@@ -16,12 +18,15 @@ WORKDIR /usr/src/app
 ENV NODE_ENV=production
 
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --ignore-scripts
 
 COPY --from=build /usr/src/app/dist ./dist
 COPY --from=build /usr/src/app/public ./public
 COPY --from=build /usr/src/app/src/views ./src/views
 COPY --from=build /usr/src/app/src/i18n ./src/i18n
+# mail.service.ts resolves templates from process.cwd()/src/mail/mail-templates at
+# runtime (not from dist) — see app.config.ts's workingDirectory.
+COPY --from=build /usr/src/app/src/mail/mail-templates ./src/mail/mail-templates
 
 EXPOSE 3001
 CMD ["node", "dist/main"]

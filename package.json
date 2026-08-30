@@ -20,6 +20,7 @@
     "add:property:to-relational": "hygen property add-to-relational",
     "postadd:property:to-relational": "npm run lint -- --fix",
     "seed:run:relational": "ts-node -r tsconfig-paths/register ./src/database/seeds/relational/run-seed.ts",
+    "seed:run:relational:prod": "node dist/database/seeds/relational/run-seed.js",
     "prebuild": "rimraf dist",
     "build": "npm run css:build && nest build",
     "css:build": "tailwindcss -i src/assets/css/app.css -o public/css/app.css --minify",
