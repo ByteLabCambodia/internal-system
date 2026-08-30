@@ -23,6 +23,8 @@ import { RatesService } from '../accounting/rates.service';
 import { OrgService } from '../org/org.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PermissionsService } from '../permissions/permissions.service';
+import { PrStatusEnum } from '../common/enums';
+import { summarizeItems } from '../procurement/support/notification-summary';
 import { PermissionEnum } from '../permissions/permissions.enum';
 import { CreatePurchaseRequestDto } from '../procurement/dto/create-purchase-request.dto';
 import { CreateClaimDto } from '../inventory/dto/create-claim.dto';
@@ -149,6 +151,10 @@ export class MiniAppApiController {
       number: pr.prNumber,
       requester: [actor.firstName, actor.lastName].filter(Boolean).join(' '),
       amount: `${pr.totalOriginal} ${pr.currency}`,
+      items: summarizeItems(pr.items),
+      department: pr.department?.name,
+      project: pr.project?.name,
+      note: pr.note,
     });
 
     return { ok: true, id: pr.id, number: pr.prNumber };
@@ -280,8 +286,24 @@ export class MiniAppApiController {
       purchaseRequestId: pr.id,
       number: pr.prNumber,
       decision: pr.status,
+      amount: `${pr.totalOriginal} ${pr.currency}`,
+      items: summarizeItems(pr.items),
       actor: [actor.firstName, actor.lastName].filter(Boolean).join(' '),
     });
+
+    if (pr.status === PrStatusEnum.approved) {
+      await this.notifications.notify('pr_approved', {
+        purchaseRequestId: pr.id,
+        number: pr.prNumber,
+        amount: `${pr.totalOriginal} ${pr.currency}`,
+        department: pr.department?.name,
+        project: pr.project?.name,
+        note: pr.note,
+        requester: [pr.requester.firstName, pr.requester.lastName]
+          .filter(Boolean)
+          .join(' '),
+      });
+    }
 
     return { ok: true, status: pr.status };
   }

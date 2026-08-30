@@ -108,38 +108,80 @@
   function screenPr() {
     title('Purchase request');
     var currencies = Object.keys(state.data.rates);
+    var prItems = [{ name: '', qty: 1, unitPrice: 0 }];
 
-    h(
-      '<div class="' + CARD + '">' +
-      '<label class="' + LABEL + '" for="pr-name">What do you need?</label>' +
-      '<input id="pr-name" class="' + INPUT + ' mb-3" />' +
-      '<div class="mb-3 grid grid-cols-2 gap-3">' +
-      '<div><label class="' + LABEL + '" for="pr-qty">Qty</label><input id="pr-qty" type="number" step="0.0001" value="1" class="' + INPUT + '" /></div>' +
-      '<div><label class="' + LABEL + '" for="pr-price">Unit price</label><input id="pr-price" type="number" step="0.0001" value="0" class="' + INPUT + '" /></div>' +
-      '</div>' +
-      '<label class="' + LABEL + '" for="pr-currency">Currency</label>' +
-      '<select id="pr-currency" class="' + INPUT + ' mb-3">' +
-      currencies.map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join('') +
-      '</select>' +
-      '<label class="' + LABEL + '" for="pr-note">Note</label>' +
-      '<textarea id="pr-note" rows="3" class="' + INPUT + ' mb-4"></textarea>' +
-      '<button id="pr-submit" class="' + BUTTON + '">Submit for approval</button>' +
-      '</div>'
-    );
+    function renderPr() {
+      h(
+        '<div class="' + CARD + '">' +
+        prItems.map(function (item, index) {
+          return (
+            '<div class="mb-3' + (index > 0 ? ' border-t border-gray-200 pt-3 dark:border-gray-700' : '') + '">' +
+            '<div class="mb-1.5 flex items-center justify-between">' +
+            '<label class="' + LABEL + ' mb-0" for="pr-name-' + index + '">What do you need?</label>' +
+            (prItems.length > 1 ? '<button type="button" data-remove="' + index + '" class="text-sm text-red-600">Remove</button>' : '') +
+            '</div>' +
+            '<input id="pr-name-' + index + '" value="' + item.name + '" class="' + INPUT + ' mb-3" />' +
+            '<div class="grid grid-cols-2 gap-3">' +
+            '<div><label class="' + LABEL + '" for="pr-qty-' + index + '">Qty</label><input id="pr-qty-' + index + '" type="number" step="0.0001" value="' + item.qty + '" class="' + INPUT + '" /></div>' +
+            '<div><label class="' + LABEL + '" for="pr-price-' + index + '">Unit price</label><input id="pr-price-' + index + '" type="number" step="0.0001" value="' + item.unitPrice + '" class="' + INPUT + '" /></div>' +
+            '</div>' +
+            '</div>'
+          );
+        }).join('') +
+        '<button type="button" id="pr-add-item" class="mb-4 text-sm font-medium text-primary-600">+ Add another item</button>' +
+        '<label class="' + LABEL + '" for="pr-currency">Currency</label>' +
+        '<select id="pr-currency" class="' + INPUT + ' mb-3">' +
+        currencies.map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join('') +
+        '</select>' +
+        '<label class="' + LABEL + '" for="pr-note">Note</label>' +
+        '<textarea id="pr-note" rows="3" class="' + INPUT + ' mb-4"></textarea>' +
+        '<button id="pr-submit" class="' + BUTTON + '">Submit for approval</button>' +
+        '</div>'
+      );
 
-    document.getElementById('pr-submit').onclick = function () {
-      api('pr', {
-        currency: document.getElementById('pr-currency').value,
-        note: document.getElementById('pr-note').value,
-        items: [{
-          name: document.getElementById('pr-name').value,
-          qty: Number(document.getElementById('pr-qty').value),
-          unitPrice: Number(document.getElementById('pr-price').value),
-        }],
-      })
-        .then(function (result) { screenSubmitted(result.number + ' submitted for approval.'); })
-        .catch(function (error) { toast(error.message); });
-    };
+      var currencyEl = document.getElementById('pr-currency');
+      var noteEl = document.getElementById('pr-note');
+      if (currencyEl) currencyEl.value = prCurrency;
+      if (noteEl) noteEl.value = prNote;
+
+      prItems.forEach(function (item, index) {
+        document.getElementById('pr-name-' + index).onchange = function (e) { item.name = e.target.value; };
+        document.getElementById('pr-qty-' + index).onchange = function (e) { item.qty = e.target.value; };
+        document.getElementById('pr-price-' + index).onchange = function (e) { item.unitPrice = e.target.value; };
+      });
+
+      Array.prototype.forEach.call(screenEl.querySelectorAll('[data-remove]'), function (button) {
+        button.onclick = function () {
+          prCurrency = currencyEl.value;
+          prNote = noteEl.value;
+          prItems.splice(Number(button.getAttribute('data-remove')), 1);
+          renderPr();
+        };
+      });
+
+      document.getElementById('pr-add-item').onclick = function () {
+        prCurrency = currencyEl.value;
+        prNote = noteEl.value;
+        prItems.push({ name: '', qty: 1, unitPrice: 0 });
+        renderPr();
+      };
+
+      document.getElementById('pr-submit').onclick = function () {
+        api('pr', {
+          currency: currencyEl.value,
+          note: noteEl.value,
+          items: prItems.map(function (item) {
+            return { name: item.name, qty: Number(item.qty), unitPrice: Number(item.unitPrice) };
+          }),
+        })
+          .then(function (result) { screenSubmitted(result.number + ' submitted for approval.'); })
+          .catch(function (error) { toast(error.message); });
+      };
+    }
+
+    var prCurrency = currencies[0];
+    var prNote = '';
+    renderPr();
   }
 
   function screenStock() {

@@ -228,15 +228,8 @@ export class PurchaseRequestsService {
 
   /**
    * Approve or reject. Two checks: the permission guard already established the actor may
-   * attempt a decision; here we enforce the C2 amount tier.
-   *
-   * Deviation from the brief's C2: self-approval is deliberately allowed for manager/admin,
-   * on the user's explicit instruction. Since `pr.decide` is already restricted to those two
-   * roles, this removes the self-approval block entirely rather than carving out an
-   * exception — there is no third role it could apply to. Kept "explicit and logged" per the
-   * brief's own suggested escape-hatch condition: every decision is activity-logged with the
-   * deciding actor, and a self-approval is flagged in that log (`selfApproved: true`) so it
-   * reads as a deliberate, visible event rather than an accidental gap. See AGENTS.md.
+   * attempt a decision; here we enforce the C2 amount tier. Self-approval is allowed for
+   * both manager and admin, on the user's explicit instruction.
    */
   async decide(
     actor: User,
@@ -250,8 +243,6 @@ export class PurchaseRequestsService {
         'Only a pending request can be decided.',
       );
     }
-
-    const selfApproved = Number(pr.requester.id) === Number(actor.id);
 
     if (decision === 'approved') {
       const check = await this.thresholds.check(
@@ -284,7 +275,6 @@ export class PurchaseRequestsService {
       actorId: Number(actor.id),
       detail: {
         totalUsd: pr.totalUsd,
-        ...(selfApproved ? { selfApproved: true } : {}),
       },
     });
 

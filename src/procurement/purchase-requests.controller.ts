@@ -22,6 +22,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { setFlash } from '../common/web/flash';
 import { validateForm } from '../common/web/validate-form';
 import { FLOW_STEPS, flowIndex } from './support/flow-stepper';
+import { summarizeItems } from './support/notification-summary';
 import { csvResponse } from '../common/web/csv';
 
 @Controller('purchase-requests')
@@ -165,6 +166,9 @@ export class PurchaseRequestsController {
             .filter(Boolean)
             .join(' '),
           amount: `${pr.totalOriginal} ${pr.currency}`,
+          items: summarizeItems(pr.items),
+          department: pr.department?.name,
+          project: pr.project?.name,
           note: pr.note,
         });
       }
@@ -206,8 +210,6 @@ export class PurchaseRequestsController {
       steps: FLOW_STEPS,
       currentStep: flowIndex({ prStatus: pr.status }),
       events: await this.activity.timelineFor('purchase_request', id),
-      isOwnRequest:
-        Number(pr.requester.id) === Number(response.locals.currentUser.id),
     });
   }
 
@@ -226,6 +228,10 @@ export class PurchaseRequestsController {
           .filter(Boolean)
           .join(' '),
         amount: `${pr.totalOriginal} ${pr.currency}`,
+        items: summarizeItems(pr.items),
+        department: pr.department?.name,
+        project: pr.project?.name,
+        note: pr.note,
       });
 
       setFlash(response, 'success', `${pr.prNumber} submitted for approval.`);
@@ -254,6 +260,8 @@ export class PurchaseRequestsController {
         purchaseRequestId: pr.id,
         number: pr.prNumber,
         decision: pr.status,
+        amount: `${pr.totalOriginal} ${pr.currency}`,
+        items: summarizeItems(pr.items),
         actor: [
           response.locals.currentUser.firstName,
           response.locals.currentUser.lastName,
@@ -261,6 +269,20 @@ export class PurchaseRequestsController {
           .filter(Boolean)
           .join(' '),
       });
+
+      if (pr.status === PrStatusEnum.approved) {
+        await this.notifications.notify('pr_approved', {
+          purchaseRequestId: pr.id,
+          number: pr.prNumber,
+          amount: `${pr.totalOriginal} ${pr.currency}`,
+          department: pr.department?.name,
+          project: pr.project?.name,
+          note: pr.note,
+          requester: [pr.requester.firstName, pr.requester.lastName]
+            .filter(Boolean)
+            .join(' '),
+        });
+      }
 
       setFlash(response, 'success', `${pr.prNumber} ${pr.status}.`);
     } catch (error) {

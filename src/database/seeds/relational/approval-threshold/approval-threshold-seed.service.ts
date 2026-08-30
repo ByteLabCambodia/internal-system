@@ -5,9 +5,9 @@ import { ApprovalThresholdEntity } from '../../../../org/entities/approval-thres
 import { RoleEntity } from '../../../../roles/infrastructure/persistence/relational/entities/role.entity';
 import { RoleEnum } from '../../../../roles/roles.enum';
 
-// C2: a manager may approve up to $1,000; an admin is unlimited (null).
+// Manager and admin are both unlimited (null) — no per-role approval cap.
 const THRESHOLDS: { roleId: number; maxAmountUsd: string | null }[] = [
-  { roleId: RoleEnum.manager, maxAmountUsd: '1000.0000' },
+  { roleId: RoleEnum.manager, maxAmountUsd: null },
   { roleId: RoleEnum.admin, maxAmountUsd: null },
 ];
 

@@ -12,6 +12,7 @@ import { AllConfigType } from '../config/config.type';
 export type NotificationEvent =
   | 'pr_created'
   | 'pr_decided'
+  | 'pr_approved'
   | 'po_created'
   | 'payment_recorded'
   | 'claim_submitted'
@@ -58,6 +59,10 @@ export class NotificationsService {
     po_created: { target: 'finance', title: 'Purchase order created' },
     payment_recorded: { target: 'manager', title: 'Payment recorded' },
     pr_decided: { target: 'recipients', title: 'Purchase request decided' },
+    pr_approved: {
+      target: 'finance',
+      title: 'Purchase request ready for a PO',
+    },
     claim_confirmed: { target: 'recipients', title: 'Claim confirmed' },
     stock_below_reorder: {
       target: 'manager',
@@ -220,6 +225,14 @@ export class NotificationsService {
       );
     }
 
+    if (event === 'pr_approved' && detail.purchaseRequestId) {
+      return buttons(
+        'pr',
+        detail.purchaseRequestId,
+        `/purchase-requests/${detail.purchaseRequestId}`,
+      );
+    }
+
     if (event === 'claim_submitted' && detail.claimId) {
       return buttons('claim', detail.claimId, `/claims`);
     }
@@ -241,6 +254,7 @@ export class NotificationsService {
   private readonly icons: Record<NotificationEvent, string> = {
     pr_created: '🧾',
     pr_decided: '✅',
+    pr_approved: '🧾',
     po_created: '📦',
     payment_recorded: '💸',
     claim_submitted: '📬',
@@ -289,10 +303,21 @@ export class NotificationsService {
       lines.push(`${icon} <b>${label}:</b> ${this.esc(value)}`);
     };
 
+    // Multi-line, unlike the other fields: the label sits on its own line so each item
+    // reads as a bullet under it rather than trailing awkwardly off "Items:".
+    if (detail.items) {
+      lines.push('🧺 <b>Items:</b>');
+      for (const line of String(detail.items).split('\n')) {
+        lines.push(`  • ${this.esc(line)}`);
+      }
+    }
+
     field('📦', 'Item', detail.item);
     field('💵', 'Amount', detail.amount);
     field('🔢', 'Quantity', detail.quantity);
     field('👤', 'Requester', detail.requester);
+    field('🏬', 'Department', detail.department);
+    field('📁', 'Project', detail.project);
     field('🏢', 'Supplier', detail.supplier);
     field('✍️', 'By', detail.actor);
     field('📝', 'Note', detail.note);
