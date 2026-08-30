@@ -28,17 +28,17 @@
   }
 
   .dark {
-    --color-primary-50: 239 246 255;
-    --color-primary-100: 219 234 254;
-    --color-primary-200: 191 219 254;
-    --color-primary-300: 147 197 253;
-    --color-primary-400: 96 165 250;
-    --color-primary-500: 59 130 246;
-    --color-primary-600: 37 99 235;
-    --color-primary-700: 29 78 216;
-    --color-primary-800: 30 64 175;
-    --color-primary-900: 30 58 138;
-    --color-primary-950: 23 37 84;
+    --color-primary-50: 240 249 255;
+    --color-primary-100: 224 242 254;
+    --color-primary-200: 186 230 253;
+    --color-primary-300: 125 211 252;
+    --color-primary-400: 56 189 248;
+    --color-primary-500: 14 165 233;
+    --color-primary-600: 2 132 199;
+    --color-primary-700: 3 105 161;
+    --color-primary-800: 7 89 133;
+    --color-primary-900: 12 74 110;
+    --color-primary-950: 8 47 73;
   }
 
   /* Numbers in tables line up: one row per record, right-aligned, tabular figures. */
@@ -49,5 +49,15 @@
   /* Accessibility: focus must always be visible, in both themes. */
   :focus-visible {
     @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-900;
+  }
+
+  /* Flowbite's modal/drawer JS injects this class for the dimmed backdrop behind a dialog
+     (see node_modules/flowbite/dist/flowbite.js, Modal/Drawer backdropClasses), but
+     "dark-backdrop" was never a real color in this project's Tailwind config — the class
+     generated zero CSS, so every modal in the app has rendered with no backdrop dimming at
+     all. Hand-written since Tailwind's utility generator has nothing to scan this class
+     name from (it's injected by JS, not present in any .ejs template). */
+  .bg-dark-backdrop\/70 {
+    background-color: rgb(0 0 0 / 0.7);
   }
 }
