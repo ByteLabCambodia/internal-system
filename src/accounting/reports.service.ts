@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { PrismaService } from '../prisma/prisma.service';
+import { dateFrom, dateTo, textRow } from '../prisma/raw';
 
 export type DateRange = { from?: string; to?: string };
 
@@ -23,33 +24,23 @@ export type Report = {
  */
 @Injectable()
 export class ReportsService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  /** Inclusive date bounds against a column, as a WHERE fragment plus its parameters. */
-  private range(column: string, range: DateRange, startIndex = 1) {
-    const clauses: string[] = [];
-    const params: unknown[] = [];
+  private get db() {
+    return this.prisma.db;
+  }
 
-    if (range.from) {
-      params.push(range.from);
-      clauses.push(`${column} >= $${startIndex + params.length - 1}`);
-    }
-    if (range.to) {
-      params.push(range.to);
-      clauses.push(`${column} <= $${startIndex + params.length - 1}`);
-    }
-
-    return {
-      sql: clauses.length ? `AND ${clauses.join(' AND ')}` : '',
-      params,
-    };
+  /** Inclusive bounds; an unset end is open (see dateFrom/dateTo). */
+  private bounds(range: DateRange) {
+    return { from: dateFrom(range.from), to: dateTo(range.to) };
   }
 
   async profitAndLoss(range: DateRange): Promise<Report> {
-    const { sql, params } = this.range('e.entry_date', range);
+    const { from, to } = this.bounds(range);
 
-    const rows = await this.dataSource.query<ReportRow[]>(
-      `SELECT to_char(date_trunc('month', e.entry_date), 'YYYY-MM') AS month,
+    const rows: ReportRow[] = await this.db.runtime().query(
+      this.db.raw
+        .sql`SELECT to_char(date_trunc('month', e.entry_date), 'YYYY-MM') AS month,
               COALESCE(SUM(CASE WHEN a.type = 'income'  THEN l.credit_usd - l.debit_usd END), 0)::text AS income,
               COALESCE(SUM(CASE WHEN a.type = 'expense' THEN l.debit_usd - l.credit_usd END), 0)::text AS expense,
               (COALESCE(SUM(CASE WHEN a.type = 'income'  THEN l.credit_usd - l.debit_usd END), 0)
@@ -57,10 +48,11 @@ export class ReportsService {
          FROM journal_lines l
          JOIN journal_entries e ON e.id = l.entry_id
          JOIN accounts a ON a.id = l.account_id
-        WHERE a.type IN ('income', 'expense') ${sql}
+        WHERE a.type IN ('income', 'expense') AND e.entry_date >= ${from}::date AND e.entry_date <= ${to}::date
         GROUP BY 1
-        ORDER BY 1`,
-      params,
+        ORDER BY 1`
+        .returnsRow(textRow('month', 'income', 'expense', 'net'))
+        .build(),
     );
 
     return {
@@ -79,20 +71,22 @@ export class ReportsService {
   }
 
   async cashFlow(range: DateRange): Promise<Report> {
-    const { sql, params } = this.range('e.entry_date', range);
+    const { from, to } = this.bounds(range);
 
-    const rows = await this.dataSource.query<ReportRow[]>(
-      `SELECT to_char(date_trunc('month', e.entry_date), 'YYYY-MM') AS month,
+    const rows: ReportRow[] = await this.db.runtime().query(
+      this.db.raw
+        .sql`SELECT to_char(date_trunc('month', e.entry_date), 'YYYY-MM') AS month,
               COALESCE(SUM(l.debit_usd), 0)::text  AS inflow,
               COALESCE(SUM(l.credit_usd), 0)::text AS outflow,
               COALESCE(SUM(l.debit_usd - l.credit_usd), 0)::text AS net
          FROM journal_lines l
          JOIN journal_entries e ON e.id = l.entry_id
          JOIN accounts a ON a.id = l.account_id
-        WHERE a.code = '1000' ${sql}
+        WHERE a.code = '1000' AND e.entry_date >= ${from}::date AND e.entry_date <= ${to}::date
         GROUP BY 1
-        ORDER BY 1`,
-      params,
+        ORDER BY 1`
+        .returnsRow(textRow('month', 'inflow', 'outflow', 'net'))
+        .build(),
     );
 
     return {
@@ -111,19 +105,20 @@ export class ReportsService {
 
   /** The C1 acceptance test: this returns one row per expense account actually used. */
   async expenseByCategory(range: DateRange): Promise<Report> {
-    const { sql, params } = this.range('e.entry_date', range);
+    const { from, to } = this.bounds(range);
 
-    const rows = await this.dataSource.query<ReportRow[]>(
-      `SELECT a.code, a.name AS account,
+    const rows: ReportRow[] = await this.db.runtime().query(
+      this.db.raw.sql`SELECT a.code, a.name AS account,
               COALESCE(SUM(l.debit_usd - l.credit_usd), 0)::text AS total
          FROM journal_lines l
          JOIN journal_entries e ON e.id = l.entry_id
          JOIN accounts a ON a.id = l.account_id
-        WHERE a.type = 'expense' ${sql}
+        WHERE a.type = 'expense' AND e.entry_date >= ${from}::date AND e.entry_date <= ${to}::date
         GROUP BY a.code, a.name
        HAVING COALESCE(SUM(l.debit_usd - l.credit_usd), 0) <> 0
-        ORDER BY 3 DESC`,
-      params,
+        ORDER BY 3 DESC`
+        .returnsRow(textRow('code', 'account', 'total'))
+        .build(),
     );
 
     return {
@@ -141,20 +136,21 @@ export class ReportsService {
   }
 
   async expenseByDepartment(range: DateRange): Promise<Report> {
-    const { sql, params } = this.range('e.entry_date', range);
+    const { from, to } = this.bounds(range);
 
-    const rows = await this.dataSource.query<ReportRow[]>(
-      `SELECT COALESCE(d.name, 'Unassigned') AS department,
+    const rows: ReportRow[] = await this.db.runtime().query(
+      this.db.raw.sql`SELECT COALESCE(d.name, 'Unassigned') AS department,
               COALESCE(SUM(l.debit_usd - l.credit_usd), 0)::text AS total
          FROM journal_lines l
          JOIN journal_entries e ON e.id = l.entry_id
          JOIN accounts a ON a.id = l.account_id
     LEFT JOIN departments d ON d.id = l.dimension_department_id
-        WHERE a.type = 'expense' ${sql}
+        WHERE a.type = 'expense' AND e.entry_date >= ${from}::date AND e.entry_date <= ${to}::date
         GROUP BY 1
        HAVING COALESCE(SUM(l.debit_usd - l.credit_usd), 0) <> 0
-        ORDER BY 2 DESC`,
-      params,
+        ORDER BY 2 DESC`
+        .returnsRow(textRow('department', 'total'))
+        .build(),
     );
 
     return {
@@ -171,18 +167,21 @@ export class ReportsService {
   }
 
   async currencySummary(range: DateRange): Promise<Report> {
-    const { sql, params } = this.range('p.paid_at::date', range);
+    const { from, to } = this.bounds(range);
 
-    const rows = await this.dataSource.query<ReportRow[]>(
-      `SELECT p.currency,
+    const rows: ReportRow[] = await this.db.runtime().query(
+      this.db.raw.sql`SELECT p.currency::text AS currency,
               COUNT(*)::text AS payments,
               COALESCE(SUM(p.amount_original), 0)::text AS total_original,
               COALESCE(SUM(p.amount_usd), 0)::text AS total_usd
          FROM payments p
-        WHERE true ${sql}
+        WHERE true AND p.paid_at::date >= ${from}::date AND p.paid_at::date <= ${to}::date
         GROUP BY p.currency
-        ORDER BY 4 DESC`,
-      params,
+        ORDER BY 4 DESC`
+        .returnsRow(
+          textRow('currency', 'payments', 'total_original', 'total_usd'),
+        )
+        .build(),
     );
 
     return {
@@ -201,17 +200,19 @@ export class ReportsService {
   }
 
   async purchaseOrderSummary(range: DateRange): Promise<Report> {
-    const { sql, params } = this.range('po.created_at::date', range);
+    const { from, to } = this.bounds(range);
 
-    const rows = await this.dataSource.query<ReportRow[]>(
-      `SELECT po.status::text, po.payment_status::text AS payment_status,
+    const rows: ReportRow[] = await this.db.runtime().query(
+      this.db.raw
+        .sql`SELECT po.status::text, po.payment_status::text AS payment_status,
               COUNT(*)::text AS orders,
               COALESCE(SUM(po.total_usd), 0)::text AS total_usd
          FROM purchase_orders po
-        WHERE true ${sql}
+        WHERE true AND po.created_at::date >= ${from}::date AND po.created_at::date <= ${to}::date
         GROUP BY 1, 2
-        ORDER BY 1, 2`,
-      params,
+        ORDER BY 1, 2`
+        .returnsRow(textRow('status', 'payment_status', 'orders', 'total_usd'))
+        .build(),
     );
 
     return {
@@ -229,20 +230,30 @@ export class ReportsService {
   }
 
   async transactionHistory(range: DateRange): Promise<Report> {
-    const { sql, params } = this.range('e.entry_date', range);
+    const { from, to } = this.bounds(range);
 
-    const rows = await this.dataSource.query<ReportRow[]>(
-      `SELECT to_char(e.entry_date, 'YYYY-MM-DD') AS date,
+    const rows: ReportRow[] = await this.db.runtime().query(
+      this.db.raw.sql`SELECT to_char(e.entry_date, 'YYYY-MM-DD') AS date,
               e.memo, e.source::text,
               a.code || ' ' || a.name AS account,
               l.debit_usd::text, l.credit_usd::text
          FROM journal_lines l
          JOIN journal_entries e ON e.id = l.entry_id
          JOIN accounts a ON a.id = l.account_id
-        WHERE true ${sql}
+        WHERE true AND e.entry_date >= ${from}::date AND e.entry_date <= ${to}::date
         ORDER BY e.entry_date DESC, e.id DESC, l.id ASC
-        LIMIT 1000`,
-      params,
+        LIMIT 1000`
+        .returnsRow(
+          textRow(
+            'date',
+            'memo',
+            'source',
+            'account',
+            'debit_usd',
+            'credit_usd',
+          ),
+        )
+        .build(),
     );
 
     return {
@@ -262,10 +273,10 @@ export class ReportsService {
   }
 
   async budgetVsActual(range: DateRange): Promise<Report> {
-    const { sql, params } = this.range('b.period', range);
+    const { from, to } = this.bounds(range);
 
-    const rows = await this.dataSource.query<ReportRow[]>(
-      `SELECT to_char(b.period, 'YYYY-MM') AS period,
+    const rows: ReportRow[] = await this.db.runtime().query(
+      this.db.raw.sql`SELECT to_char(b.period, 'YYYY-MM') AS period,
               COALESCE(d.name, 'Unassigned') AS department,
               COALESCE(b.category, 'All') AS category,
               b.amount_usd::text AS budget,
@@ -280,9 +291,12 @@ export class ReportsService {
               ), 0)::text AS actual
          FROM budgets b
     LEFT JOIN departments d ON d.id = b.department_id
-        WHERE true ${sql}
-        ORDER BY b.period DESC, 2`,
-      params,
+        WHERE true AND b.period >= ${from}::date AND b.period <= ${to}::date
+        ORDER BY b.period DESC, 2`
+        .returnsRow(
+          textRow('period', 'department', 'category', 'budget', 'actual'),
+        )
+        .build(),
     );
 
     return {
@@ -303,19 +317,21 @@ export class ReportsService {
 
   /** C4: the view that free-text suppliers made impossible. */
   async spendBySupplier(range: DateRange): Promise<Report> {
-    const { sql, params } = this.range('po.created_at::date', range);
+    const { from, to } = this.bounds(range);
 
-    const rows = await this.dataSource.query<ReportRow[]>(
-      `SELECT COALESCE(s.name, po.supplier, 'Unassigned') AS supplier,
+    const rows: ReportRow[] = await this.db.runtime().query(
+      this.db.raw
+        .sql`SELECT COALESCE(s.name, po.supplier, 'Unassigned') AS supplier,
               COUNT(*)::text AS orders,
               COALESCE(SUM(po.total_usd), 0)::text AS total_usd,
               to_char(MAX(po.created_at), 'YYYY-MM-DD') AS last_order
          FROM purchase_orders po
     LEFT JOIN suppliers s ON s.id = po.supplier_id
-        WHERE po.status <> 'cancelled' ${sql}
+        WHERE po.status <> 'cancelled' AND po.created_at::date >= ${from}::date AND po.created_at::date <= ${to}::date
         GROUP BY 1
-        ORDER BY 3 DESC`,
-      params,
+        ORDER BY 3 DESC`
+        .returnsRow(textRow('supplier', 'orders', 'total_usd', 'last_order'))
+        .build(),
     );
 
     return {

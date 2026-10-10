@@ -4,6 +4,7 @@ import { DataSource } from 'typeorm';
 import { createTestApp, resetData } from './support/test-app';
 import {
   q,
+  raceBehindLock,
   seedRoles,
   seedStockRequest,
   seedWorld,
@@ -183,10 +184,15 @@ describe('StockRequestsService.fulfil', () => {
     const first = await seedStockRequest(db, world.employee, world.itemA, '6');
     const second = await seedStockRequest(db, world.employee, world.itemA, '6');
 
-    const results = await Promise.allSettled([
-      requests.fulfil(world.manager, first),
-      requests.fulfil(world.admin, second),
-    ]);
+    const results = await raceBehindLock(
+      db,
+      `SELECT 1 FROM inventory_items WHERE id = $1 FOR UPDATE`,
+      [world.itemA],
+      [
+        () => requests.fulfil(world.manager, first),
+        () => requests.fulfil(world.admin, second),
+      ],
+    );
 
     expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
     expect(await stockOf(world.itemA)).toBe('4.0000');

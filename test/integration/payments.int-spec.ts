@@ -4,6 +4,7 @@ import { DataSource } from 'typeorm';
 import { createTestApp, resetData } from './support/test-app';
 import {
   q,
+  raceBehindLock,
   seedPurchaseOrder,
   seedRoles,
   seedWorld,
@@ -242,10 +243,15 @@ describe('PaymentsService.record', () => {
       lines: [[world.itemA, '10', '10']],
     });
 
-    const results = await Promise.allSettled([
-      payments.record(world.finance, usd(60, po.poId)),
-      payments.record(world.admin, usd(60, po.poId)),
-    ]);
+    const results = await raceBehindLock(
+      db,
+      `SELECT 1 FROM purchase_orders WHERE id = $1 FOR UPDATE`,
+      [po.poId],
+      [
+        () => payments.record(world.finance, usd(60, po.poId)),
+        () => payments.record(world.admin, usd(60, po.poId)),
+      ],
+    );
 
     expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
     expect(results.filter((r) => r.status === 'rejected')).toHaveLength(1);

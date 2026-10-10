@@ -3,11 +3,11 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, ILike, Repository } from 'typeorm';
 import Decimal from 'decimal.js';
-import { InventoryItemEntity } from './entities/inventory-item.entity';
-import { StockMovementEntity } from './entities/stock-movement.entity';
+import { and, or, orderByField } from '@prisma/orm-postgres/orm-client';
+import { PrismaService, Tx } from '../prisma/prisma.service';
+import { money } from '../prisma/numeric';
+import { contains, escapeLike } from '../prisma/like';
 import { MovementReasonEnum } from '../common/enums';
 import { ActivityService } from '../activity/activity.service';
 import { User } from '../users/domain/user';
@@ -22,87 +22,115 @@ export type ItemListFilters = {
   order?: 'asc' | 'desc';
 };
 
-/** URL sort key → entity property; see the note in purchase-requests.service.ts. */
-const SORTABLE: Record<string, string> = {
+/** URL sort key → model field; the allowlist keeps a query parameter from reaching SQL. */
+const SORTABLE = {
   sku: 'sku',
   name: 'name',
   stock_qty: 'stockQty',
   reorder_point: 'reorderPoint',
+} as const;
+const SORT_FIELDS = Object.values(SORTABLE) as [
+  (typeof SORTABLE)[keyof typeof SORTABLE],
+  ...(typeof SORTABLE)[keyof typeof SORTABLE][],
+];
+
+/** The locked item row applyMovement hands back. */
+export type InventoryItemRow = {
+  id: number;
+  sku: string;
+  name: string;
+  category: string | null;
+  stockQty: string;
+  reorderPoint: string;
+  reorderQty: string;
 };
 
 @Injectable()
 export class InventoryService {
   constructor(
-    @InjectRepository(InventoryItemEntity)
-    private readonly items: Repository<InventoryItemEntity>,
-    @InjectRepository(StockMovementEntity)
-    private readonly movements: Repository<StockMovementEntity>,
-    private readonly dataSource: DataSource,
+    private readonly prisma: PrismaService,
     private readonly activity: ActivityService,
   ) {}
 
-  /** Catalog is readable by everyone (Part 1 §1); only writes are restricted. */
-  async list(
-    filters: ItemListFilters,
-  ): Promise<{ rows: InventoryItemEntity[]; count: number }> {
-    const query = this.items.createQueryBuilder('item');
-
-    if (filters.search) {
-      query.andWhere('(item.sku ILIKE :search OR item.name ILIKE :search)', {
-        search: `%${filters.search}%`,
-      });
-    }
-    if (filters.lowStock) {
-      query.andWhere('item.stock_qty <= item.reorder_point');
-    }
-
-    const orderBy = SORTABLE[filters.orderBy ?? ''] ?? 'name';
-    query.orderBy(`item.${orderBy}`, filters.order === 'desc' ? 'DESC' : 'ASC');
-
-    const [rows, count] = await query
-      .skip((filters.page - 1) * filters.limit)
-      .take(filters.limit)
-      .getManyAndCount();
-
-    return { rows, count };
+  private get items() {
+    return this.prisma.db.orm.public.InventoryItem;
   }
 
-  findActive(): Promise<InventoryItemEntity[]> {
-    return this.items.find({ where: { active: true }, order: { name: 'ASC' } });
+  /** Catalog is readable by everyone (Part 1 §1); only writes are restricted. */
+  async list(filters: ItemListFilters) {
+    const { search } = filters;
+    const items = this.items.where((item) =>
+      and(
+        ...(search
+          ? [
+              or(
+                item.sku.ilike(contains(search)),
+                item.name.ilike(contains(search)),
+              ),
+            ]
+          : []),
+        ...(filters.lowStock ? [item.stockQty.lte(item.reorderPoint)] : []),
+      ),
+    );
+
+    const field = SORTABLE[filters.orderBy as keyof typeof SORTABLE] ?? 'name';
+
+    const [rows, total] = await Promise.all([
+      items
+        .orderBy([
+          orderByField(
+            this.items,
+            field,
+            filters.order === 'desc' ? 'desc' : 'asc',
+            SORT_FIELDS,
+          ),
+          (item) => item.id.asc(),
+        ])
+        .offset((filters.page - 1) * filters.limit)
+        .limit(filters.limit)
+        .all(),
+      items.aggregate((a) => ({ count: a.count() })),
+    ]);
+
+    return { rows, count: total.count };
+  }
+
+  async findActive() {
+    return await this.items
+      .where({ active: true })
+      .orderBy((item) => item.name.asc())
+      .all();
   }
 
   /** Items at or below their reorder point — the dashboard's low-stock KPI. */
-  lowStock(): Promise<InventoryItemEntity[]> {
-    return this.items
-      .createQueryBuilder('item')
-      .where('item.stock_qty <= item.reorder_point')
-      .andWhere('item.active = true')
-      .orderBy('item.name', 'ASC')
-      .getMany();
+  async lowStock() {
+    return await this.items
+      .where({ active: true })
+      .where((item) => item.stockQty.lte(item.reorderPoint))
+      .orderBy((item) => item.name.asc())
+      .all();
   }
 
-  async findById(id: number): Promise<InventoryItemEntity> {
-    const item = await this.items.findOne({ where: { id } });
+  async findById(id: number) {
+    const item = await this.items.where({ id }).first();
     if (!item) throw new NotFoundException('Inventory item not found');
     return item;
   }
 
-  movementsFor(itemId: number): Promise<StockMovementEntity[]> {
-    return this.movements.find({
-      where: { inventoryItem: { id: itemId } },
-      relations: ['createdBy'],
-      order: { createdAt: 'DESC', id: 'DESC' },
-      take: 100,
-    });
+  async movementsFor(itemId: number) {
+    return await this.prisma.db.orm.public.StockMovement.where({
+      inventoryItemId: itemId,
+    })
+      .include('createdBy')
+      .orderBy([(m) => m.createdAt.desc(), (m) => m.id.desc()])
+      .limit(100)
+      .all();
   }
 
-  async create(
-    actor: User,
-    dto: InventoryItemDto,
-  ): Promise<InventoryItemEntity> {
-    const existing = await this.items.findOne({
-      where: { sku: ILike(dto.sku.trim()) },
-    });
+  async create(actor: User, dto: InventoryItemDto) {
+    const existing = await this.items
+      .where((item) => item.sku.ilike(escapeLike(dto.sku.trim())))
+      .first();
 
     if (existing) {
       throw new UnprocessableEntityException(
@@ -110,17 +138,7 @@ export class InventoryService {
       );
     }
 
-    const item = await this.items.save(
-      this.items.create({
-        sku: dto.sku.trim(),
-        name: dto.name.trim(),
-        category: dto.category ?? null,
-        unit: dto.unit || 'pcs',
-        reorderPoint: String(dto.reorderPoint ?? 0),
-        reorderQty: String(dto.reorderQty ?? 0),
-        active: dto.active !== 'false',
-      }),
-    );
+    const item = await this.items.create(this.fields(dto));
 
     await this.activity.log({
       entityType: 'inventory_item',
@@ -136,15 +154,7 @@ export class InventoryService {
   async update(actor: User, id: number, dto: InventoryItemDto): Promise<void> {
     // stock_qty is deliberately absent: stock only moves through applyMovement, so the
     // ledger and the balance can never disagree.
-    await this.items.update(id, {
-      sku: dto.sku.trim(),
-      name: dto.name.trim(),
-      category: dto.category ?? null,
-      unit: dto.unit || 'pcs',
-      reorderPoint: String(dto.reorderPoint ?? 0),
-      reorderQty: String(dto.reorderQty ?? 0),
-      active: dto.active !== 'false',
-    });
+    await this.items.where({ id }).update(this.fields(dto));
 
     await this.activity.log({
       entityType: 'inventory_item',
@@ -152,6 +162,18 @@ export class InventoryService {
       action: 'updated',
       actorId: Number(actor.id),
     });
+  }
+
+  private fields(dto: InventoryItemDto) {
+    return {
+      sku: dto.sku.trim(),
+      name: dto.name.trim(),
+      category: dto.category ?? null,
+      unit: dto.unit || 'pcs',
+      reorderPoint: money(String(dto.reorderPoint ?? 0)),
+      reorderQty: money(String(dto.reorderQty ?? 0)),
+      active: dto.active !== 'false',
+    };
   }
 
   /**
@@ -173,8 +195,8 @@ export class InventoryService {
       );
     }
 
-    const balanceAfter = await this.dataSource.transaction(async (manager) => {
-      const { balanceAfter } = await this.applyMovement(manager, {
+    const balanceAfter = await this.prisma.db.transaction(async (tx) => {
+      const { balanceAfter } = await this.applyMovement(tx, {
         itemId,
         delta: amount,
         reason: MovementReasonEnum.adjustment,
@@ -205,7 +227,7 @@ export class InventoryService {
    * `balance_after` is always the true running balance.
    */
   async applyMovement(
-    manager: EntityManager,
+    tx: Tx,
     movement: {
       itemId: number;
       delta: Decimal;
@@ -213,14 +235,11 @@ export class InventoryService {
       refTable: string;
       refId: number;
       actorId: number | null;
-      onNegative: (item: InventoryItemEntity, balance: Decimal) => string;
+      onNegative: (item: InventoryItemRow, balance: Decimal) => string;
     },
-  ): Promise<{ item: InventoryItemEntity; balanceAfter: string }> {
-    const item = await manager
-      .createQueryBuilder(InventoryItemEntity, 'item')
-      .setLock('pessimistic_write')
-      .where('item.id = :id', { id: movement.itemId })
-      .getOne();
+  ): Promise<{ item: InventoryItemRow; balanceAfter: string }> {
+    const items = tx.orm.public.InventoryItem;
+    const item = await items.where({ id: movement.itemId }).forUpdate().first();
 
     if (!item) throw new NotFoundException('Inventory item not found');
 
@@ -234,25 +253,20 @@ export class InventoryService {
 
     const balanceAfter = balance.toFixed(4);
 
-    await manager.update(InventoryItemEntity, item.id, {
-      stockQty: balanceAfter,
+    await items.where({ id: item.id }).update({
+      stockQty: money(balanceAfter),
     });
 
-    await manager.save(
-      manager.create(StockMovementEntity, {
-        inventoryItem: { id: item.id } as never,
-        delta: movement.delta.toFixed(4),
-        reason: movement.reason,
-        refTable: movement.refTable,
-        refId: movement.refId,
-        balanceAfter,
-        createdBy: movement.actorId
-          ? ({ id: movement.actorId } as never)
-          : null,
-      }),
-    );
+    await tx.orm.public.StockMovement.create({
+      inventoryItemId: item.id,
+      delta: money(movement.delta.toFixed(4)),
+      reason: movement.reason,
+      refTable: movement.refTable,
+      refId: movement.refId,
+      balanceAfter: money(balanceAfter),
+      createdById: movement.actorId,
+    });
 
-    item.stockQty = balanceAfter;
-    return { item, balanceAfter };
+    return { item: { ...item, stockQty: balanceAfter }, balanceAfter };
   }
 }

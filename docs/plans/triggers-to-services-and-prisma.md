@@ -26,7 +26,21 @@ to debug, and Phase 2 becomes much simpler because almost no logic is left in ra
   `db.transaction(async (tx) => …)`, numerics come back as strings and timestamps as
   Postgres text (`toDate()` converts). The Phase 2 steps below still apply in order; the
   Prisma 7 command names in them do not. Done: setup alongside TypeORM, settings,
-  activity. Next: notifications, files, telegram, org.
+  activity (PR #2); org, notifications, files, Telegram updates (PR #5); users, sessions,
+  auth tokens, Telegram linking (PR #6); procurement, inventory, stock, accounting,
+  reports and dashboard (step 3). Every service now queries through Prisma; TypeORM only
+  runs migrations, seeds and the test fixtures. Next: seeds, migrations to Prisma, then
+  delete TypeORM.
+- **Prisma 8 RC quirks found so far** (worth reporting upstream):
+  - An `.include()` is aliased by the relation name, so a relation named like a column
+    overwrites that column. `PurchaseOrder.supplier` clashed with the legacy `supplier`
+    text column, hence the relation is `supplierRecord`.
+  - `forUpdate()` cannot be combined with `.include()`: lock the row, read relations
+    separately.
+  - Under Jest, enum writes failed because Prisma uses the host realm's `structuredClone`
+    (`test/integration/support/realm.ts` works around it; plain Node is unaffected).
+  - The raw lane will not bind `null`; reports use `-infinity` / `infinity` for open date
+    bounds (`src/prisma/raw.ts`).
 
 Decisions taken: deploy Phase 1 in a short maintenance window; keep T2 only; T1 becomes
 code plus `CHECK (exchange_rate > 0)`; low-stock alerts now go through

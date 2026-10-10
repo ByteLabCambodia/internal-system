@@ -20,5 +20,6 @@
     ]
   },
   "transformIgnorePatterns": [],
-  "testTimeout": 30000
+  "testTimeout": 30000,
+  "setupFiles": ["<rootDir>/integration/support/realm.ts"]
 }

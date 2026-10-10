@@ -1,57 +1,50 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { CategoryEntity } from './entities/category.entity';
+import { PrismaService } from '../prisma/prisma.service';
 import { CategoryDto } from './dto/category.dto';
 
 /** C1: categories carry the expense account their spend debits. */
 @Injectable()
 export class CategoriesService {
-  constructor(
-    @InjectRepository(CategoryEntity)
-    private readonly repository: Repository<CategoryEntity>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  findAll(): Promise<CategoryEntity[]> {
-    return this.repository.find({
-      relations: ['expenseAccount'],
-      order: { name: 'ASC' },
-    });
+  private get categories() {
+    return this.prisma.db.orm.public.Category;
   }
 
-  async findById(id: number): Promise<CategoryEntity> {
-    const category = await this.repository.findOne({
-      where: { id },
-      relations: ['expenseAccount'],
-    });
+  async findAll() {
+    return await this.categories
+      .include('expenseAccount')
+      .orderBy((c) => c.name.asc())
+      .all();
+  }
+
+  async findById(id: number) {
+    const category = await this.categories
+      .where({ id })
+      .include('expenseAccount')
+      .first();
 
     if (!category) throw new NotFoundException('Category not found');
     return category;
   }
 
-  create(dto: CategoryDto): Promise<CategoryEntity> {
-    return this.repository.save(
-      this.repository.create({
-        name: dto.name.trim(),
-        description: dto.description ?? null,
-        expenseAccount: dto.expenseAccountId
-          ? ({ id: dto.expenseAccountId } as never)
-          : null,
-      }),
-    );
+  async create(dto: CategoryDto) {
+    return await this.categories.create(this.fields(dto));
   }
 
   async update(id: number, dto: CategoryDto): Promise<void> {
-    await this.repository.update(id, {
-      name: dto.name.trim(),
-      description: dto.description ?? null,
-      expenseAccount: dto.expenseAccountId
-        ? ({ id: dto.expenseAccountId } as never)
-        : null,
-    });
+    await this.categories.where({ id }).update(this.fields(dto));
   }
 
   async remove(id: number): Promise<void> {
-    await this.repository.delete(id);
+    await this.categories.where({ id }).delete();
+  }
+
+  private fields(dto: CategoryDto) {
+    return {
+      name: dto.name.trim(),
+      description: dto.description ?? null,
+      expenseAccountId: dto.expenseAccountId || null,
+    };
   }
 }

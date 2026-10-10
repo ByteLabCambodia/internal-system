@@ -1,67 +1,111 @@
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
-import { JournalEntryEntity } from './entities/journal-entry.entity';
-import { JournalLineEntity } from './entities/journal-line.entity';
-import { AccountEntity } from './entities/account.entity';
 import {
   AccountTypeEnum,
   CurrencyEnum,
   JournalSourceEnum,
 } from '../common/enums';
 import { MoneyService } from '../common/money/money.service';
+import { PrismaService, Tx } from '../prisma/prisma.service';
+import { money, rate } from '../prisma/numeric';
+import { textRow } from '../prisma/raw';
 import { RatesService } from './rates.service';
 import { ActivityService } from '../activity/activity.service';
 import { User } from '../users/domain/user';
 import { RecordIncomeDto } from './dto/record-income.dto';
 
+type JournalLineInput = {
+  accountId: number;
+  debitUsd: string;
+  creditUsd: string;
+  departmentId: number | null;
+  projectId: number | null;
+};
+
 @Injectable()
 export class JournalService {
   constructor(
-    @InjectRepository(JournalEntryEntity)
-    private readonly entries: Repository<JournalEntryEntity>,
-    @InjectRepository(AccountEntity)
-    private readonly accounts: Repository<AccountEntity>,
-    private readonly dataSource: DataSource,
+    private readonly prisma: PrismaService,
     private readonly money: MoneyService,
     private readonly rates: RatesService,
     private readonly activity: ActivityService,
   ) {}
+
+  private get db() {
+    return this.prisma.db;
+  }
 
   async list(filters: {
     from?: string;
     to?: string;
     page: number;
     limit: number;
-  }): Promise<{ rows: JournalEntryEntity[]; count: number }> {
-    const query = this.entries
-      .createQueryBuilder('entry')
-      .leftJoinAndSelect('entry.lines', 'lines')
-      .leftJoinAndSelect('lines.account', 'account')
-      .leftJoinAndSelect('entry.createdBy', 'createdBy');
-
+  }) {
+    let entries = this.db.orm.public.JournalEntry.where({});
     if (filters.from) {
-      query.andWhere('entry.entry_date >= :from', { from: filters.from });
+      const from = filters.from;
+      entries = entries.where((e) => e.entryDate.gte(from));
     }
     if (filters.to) {
-      query.andWhere('entry.entry_date <= :to', { to: filters.to });
+      const to = filters.to;
+      entries = entries.where((e) => e.entryDate.lte(to));
     }
 
-    const [rows, count] = await query
-      .orderBy('entry.entryDate', 'DESC')
-      .addOrderBy('entry.id', 'DESC')
-      .skip((filters.page - 1) * filters.limit)
-      .take(filters.limit)
-      .getManyAndCount();
+    const [rows, total] = await Promise.all([
+      entries
+        .include('lines', (lines) =>
+          lines.include('account').orderBy((l) => l.id.asc()),
+        )
+        .include('createdBy')
+        .orderBy([(e) => e.entryDate.desc(), (e) => e.id.desc()])
+        .offset((filters.page - 1) * filters.limit)
+        .limit(filters.limit)
+        .all(),
+      entries.aggregate((a) => ({ count: a.count() })),
+    ]);
 
-    return { rows, count };
+    return { rows, count: total.count };
   }
 
-  findIncomeAccounts(): Promise<AccountEntity[]> {
-    return this.accounts.find({
-      where: { type: AccountTypeEnum.income, active: true },
-      order: { code: 'ASC' },
+  async findIncomeAccounts() {
+    return await this.db.orm.public.Account.where({
+      type: AccountTypeEnum.income,
+      active: true,
+    })
+      .orderBy((a) => a.code.asc())
+      .all();
+  }
+
+  /** One entry and its lines. Runs in the caller's transaction. */
+  private async post(
+    tx: Tx,
+    entry: {
+      entryDate: string;
+      memo: string;
+      currency: CurrencyEnum;
+      exchangeRate: string;
+      source: JournalSourceEnum;
+      sourceRef: number | null;
+      createdById: number;
+    },
+    lines: JournalLineInput[],
+  ): Promise<number> {
+    const created = await tx.orm.public.JournalEntry.create({
+      ...entry,
+      exchangeRate: rate(entry.exchangeRate),
     });
+
+    await tx.orm.public.JournalLine.createAll(
+      lines.map((line) => ({
+        entryId: created.id,
+        accountId: line.accountId,
+        debitUsd: money(line.debitUsd),
+        creditUsd: money(line.creditUsd),
+        dimensionDepartmentId: line.departmentId,
+        dimensionProjectId: line.projectId,
+      })),
+    );
+
+    return created.id;
   }
 
   /**
@@ -70,10 +114,11 @@ export class JournalService {
    * entry can never survive.
    */
   async recordIncome(actor: User, dto: RecordIncomeDto): Promise<number> {
-    const cash = await this.accounts.findOne({ where: { code: '1000' } });
-    const income = await this.accounts.findOne({
-      where: { id: dto.incomeAccountId, type: AccountTypeEnum.income },
-    });
+    const accounts = this.db.orm.public.Account;
+    const cash = await accounts.where({ code: '1000' }).first();
+    const income = await accounts
+      .where({ id: dto.incomeAccountId, type: AccountTypeEnum.income })
+      .first();
 
     if (!cash) {
       throw new UnprocessableEntityException(
@@ -93,43 +138,39 @@ export class JournalService {
 
     const amountUsd = this.money.toUsd(dto.amountOriginal, exchangeRate);
 
-    const entryId = await this.dataSource.transaction(async (manager) => {
-      const entry = await manager.save(
-        manager.create(JournalEntryEntity, {
+    const dimensions = {
+      departmentId: dto.departmentId || null,
+      projectId: dto.projectId || null,
+    };
+
+    const entryId = await this.db.transaction((tx) =>
+      this.post(
+        tx,
+        {
           entryDate: dto.entryDate || new Date().toISOString().slice(0, 10),
           memo: dto.memo || 'Manual income',
           currency: dto.currency,
           exchangeRate,
           source: JournalSourceEnum.manual_income,
-          createdBy: { id: Number(actor.id) } as never,
-        }),
-      );
-
-      await manager.save([
-        manager.create(JournalLineEntity, {
-          entry: { id: entry.id } as never,
-          account: { id: cash.id } as never,
-          debitUsd: amountUsd,
-          creditUsd: '0',
-          department: dto.departmentId
-            ? ({ id: dto.departmentId } as never)
-            : null,
-          project: dto.projectId ? ({ id: dto.projectId } as never) : null,
-        }),
-        manager.create(JournalLineEntity, {
-          entry: { id: entry.id } as never,
-          account: { id: income.id } as never,
-          debitUsd: '0',
-          creditUsd: amountUsd,
-          department: dto.departmentId
-            ? ({ id: dto.departmentId } as never)
-            : null,
-          project: dto.projectId ? ({ id: dto.projectId } as never) : null,
-        }),
-      ]);
-
-      return entry.id;
-    });
+          sourceRef: null,
+          createdById: Number(actor.id),
+        },
+        [
+          {
+            accountId: cash.id,
+            debitUsd: amountUsd,
+            creditUsd: '0',
+            ...dimensions,
+          },
+          {
+            accountId: income.id,
+            debitUsd: '0',
+            creditUsd: amountUsd,
+            ...dimensions,
+          },
+        ],
+      ),
+    );
 
     await this.activity.log({
       entityType: 'payment',
@@ -153,7 +194,7 @@ export class JournalService {
    * The expense account is the caller's choice if any (C1), else 6900 Miscellaneous.
    */
   async postPayment(
-    manager: EntityManager,
+    tx: Tx,
     payment: {
       id: number;
       paidAt: Date;
@@ -167,12 +208,11 @@ export class JournalService {
       actorId: number;
     },
   ): Promise<number> {
-    const cash = await manager.findOne(AccountEntity, {
-      where: { code: '1000' },
-    });
+    const accounts = tx.orm.public.Account;
+    const cash = await accounts.where({ code: '1000' }).first();
     const expenseAccountId =
       payment.expenseAccountId ??
-      (await manager.findOne(AccountEntity, { where: { code: '6900' } }))?.id;
+      (await accounts.where({ code: '6900' }).first())?.id;
 
     if (!cash || !expenseAccountId) {
       throw new UnprocessableEntityException(
@@ -180,69 +220,71 @@ export class JournalService {
       );
     }
 
-    const entry = await manager.save(
-      manager.create(JournalEntryEntity, {
+    const dimensions = {
+      departmentId: payment.departmentId,
+      projectId: payment.projectId,
+    };
+
+    return this.post(
+      tx,
+      {
         entryDate: payment.paidAt.toISOString().slice(0, 10),
         memo: payment.memo,
         currency: payment.currency,
         exchangeRate: payment.exchangeRate,
         source: JournalSourceEnum.po_payment,
         sourceRef: payment.id,
-        createdBy: { id: payment.actorId } as never,
-      }),
+        createdById: payment.actorId,
+      },
+      [
+        {
+          accountId: expenseAccountId,
+          debitUsd: payment.amountUsd,
+          creditUsd: '0',
+          ...dimensions,
+        },
+        {
+          accountId: cash.id,
+          debitUsd: '0',
+          creditUsd: payment.amountUsd,
+          ...dimensions,
+        },
+      ],
     );
-
-    const dimensions = {
-      department: payment.departmentId
-        ? ({ id: payment.departmentId } as never)
-        : null,
-      project: payment.projectId ? ({ id: payment.projectId } as never) : null,
-    };
-
-    await manager.save([
-      manager.create(JournalLineEntity, {
-        entry: { id: entry.id } as never,
-        account: { id: expenseAccountId } as never,
-        debitUsd: payment.amountUsd,
-        creditUsd: '0',
-        ...dimensions,
-      }),
-      manager.create(JournalLineEntity, {
-        entry: { id: entry.id } as never,
-        account: { id: cash.id } as never,
-        debitUsd: '0',
-        creditUsd: payment.amountUsd,
-        ...dimensions,
-      }),
-    ]);
-
-    return entry.id;
   }
 
   /** Cash balance = debits minus credits on account 1000, in USD. */
   async cashBalance(): Promise<string> {
-    const row = await this.dataSource.query<{ balance: string }[]>(`
-      SELECT COALESCE(SUM(l.debit_usd - l.credit_usd), 0)::text AS balance
-      FROM journal_lines l
-      JOIN accounts a ON a.id = l.account_id
-      WHERE a.code = '1000'
-    `);
+    const [row] = await this.db.runtime().query(
+      this.db.raw.sql`
+        SELECT COALESCE(SUM(l.debit_usd - l.credit_usd), 0)::text AS balance
+        FROM journal_lines l
+        JOIN accounts a ON a.id = l.account_id
+        WHERE a.code = '1000'
+      `
+        .returnsRow(textRow('balance'))
+        .build(),
+    );
 
-    return row[0]?.balance ?? '0';
+    return row?.balance ?? '0';
   }
 
   /** This month's expense, for the dashboard KPI. */
   async expenseThisMonth(): Promise<string> {
-    const row = await this.dataSource.query<{ total: string }[]>(`
-      SELECT COALESCE(SUM(l.debit_usd - l.credit_usd), 0)::text AS total
-      FROM journal_lines l
-      JOIN journal_entries e ON e.id = l.entry_id
-      JOIN accounts a ON a.id = l.account_id
-      WHERE a.type = 'expense'
-        AND e.entry_date >= date_trunc('month', current_date)
-    `);
+    const [row] = await this.db.runtime().query(
+      this.db.raw.sql`
+        SELECT COALESCE(SUM(l.debit_usd - l.credit_usd), 0)::text AS total
+        FROM journal_lines l
+        JOIN journal_entries e ON e.id = l.entry_id
+        JOIN accounts a ON a.id = l.account_id
+        WHERE a.type = 'expense'
+          AND e.entry_date >= date_trunc('month', current_date)
+      `
+        .returnsRow(textRow('total'))
+        .build(),
+    );
 
-    return row[0]?.total ?? '0';
+    return row?.total ?? '0';
   }
 
   currencies(): CurrencyEnum[] {
