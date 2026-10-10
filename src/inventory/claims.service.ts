@@ -129,7 +129,9 @@ export class ClaimsService {
       );
     }
 
-    const inventoryItemId = dto.inventoryItemId ?? poItem.inventoryItem?.id;
+    // `||`, not `??`: the form's hidden "Receive into" select still posts an empty value
+    // for a linked line, which arrives here as 0.
+    const inventoryItemId = dto.inventoryItemId || poItem.inventoryItem?.id;
 
     if (!inventoryItemId) {
       throw new UnprocessableEntityException(

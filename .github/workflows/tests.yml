@@ -1,0 +1,65 @@
+name: Tests
+
+# Integration (services against Postgres) and browser (Playwright against the built app)
+# tests. The Docker e2e suite in docker-e2e.yml covers the JSON API.
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17.9-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+    env:
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/internal_system_test
+      E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5432/internal_system_browser_test
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Create the integration test database
+        run: psql postgres://postgres:postgres@localhost:5432/postgres -c 'CREATE DATABASE internal_system_test'
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Integration tests
+        run: npm run test:integration
+
+      - name: Install Playwright's Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser tests
+        # The app needs its auth secrets etc. to boot; the example env has test values.
+        # test/browser/env.ts overrides the database and turns off outbound services.
+        run: |
+          cp env-example-relational .env
+          npm run test:browser
+
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-results
+          path: test-results/
+          retention-days: 7

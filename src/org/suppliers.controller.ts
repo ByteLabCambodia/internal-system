@@ -8,7 +8,7 @@ import {
   Res,
 } from '@nestjs/common';
 import { Response } from 'express';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsBooleanString,
   IsInt,
@@ -22,6 +22,7 @@ import { PermissionEnum } from '../permissions/permissions.enum';
 import { RequirePermission } from '../permissions/require-permission.decorator';
 import { setFlash } from '../common/web/flash';
 import { validateForm } from '../common/web/validate-form';
+import { lastValueTransformer } from '../utils/transformers/last-value.transformer';
 
 export class SupplierFormDto {
   @IsString()
@@ -41,6 +42,7 @@ export class SupplierFormDto {
   paymentTermsDays?: number;
 
   @IsOptional()
+  @Transform(lastValueTransformer)
   @IsBooleanString()
   active?: string;
 }
