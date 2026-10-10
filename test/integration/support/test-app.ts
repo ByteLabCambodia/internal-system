@@ -32,10 +32,6 @@ export const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ??
   `postgres://${process.env.USER}@localhost:5432/internal_system_test`;
 
-// Each spec rebuilds the schema from migrations, so there is no signed marker to check.
-// prisma-contract.int-spec.ts checks the contract against the schema instead.
-process.env.PRISMA_VERIFY_MARKER = 'false';
-
 /** Telegram is a courier, not part of the workflow under test. */
 export const telegramStub = {
   isConfigured: false,

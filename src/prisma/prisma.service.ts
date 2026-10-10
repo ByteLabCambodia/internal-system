@@ -21,9 +21,9 @@ export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 export type Queryable = Pick<Db, 'orm'> | Tx;
 
 /**
- * The Prisma ORM 8 client. Shares the pool settings TypeORM uses (size, timeout, SSL),
- * and on first use checks that the database is signed with this contract, so a deploy
- * whose migrations have not run fails loudly instead of querying a mismatched schema.
+ * The Prisma ORM 8 client. Shares the pool settings TypeORM uses (size, timeout, SSL).
+ * With PRISMA_VERIFY_MARKER=true it checks on first use that the database is signed with
+ * this contract, so a deploy whose migrations have not run fails loudly.
  */
 @Injectable()
 export class PrismaService implements OnModuleDestroy {
@@ -54,7 +54,10 @@ export class PrismaService implements OnModuleDestroy {
         : undefined,
     });
 
-    this.db = createDb(this.pool, process.env.PRISMA_VERIFY_MARKER !== 'false');
+    // Opt-in until Prisma owns migrations: nothing signs the production database yet
+    // (TypeORM still migrates it), so a default-on check would fail every query. The
+    // integration suite checks the contract against the migrated schema instead.
+    this.db = createDb(this.pool, process.env.PRISMA_VERIFY_MARKER === 'true');
   }
 
   async onModuleDestroy(): Promise<void> {
