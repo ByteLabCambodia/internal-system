@@ -5,6 +5,7 @@ import postgres from '@prisma/orm-postgres/runtime';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json';
 import { databaseUrl } from './database-url';
+import { poolShare } from './pool-share';
 import { AllConfigType } from '../config/config.type';
 
 function createDb(pool: Pool, verifyMarker: boolean) {
@@ -42,7 +43,7 @@ export class PrismaService implements OnModuleDestroy {
         DATABASE_PASSWORD: database.password,
         DATABASE_NAME: database.name,
       }),
-      max: database.maxConnections,
+      max: poolShare(database.maxConnections).prisma,
       connectionTimeoutMillis: 10_000,
       ssl: database.sslEnabled
         ? {
