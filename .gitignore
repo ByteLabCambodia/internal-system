@@ -63,3 +63,6 @@ infra/*_override.tf.json
 # Playwright output
 /test-results/
 /playwright-report/
+
+# pnpm is the package manager; an npm lockfile would drift from pnpm-lock.yaml.
+package-lock.json

@@ -11,13 +11,13 @@
 ## Unit Tests
 
 ```bash
-npm run test
+pnpm run test
 ```
 
 ## E2E Tests
 
 ```bash
-npm run test:e2e
+pnpm run test:e2e
 ```
 
 ## Tests in Docker
@@ -25,13 +25,13 @@ npm run test:e2e
 ### For relational database
 
 ```bash
-npm run test:e2e:relational:docker
+pnpm run test:e2e:relational:docker
 ```
 
 ### For document database
 
 ```bash
-npm run test:e2e:document:docker
+pnpm run test:e2e:document:docker
 ```
 
 ---

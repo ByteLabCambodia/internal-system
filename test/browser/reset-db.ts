@@ -20,10 +20,14 @@ async function resetDatabase(): Promise<void> {
 
   const env = { ...process.env, ...serverEnv(BROWSER_DB) };
   const run = (args: string[]) =>
-    execFileSync('npx', ['ts-node', '-r', 'tsconfig-paths/register', ...args], {
-      env,
-      stdio: 'pipe',
-    });
+    execFileSync(
+      'pnpm',
+      ['exec', 'ts-node', '-r', 'tsconfig-paths/register', ...args],
+      {
+        env,
+        stdio: 'pipe',
+      },
+    );
 
   run(['./src/database/migrate.ts']);
   run(['./src/database/seeds/seed.ts']);

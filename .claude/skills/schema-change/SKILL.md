@@ -7,8 +7,8 @@ description: Change the database schema in this project (add or change a table, 
 
 The schema is described by the Prisma contract, `src/prisma/contract.prisma`. Migrations
 are planned from it into `migrations/app/<timestamp>_<name>/` and applied by
-`src/database/migrate.ts` (locally `npm run migrate`, in production the deploy's one-off
-ECS task runs `npm run migrate:prod`). There are no entity classes and no generators.
+`src/database/migrate.ts` (locally `pnpm run migrate`, in production the deploy's one-off
+ECS task runs `pnpm run migrate:prod`). There are no entity classes and no generators.
 
 ## Steps
 
@@ -22,18 +22,18 @@ ECS task runs `npm run migrate:prod`). There are no entity classes and no genera
      `temporal.updatedAtString() @map("updated_at")`.
    - A relation must not share its name with a column (an include is aliased by the
      relation name and would overwrite the column; see `PurchaseOrder.supplierRecord`).
-2. **Emit:** `npm run prisma:emit` (writes `src/prisma/contract.json` and `contract.d.ts`).
-3. **Plan:** `npm run migration:plan -- <snake_name>`. Read the `from:` line: it must be
+2. **Emit:** `pnpm run prisma:emit` (writes `src/prisma/contract.json` and `contract.d.ts`).
+3. **Plan:** `pnpm run migration:plan -- <snake_name>`. Read the `from:` line: it must be
    the previous migration's hash, never `(baseline)`. If the plan needs a data backfill,
    `migration.ts` contains `placeholder(...)`: fill it in, then self-emit with
    `node migrations/app/<dir>/migration.ts`. Anything the contract cannot describe
    (sequences, triggers, functions) goes in as a `rawSql({...})` operation, as in the
    baseline migration.
-4. **Apply locally:** `npm run migrate`, then `npx prisma db verify --db "$DATABASE_URL"`.
+4. **Apply locally:** `pnpm run migrate`, then `pnpm exec prisma db verify --db "$DATABASE_URL"`.
 5. **Use it** in services through `PrismaService` (`this.prisma.db.orm.public.Model`).
-6. **Test:** `npm run test:integration` rebuilds the test database from the migrations,
+6. **Test:** `pnpm run test:integration` rebuilds the test database from the migrations,
    and `test/integration/migrations.int-spec.ts` checks the upgrade path still yields the
-   same schema. Run `npm run test:browser` for anything a page shows.
+   same schema. Run `pnpm run test:browser` for anything a page shows.
 
 ## Never
 

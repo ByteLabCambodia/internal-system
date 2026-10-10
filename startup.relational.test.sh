@@ -3,7 +3,7 @@ set -e
 
 /opt/wait-for-it.sh postgres:5432
 /opt/wait-for-it.sh maildev:1080
-npm install
-npm run migrate
-npm run seed
-npm run start:dev
+pnpm install --frozen-lockfile
+pnpm run migrate
+pnpm run seed
+pnpm run start:dev

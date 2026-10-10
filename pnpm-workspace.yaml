@@ -1,0 +1,10 @@
+# pnpm settings (pnpm reads them from this file even in a single-package repo).
+
+# Dependency install scripts run only when listed here as true.
+allowBuilds:
+  '@swc/core': true # native binary for `start:swc`
+  esbuild: true # binary used by Prisma's toolchain
+  unrs-resolver: true # native resolver for eslint-plugin-import
+  '@nestjs/core': false # donation banner only
+  '@scarf/scarf': false # install analytics
+  workerd: false # Cloudflare runtime pulled in by Prisma's hosting tools; unused

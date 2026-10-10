@@ -10,6 +10,9 @@ The app runs on PostgreSQL through [Prisma ORM 8](database.md).
 
 ## Local development
 
+The project uses [pnpm](https://pnpm.io) (version pinned in `package.json`'s
+`packageManager`). Install it once with `corepack enable` or `npm install -g pnpm`.
+
 1. Copy the example environment and point it at your machine:
 
    ```bash
@@ -28,9 +31,9 @@ The app runs on PostgreSQL through [Prisma ORM 8](database.md).
 1. Install, migrate and seed:
 
    ```bash
-   npm install
-   npm run migrate   # builds or upgrades the schema (src/database/migrate.ts)
-   npm run seed      # roles, chart of accounts, categories, one login per role
+   pnpm install
+   pnpm run migrate   # builds or upgrades the schema (src/database/migrate.ts)
+   pnpm run seed      # roles, chart of accounts, categories, one login per role
    ```
 
    The seeded logins are `admin@example.com`, `manager@example.com`,
@@ -40,7 +43,7 @@ The app runs on PostgreSQL through [Prisma ORM 8](database.md).
 1. Run the app in dev mode and open <http://localhost:3001>:
 
    ```bash
-   npm run start:dev
+   pnpm run start:dev
    ```
 
 ## Quick run with Docker
