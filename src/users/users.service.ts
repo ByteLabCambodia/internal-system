@@ -245,6 +245,29 @@ export class UsersService {
     });
   }
 
+  /** Fields the admin screen sets directly, outside the DTO rules above. */
+  updateAdminFields(
+    id: User['id'],
+    fields: Pick<
+      Partial<User>,
+      'department' | 'telegramId' | 'mustChangePassword'
+    >,
+  ): Promise<User | null> {
+    return this.usersRepository.update(id, fields);
+  }
+
+  findAll(): Promise<User[]> {
+    return this.usersRepository.findAll();
+  }
+
+  countActiveWithRole(roleId: number, excludeId?: User['id']): Promise<number> {
+    return this.usersRepository.countActiveWithRole(roleId, excludeId);
+  }
+
+  countWithoutPassword(): Promise<number> {
+    return this.usersRepository.countWithoutPassword();
+  }
+
   async remove(id: User['id']): Promise<void> {
     await this.usersRepository.remove(id);
   }

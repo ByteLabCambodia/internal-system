@@ -11,12 +11,21 @@ export const USERS = {
 } as const;
 
 export async function login(page: Page, role: keyof typeof USERS) {
+  await signIn(page, USERS[role], 'secret');
+  await expect(page).not.toHaveURL(/\/login/);
+}
+
+/** Submit the sign-in form; the caller asserts where it lands. */
+export async function signIn(page: Page, email: string, password: string) {
   await page.context().clearCookies();
   await page.goto('/login');
-  await page.getByLabel('Email').fill(USERS[role]);
-  await page.getByLabel('Password').fill('secret');
-  await page.getByRole('button', { name: /sign in/i }).click();
-  await expect(page).not.toHaveURL(/\/login/);
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(password);
+  await Promise.all([
+    page.waitForResponse((r) => r.request().method() === 'POST'),
+    page.getByRole('button', { name: /sign in/i }).click(),
+  ]);
+  await page.waitForLoadState('load');
 }
 
 /** The flash message the app shows after a form post. */

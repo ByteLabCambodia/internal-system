@@ -20,3 +20,18 @@ export function toDate(value: string | null | undefined): Date | null {
   }
   return date;
 }
+
+const pad = (n: number, width = 2) => String(n).padStart(width, '0');
+
+/**
+ * A Date as local wall-clock text for a zone-less `timestamp` column (the boilerplate's
+ * user and session tables), e.g. `2026-10-10 12:45:05.817`. toDate() reads it back as
+ * local time, which is how pg/TypeORM handled these columns.
+ */
+export function toTimestamp(date: Date): string {
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
+    `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.` +
+    pad(date.getMilliseconds(), 3)
+  );
+}

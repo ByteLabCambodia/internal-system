@@ -37,4 +37,13 @@ export abstract class UserRepository {
   ): Promise<User | null>;
 
   abstract remove(id: User['id']): Promise<void>;
+
+  abstract findAll(): Promise<User[]>;
+
+  abstract countActiveWithRole(
+    roleId: number,
+    excludeId?: User['id'],
+  ): Promise<number>;
+
+  abstract countWithoutPassword(): Promise<number>;
 }

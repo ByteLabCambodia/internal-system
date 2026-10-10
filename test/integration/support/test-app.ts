@@ -25,6 +25,15 @@ import { TelegramService } from '../../../src/telegram/telegram.service';
 import { TelegramLinkService } from '../../../src/telegram/telegram-link.service';
 import { TelegramController } from '../../../src/telegram/telegram.controller';
 import { FileRelationalRepository } from '../../../src/files/infrastructure/persistence/relational/repositories/file.repository';
+import { FileRepository } from '../../../src/files/infrastructure/persistence/file.repository';
+import { FilesService } from '../../../src/files/files.service';
+import { UsersService } from '../../../src/users/users.service';
+import { UserRepository } from '../../../src/users/infrastructure/persistence/user.repository';
+import { UsersRelationalRepository } from '../../../src/users/infrastructure/persistence/relational/repositories/user.repository';
+import { SessionService } from '../../../src/session/session.service';
+import { SessionRepository } from '../../../src/session/infrastructure/persistence/session.repository';
+import { SessionRelationalRepository } from '../../../src/session/infrastructure/persistence/relational/repositories/session.repository';
+import { AuthTokensService } from '../../../src/auth/auth-tokens.service';
 import { PrismaService } from '../../../src/prisma/prisma.service';
 
 /**
@@ -66,6 +75,13 @@ export async function createTestApp(): Promise<TestingModule> {
     controllers: [TelegramController],
     providers: [
       FileRelationalRepository,
+      { provide: FileRepository, useExisting: FileRelationalRepository },
+      FilesService,
+      UsersService,
+      { provide: UserRepository, useClass: UsersRelationalRepository },
+      SessionService,
+      { provide: SessionRepository, useClass: SessionRelationalRepository },
+      AuthTokensService,
       TelegramLinkService,
       AccountsService,
       ActivityService,
@@ -110,6 +126,8 @@ export async function createTestApp(): Promise<TestingModule> {
  * kept, the rest is wiped between tests.
  */
 const TRUNCATE = [
+  'session',
+  'auth_tokens',
   'stock_movements',
   'stock_requests',
   'inventory_claims',

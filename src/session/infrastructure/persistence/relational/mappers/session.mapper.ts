@@ -1,36 +1,30 @@
-import { UserEntity } from '../../../../../users/infrastructure/persistence/relational/entities/user.entity';
-import { UserMapper } from '../../../../../users/infrastructure/persistence/relational/mappers/user.mapper';
+import {
+  UserMapper,
+  UserRow,
+} from '../../../../../users/infrastructure/persistence/relational/mappers/user.mapper';
 import { Session } from '../../../../domain/session';
-import { SessionEntity } from '../entities/session.entity';
+import { toDate } from '../../../../../prisma/dates';
+
+export type SessionRow = {
+  id: number;
+  hash: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+  user: UserRow | null;
+};
 
 export class SessionMapper {
-  static toDomain(raw: SessionEntity): Session {
+  static toDomain(raw: SessionRow): Session {
     const domainEntity = new Session();
     domainEntity.id = raw.id;
     if (raw.user) {
       domainEntity.user = UserMapper.toDomain(raw.user);
     }
     domainEntity.hash = raw.hash;
-    domainEntity.createdAt = raw.createdAt;
-    domainEntity.updatedAt = raw.updatedAt;
-    domainEntity.deletedAt = raw.deletedAt;
+    domainEntity.createdAt = toDate(raw.createdAt);
+    domainEntity.updatedAt = toDate(raw.updatedAt);
+    domainEntity.deletedAt = toDate(raw.deletedAt) as Date;
     return domainEntity;
-  }
-
-  static toPersistence(domainEntity: Session): SessionEntity {
-    const user = new UserEntity();
-    user.id = Number(domainEntity.user.id);
-
-    const persistenceEntity = new SessionEntity();
-    if (domainEntity.id && typeof domainEntity.id === 'number') {
-      persistenceEntity.id = domainEntity.id;
-    }
-    persistenceEntity.hash = domainEntity.hash;
-    persistenceEntity.user = user;
-    persistenceEntity.createdAt = domainEntity.createdAt;
-    persistenceEntity.updatedAt = domainEntity.updatedAt;
-    persistenceEntity.deletedAt = domainEntity.deletedAt;
-
-    return persistenceEntity;
   }
 }
