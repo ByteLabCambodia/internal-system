@@ -25,12 +25,8 @@ async function resetDatabase(): Promise<void> {
       stdio: 'pipe',
     });
 
-  run([
-    './node_modules/typeorm/cli.js',
-    '--dataSource=src/database/data-source.ts',
-    'migration:run',
-  ]);
-  run(['./src/database/seeds/relational/run-seed.ts']);
+  run(['./src/database/migrate.ts']);
+  run(['./src/database/seeds/seed.ts']);
 }
 
 resetDatabase().catch((error) => {

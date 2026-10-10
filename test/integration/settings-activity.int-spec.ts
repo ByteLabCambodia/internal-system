@@ -1,18 +1,18 @@
 import { TestingModule } from '@nestjs/testing';
-import { DataSource } from 'typeorm';
 import { createTestApp, resetData } from './support/test-app';
+import { TestDb } from './support/test-db';
 import { q, seedRoles, seedWorld, World } from './support/fixtures';
 import { SettingsService } from '../../src/settings/settings.service';
 import { ActivityService } from '../../src/activity/activity.service';
 
 describe('SettingsService and ActivityService', () => {
   let app: TestingModule;
-  let db: DataSource;
+  let db: TestDb;
   let world: World;
 
   beforeAll(async () => {
     app = await createTestApp();
-    db = app.get(DataSource);
+    db = app.get(TestDb);
   });
 
   afterAll(() => app.close());

@@ -86,7 +86,7 @@ jobs:
             --task-definition "${{ steps.register-task-def.outputs.arn }}" \
             --launch-type FARGATE \
             --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_IDS],securityGroups=[$SECURITY_GROUP_ID],assignPublicIp=ENABLED}" \
-            --overrides "{\"containerOverrides\":[{\"name\":\"$ECS_CONTAINER_NAME\",\"command\":[\"npm\",\"run\",\"migration:run:prod\"]}]}" \
+            --overrides "{\"containerOverrides\":[{\"name\":\"$ECS_CONTAINER_NAME\",\"command\":[\"npm\",\"run\",\"migrate:prod\"]}]}" \
             --query 'tasks[0].taskArn' --output text)
 
           echo "Waiting for migration task $TASK_ARN to finish..."

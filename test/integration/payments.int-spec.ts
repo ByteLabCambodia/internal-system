@@ -1,7 +1,7 @@
 import { TestingModule } from '@nestjs/testing';
 import { UnprocessableEntityException } from '@nestjs/common';
-import { DataSource } from 'typeorm';
 import { createTestApp, resetData } from './support/test-app';
+import { TestDb } from './support/test-db';
 import {
   q,
   raceBehindLock,
@@ -20,13 +20,13 @@ import { CurrencyEnum } from '../../src/common/enums';
  */
 describe('PaymentsService.record', () => {
   let app: TestingModule;
-  let db: DataSource;
+  let db: TestDb;
   let payments: PaymentsService;
   let world: World;
 
   beforeAll(async () => {
     app = await createTestApp();
-    db = app.get(DataSource);
+    db = app.get(TestDb);
     payments = app.get(PaymentsService);
   });
 

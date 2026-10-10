@@ -1,6 +1,6 @@
 import { TestingModule } from '@nestjs/testing';
-import { DataSource } from 'typeorm';
 import { createTestApp, resetData } from './support/test-app';
+import { TestDb } from './support/test-db';
 import {
   q,
   seedPurchaseOrder,
@@ -23,14 +23,14 @@ import { CurrencyEnum } from '../../src/common/enums';
  */
 describe('accounting, reports and dashboard on Prisma', () => {
   let app: TestingModule;
-  let db: DataSource;
+  let db: TestDb;
   let world: World;
   let salesId: number;
   let thisMonth: string;
 
   beforeAll(async () => {
     app = await createTestApp();
-    db = app.get(DataSource);
+    db = app.get(TestDb);
   });
 
   afterAll(() => app.close());

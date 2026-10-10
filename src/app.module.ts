@@ -11,11 +11,8 @@ import ocrConfig from './procurement/config/ocr.config';
 import telegramConfig from './telegram/config/telegram.config';
 import path from 'path';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { HeaderResolver, I18nModule } from 'nestjs-i18n';
-import { TypeOrmConfigService } from './database/typeorm-config.service';
 import { MailModule } from './mail/mail.module';
-import { DataSource, DataSourceOptions } from 'typeorm';
 import { AllConfigType } from './config/config.type';
 import { SessionModule } from './session/session.module';
 import { MailerModule } from './mailer/mailer.module';
@@ -40,13 +37,6 @@ import { SettingsModule } from './settings/settings.module';
 import { AdminModule } from './admin/admin.module';
 import { PrismaModule } from './prisma/prisma.module';
 
-const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
-  useClass: TypeOrmConfigService,
-  dataSourceFactory: async (options: DataSourceOptions) => {
-    return new DataSource(options).initialize();
-  },
-});
-
 @Module({
   imports: [
     PrismaModule,
@@ -63,7 +53,6 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
       ],
       envFilePath: ['.env'],
     }),
-    infrastructureDatabaseModule,
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     I18nModule.forRootAsync({
       useFactory: (configService: ConfigService<AllConfigType>) => ({

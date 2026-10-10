@@ -19,18 +19,13 @@ to debug, and Phase 2 becomes much simpler because almost no logic is left in ra
   services. Migrations `1785888700000-MoveWorkflowTriggersToServices` and
   `1785888800000-MoveUsdAndTimestampsToApp` drop them (both `down`s verified). Only T2
   (`journal_lines_balanced`) remains in the database.
-- **Phase 2: in progress on `refactor/prisma` (draft PR #2), using Prisma ORM 8 RC.**
-  Prisma 8 replaced the Prisma 7 API this plan was written against: the schema is a
-  "contract" (`src/prisma/contract.prisma`), queries are chains
-  (`db.orm.public.Payment.where(...).forUpdate().first()`), transactions are
-  `db.transaction(async (tx) => …)`, numerics come back as strings and timestamps as
-  Postgres text (`toDate()` converts). The Phase 2 steps below still apply in order; the
-  Prisma 7 command names in them do not. Done: setup alongside TypeORM, settings,
-  activity (PR #2); org, notifications, files, Telegram updates (PR #5); users, sessions,
-  auth tokens, Telegram linking (PR #6); procurement, inventory, stock, accounting,
-  reports and dashboard (step 3). Every service now queries through Prisma; TypeORM only
-  runs migrations, seeds and the test fixtures. Next: seeds, migrations to Prisma, then
-  delete TypeORM.
+- **Phase 2: done.** Every service queries through Prisma ORM 8 (PRs #2, #5, #6, #7), and
+  TypeORM is gone (step 5): the schema is the Prisma contract, migrations live in
+  `migrations/app/` and run through `src/database/migrate.ts` (Prisma's control API, so the
+  production image needs no CLI), seeds are `src/database/seeds/seed.ts`, and the app
+  refuses to start on a database not signed for its contract. The TypeORM migrations are
+  frozen in `src/database/legacy-migrations/`; on the first deploy, `migrate` runs the two
+  production lacks, signs the database at the Prisma baseline and continues from there.
 - **Prisma 8 RC quirks found so far** (worth reporting upstream):
   - An `.include()` is aliased by the relation name, so a relation named like a column
     overwrites that column. `PurchaseOrder.supplier` clashed with the legacy `supplier`
@@ -41,6 +36,10 @@ to debug, and Phase 2 becomes much simpler because almost no logic is left in ra
     (`test/integration/support/realm.ts` works around it; plain Node is unaffected).
   - The raw lane will not bind `null`; reports use `-infinity` / `infinity` for open date
     bounds (`src/prisma/raw.ts`).
+  - The runtime marker check (`verifyMarker`) only logs a warning on drift; the app does
+    its own check at startup (`assertSigned`).
+  - Prisma's migrator dynamically imports migration packages, which Jest cannot do without
+    experimental VM modules, so tests run `migrate` in a child process.
 
 Decisions taken: deploy Phase 1 in a short maintenance window; keep T2 only; T1 becomes
 code plus `CHECK (exchange_rate > 0)`; low-stock alerts now go through

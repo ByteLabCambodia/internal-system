@@ -1,7 +1,7 @@
 import { TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
-import { DataSource } from 'typeorm';
 import { createTestApp, resetData, telegramStub } from './support/test-app';
+import { TestDb } from './support/test-db';
 import { q, seedRoles, seedWorld, World } from './support/fixtures';
 import { OrgService } from '../../src/org/org.service';
 import { ApprovalThresholdsService } from '../../src/org/approval-thresholds.service';
@@ -14,12 +14,12 @@ import { RoleEnum } from '../../src/roles/roles.enum';
 /** Org, notifications, the Telegram update log and files, after the move to Prisma. */
 describe('org, notifications, telegram updates and files', () => {
   let app: TestingModule;
-  let db: DataSource;
+  let db: TestDb;
   let world: World;
 
   beforeAll(async () => {
     app = await createTestApp();
-    db = app.get(DataSource);
+    db = app.get(TestDb);
   });
 
   afterAll(() => app.close());

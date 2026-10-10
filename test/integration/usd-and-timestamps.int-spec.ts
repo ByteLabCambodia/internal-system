@@ -1,6 +1,6 @@
 import { TestingModule } from '@nestjs/testing';
-import { DataSource } from 'typeorm';
 import { createTestApp, resetData } from './support/test-app';
+import { TestDb } from './support/test-db';
 import {
   q,
   seedRoles,
@@ -19,14 +19,14 @@ import { CurrencyEnum, PoTypeEnum } from '../../src/common/enums';
  */
 describe('USD totals and timestamps', () => {
   let app: TestingModule;
-  let db: DataSource;
+  let db: TestDb;
   let world: World;
   let prs: PurchaseRequestsService;
   let pos: PurchaseOrdersService;
 
   beforeAll(async () => {
     app = await createTestApp();
-    db = app.get(DataSource);
+    db = app.get(TestDb);
     prs = app.get(PurchaseRequestsService);
     pos = app.get(PurchaseOrdersService);
   });

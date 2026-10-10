@@ -1,4 +1,4 @@
-import { DataSource } from 'typeorm';
+import { TestDb } from './test-db';
 import { RoleEnum } from '../../../src/roles/roles.enum';
 import { User } from '../../../src/users/domain/user';
 
@@ -19,7 +19,7 @@ export type World = {
 };
 
 async function one<T = Record<string, any>>(
-  db: DataSource,
+  db: TestDb,
   sql: string,
   params: unknown[] = [],
 ): Promise<T> {
@@ -27,7 +27,7 @@ async function one<T = Record<string, any>>(
   return rows[0] as T;
 }
 
-export async function seedRoles(db: DataSource): Promise<void> {
+export async function seedRoles(db: TestDb): Promise<void> {
   await db.query(`
     INSERT INTO "role" (id, name) VALUES
       (1, 'Admin'), (2, 'Manager'), (3, 'Finance'), (4, 'Employee')
@@ -35,11 +35,7 @@ export async function seedRoles(db: DataSource): Promise<void> {
   `);
 }
 
-async function user(
-  db: DataSource,
-  role: RoleEnum,
-  name: string,
-): Promise<User> {
+async function user(db: TestDb, role: RoleEnum, name: string): Promise<User> {
   const row = await one(
     db,
     `INSERT INTO "user" (email, "firstName", "lastName", "roleId", active)
@@ -49,7 +45,7 @@ async function user(
   return { id: row.id, role: { id: role } } as User;
 }
 
-export async function seedWorld(db: DataSource): Promise<World> {
+export async function seedWorld(db: TestDb): Promise<World> {
   const admin = await user(db, RoleEnum.admin, 'admin');
   const manager = await user(db, RoleEnum.manager, 'manager');
   const finance = await user(db, RoleEnum.finance, 'finance');
@@ -117,7 +113,7 @@ export type PoFixture = { poId: number; poNumber: string; lineIds: number[] };
  * [inventoryItemId, qtyOrdered, unitPrice].
  */
 export async function seedPurchaseOrder(
-  db: DataSource,
+  db: TestDb,
   world: World,
   opts: {
     lines: [number | null, string, string][];
@@ -161,7 +157,7 @@ export async function seedPurchaseOrder(
 }
 
 export async function setSetting(
-  db: DataSource,
+  db: TestDb,
   key: string,
   value: string,
 ): Promise<void> {
@@ -173,7 +169,7 @@ export async function setSetting(
 }
 
 export async function seedStockRequest(
-  db: DataSource,
+  db: TestDb,
   requester: User,
   itemId: number,
   qty: string,
@@ -198,15 +194,16 @@ export const q = one;
  * `FOR UPDATE` in the workflow would go unnoticed.
  */
 export async function raceBehindLock<T>(
-  db: DataSource,
+  db: TestDb,
   lockSql: string,
   params: unknown[],
   racers: (() => Promise<T>)[],
 ): Promise<PromiseSettledResult<T>[]> {
-  const gate = db.createQueryRunner();
-  await gate.connect();
-  await gate.startTransaction();
+  const gate = await db.connect();
+  let open = false;
   try {
+    await gate.query('BEGIN');
+    open = true;
     await gate.query(lockSql, params);
     const settled = Promise.allSettled(racers.map((race) => race()));
 
@@ -220,10 +217,11 @@ export async function raceBehindLock<T>(
       await new Promise((resolve) => setTimeout(resolve, 20));
     }
 
-    await gate.commitTransaction();
+    await gate.query('COMMIT');
+    open = false;
     return await settled;
   } finally {
-    if (gate.isTransactionActive) await gate.rollbackTransaction();
-    await gate.release();
+    if (open) await gate.query('ROLLBACK');
+    gate.release();
   }
 }

@@ -1,7 +1,7 @@
 import { TestingModule } from '@nestjs/testing';
 import { UnprocessableEntityException } from '@nestjs/common';
-import { DataSource } from 'typeorm';
 import { createTestApp, resetData } from './support/test-app';
+import { TestDb } from './support/test-db';
 import {
   q,
   raceBehindLock,
@@ -18,13 +18,13 @@ import { StockRequestsService } from '../../src/stock/stock-requests.service';
  */
 describe('StockRequestsService.fulfil', () => {
   let app: TestingModule;
-  let db: DataSource;
+  let db: TestDb;
   let requests: StockRequestsService;
   let world: World;
 
   beforeAll(async () => {
     app = await createTestApp();
-    db = app.get(DataSource);
+    db = app.get(TestDb);
     requests = app.get(StockRequestsService);
   });
 
