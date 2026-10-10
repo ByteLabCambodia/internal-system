@@ -22,6 +22,9 @@ import { PurchaseRequestsService } from '../../../src/procurement/purchase-reque
 import { SettingsService } from '../../../src/settings/settings.service';
 import { StockRequestsService } from '../../../src/stock/stock-requests.service';
 import { TelegramService } from '../../../src/telegram/telegram.service';
+import { TelegramLinkService } from '../../../src/telegram/telegram-link.service';
+import { TelegramController } from '../../../src/telegram/telegram.controller';
+import { FileRelationalRepository } from '../../../src/files/infrastructure/persistence/relational/repositories/file.repository';
 import { PrismaService } from '../../../src/prisma/prisma.service';
 
 /**
@@ -36,6 +39,7 @@ export const TEST_DATABASE_URL =
 export const telegramStub = {
   isConfigured: false,
   miniAppUrl: null,
+  webhookSecret: undefined as string | undefined,
   send: jest.fn().mockResolvedValue(null),
 };
 
@@ -59,7 +63,10 @@ export async function createTestApp(): Promise<TestingModule> {
       }),
       TypeOrmModule.forFeature(ENTITIES),
     ],
+    controllers: [TelegramController],
     providers: [
+      FileRelationalRepository,
+      TelegramLinkService,
       AccountsService,
       ActivityService,
       ApprovalThresholdsService,
@@ -123,7 +130,10 @@ const TRUNCATE = [
   'suppliers',
   'departments',
   'projects',
+  'approval_thresholds',
+  'telegram_updates',
   'user',
+  'file',
 ];
 
 export async function resetData(dataSource: DataSource): Promise<void> {
