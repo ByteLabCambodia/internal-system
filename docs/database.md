@@ -25,11 +25,11 @@ PostgreSQL, through [Prisma ORM 8](https://www.prisma.io) (release candidate).
 ## Changing the schema
 
 1. Edit `src/prisma/contract.prisma`.
-2. `npm run prisma:emit`
-3. `npm run migration:plan -- <snake_case_name>`. The plan's `from:` must be the previous
+2. `pnpm run prisma:emit`
+3. `pnpm run migration:plan <snake_case_name>`. The plan's `from:` must be the previous
    migration's hash, never `(baseline)`. Fill in any `placeholder(...)` data transforms in
    the new `migration.ts`, then re-emit it with `node migrations/app/<dir>/migration.ts`.
-4. `npm run migrate`, then `npx prisma db verify --db "$DATABASE_URL"`.
+4. `pnpm run migrate`, then `pnpm exec prisma db verify --db "$DATABASE_URL"`.
 
 Never edit a migration that has been merged; plan a new one. The
 [schema-change skill](../.claude/skills/schema-change/SKILL.md) has the conventions
@@ -37,7 +37,7 @@ Never edit a migration that has been merged; plan a new one. The
 
 ## Applying migrations
 
-`npm run migrate` (development, ts-node) and `npm run migrate:prod` (compiled, used by the
+`pnpm run migrate` (development, ts-node) and `pnpm run migrate:prod` (compiled, used by the
 deploy's one-off ECS task before new tasks start) both run `src/database/migrate.ts`. It
 uses Prisma's control API rather than its CLI, which the production image does not carry,
 and applies every pending migration in one transaction.
@@ -47,7 +47,7 @@ from, and refuses to start otherwise (`PRISMA_VERIFY_MARKER=false` skips the che
 
 ## Seeding
 
-`npm run seed` (or `seed:prod`) inserts whatever is missing: the four roles, the chart of
+`pnpm run seed` (or `seed:prod`) inserts whatever is missing: the four roles, the chart of
 accounts, categories, approval limits, tolerance settings, one development login per role,
 and the `ADMIN_EMAIL` account if set. Re-running it changes nothing.
 

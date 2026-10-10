@@ -93,7 +93,7 @@ as the brief specifies. Deactivating a user sets `active = false` and kills thei
 - **EJS defaults use `locals.x`**, not `typeof x !== 'undefined'` — the latter throws a TDZ
   error when the name is also declared in the partial. Attribute-building expressions need
   `<%- %>`, not `<%= %>`, or the quotes come out HTML-escaped.
-- **Front end has no bundler.** Tailwind CLI (`npm run css:build` / `css:watch`) plus three
+- **Front end has no bundler.** Tailwind CLI (`pnpm run css:build` / `css:watch`) plus three
   vendored scripts in `public/js` — Flowbite 4.0.2, Alpine, Chart.js. Never a CDN.
 - **Every list page** is filter toolbar → count → sortable table → pagination → CSV
   (`partials/filter-toolbar`, `common/web/csv.ts`). The CSV runs the *same scoped query* as
@@ -249,7 +249,7 @@ build is interrupted or two builds overlap, tsc can conclude everything is up to
 `Cannot find module '.../dist/main'` even though the build exited 0. Fix: `rm -rf dist`,
 build again, and check `dist/main.js` exists before starting.
 
-Also: build with **`npm run build`**, never bare `tsc`. `nest build` copies the i18n JSON
+Also: build with **`pnpm run build`**, never bare `tsc`. `nest build` copies the i18n JSON
 assets into `dist/`; a raw `tsc` run compiles cleanly but the app then dies at boot with
 `i18n path (dist/i18n/) cannot be found`.
 
@@ -258,7 +258,7 @@ assets into `dist/`; a raw `tsc` run compiles cleanly but the app then dies at b
 `docs/flowbite-llms-full.txt` is the authoritative source for component markup — grep it per
 component, never write Flowbite markup from memory, and ignore Flowbite React/Svelte docs.
 
-The `flowbite` MCP server is configured for this project (`npx -y flowbite-mcp`). It does
+The `flowbite` MCP server is configured for this project (`pnpm exec -y flowbite-mcp`). It does
 **theme generation**, not markup lookup — use it once in phase 2 to produce the theme file,
 then work from `llms-full.txt` for every component.
 

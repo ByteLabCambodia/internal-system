@@ -31,31 +31,34 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # Installs the pnpm version pinned in package.json's packageManager field.
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: npm
+          cache: pnpm
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       - name: Create the integration test database
         run: psql postgres://postgres:postgres@localhost:5432/postgres -c 'CREATE DATABASE internal_system_test'
 
       - name: Unit tests
-        run: npm test
+        run: pnpm test
 
       - name: Integration tests
-        run: npm run test:integration
+        run: pnpm run test:integration
 
       - name: Install Playwright's Chromium
-        run: npx playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: Browser tests
         # The app needs its auth secrets etc. to boot; the example env has test values.
         # test/browser/env.ts overrides the database and turns off outbound services.
         run: |
           cp env-example-relational .env
-          npm run test:browser
+          pnpm run test:browser
 
       - uses: actions/upload-artifact@v7
         if: failure()

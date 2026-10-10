@@ -1,2 +1,2 @@
-npm run lint
-npm run test -- --passWithNoTests
+pnpm run lint
+pnpm test --passWithNoTests

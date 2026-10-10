@@ -6,8 +6,8 @@ views and PostgreSQL through Prisma ORM 8.
 ## Database schema changes
 
 Use the `schema-change` skill ([.claude/skills/schema-change/SKILL.md](.claude/skills/schema-change/SKILL.md)):
-edit `src/prisma/contract.prisma`, emit, plan a migration, apply it with `npm run migrate`.
-Seeds live in `src/database/seeds/seed.ts` (`npm run seed`).
+edit `src/prisma/contract.prisma`, emit, plan a migration, apply it with `pnpm run migrate`.
+Seeds live in `src/database/seeds/seed.ts` (`pnpm run seed`).
 
 ## Branches and deploys
 

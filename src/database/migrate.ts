@@ -8,8 +8,8 @@ import { databaseUrlWithSsl } from '../prisma/database-url';
 import { isLegacyDatabase, runLegacyMigrations } from './legacy-migrations';
 
 /**
- * Brings the database to the current contract: `npm run migrate` locally, and
- * `npm run migrate:prod` in the one-off ECS task the deploy runs before new tasks start.
+ * Brings the database to the current contract: `pnpm run migrate` locally, and
+ * `pnpm run migrate:prod` in the one-off ECS task the deploy runs before new tasks start.
  * Uses Prisma's control API rather than its CLI, which the production image does not
  * carry.
  *

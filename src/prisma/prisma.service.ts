@@ -23,7 +23,7 @@ export type Queryable = Pick<Db, 'orm'> | Tx;
 
 /**
  * The Prisma ORM 8 client, on a pg pool sized and secured by the DATABASE_* settings.
- * At startup it checks that the database is signed with this contract (npm run migrate
+ * At startup it checks that the database is signed with this contract (pnpm run migrate
  * signs it) and refuses to start otherwise, so code deployed ahead of its migrations
  * fails its health check instead of misreading the schema. PRISMA_VERIFY_MARKER=false
  * turns the check off.
@@ -89,8 +89,8 @@ export async function assertSigned(pool: Pool): Promise<void> {
   if (actual !== expected) {
     throw new Error(
       actual
-        ? `The database is at contract ${actual.slice(0, 12)}, this build expects ${expected.slice(0, 12)}. Run \`npm run migrate\` first.`
-        : `The database is not signed with a Prisma contract. Run \`npm run migrate\` first.`,
+        ? `The database is at contract ${actual.slice(0, 12)}, this build expects ${expected.slice(0, 12)}. Run \`pnpm run migrate\` first.`
+        : `The database is not signed with a Prisma contract. Run \`pnpm run migrate\` first.`,
     );
   }
 }

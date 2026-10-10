@@ -7,8 +7,14 @@ import { Client } from 'pg';
  */
 export function runMigrate(url: string): string {
   return execFileSync(
-    'npx',
-    ['ts-node', '-r', 'tsconfig-paths/register', 'src/database/migrate.ts'],
+    'pnpm',
+    [
+      'exec',
+      'ts-node',
+      '-r',
+      'tsconfig-paths/register',
+      'src/database/migrate.ts',
+    ],
     {
       env: { ...process.env, DATABASE_URL: url, DATABASE_SSL_ENABLED: 'false' },
       encoding: 'utf8',

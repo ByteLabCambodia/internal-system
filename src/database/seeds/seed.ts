@@ -10,7 +10,7 @@ import { RoleEnum } from '../../roles/roles.enum';
 
 /**
  * Reference data every environment needs, plus one login per role for development. Each
- * row is inserted only when missing, so this is safe to re-run: `npm run seed`.
+ * row is inserted only when missing, so this is safe to re-run: `pnpm run seed`.
  */
 
 const ROLES = [

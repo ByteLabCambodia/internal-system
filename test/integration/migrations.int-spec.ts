@@ -78,8 +78,8 @@ describe('database migrations', () => {
 
   it('should leave the fresh database signed and matching the contract', async () => {
     const { stdout } = await promisify(execFile)(
-      'npx',
-      ['prisma', 'db', 'verify', '--db', TEST_DATABASE_URL, '--json'],
+      'pnpm',
+      ['exec', 'prisma', 'db', 'verify', '--db', TEST_DATABASE_URL, '--json'],
       { env: { ...process.env, PRISMA_DISABLE_TELEMETRY: '1' } },
     ).catch((error: { stdout?: string }) => ({ stdout: error.stdout ?? '' }));
 
