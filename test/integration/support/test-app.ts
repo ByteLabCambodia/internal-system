@@ -22,6 +22,7 @@ import { PurchaseRequestsService } from '../../../src/procurement/purchase-reque
 import { SettingsService } from '../../../src/settings/settings.service';
 import { StockRequestsService } from '../../../src/stock/stock-requests.service';
 import { TelegramService } from '../../../src/telegram/telegram.service';
+import { PrismaService } from '../../../src/prisma/prisma.service';
 
 /**
  * A dedicated, disposable database. Never point this at a database you care about: every
@@ -30,6 +31,10 @@ import { TelegramService } from '../../../src/telegram/telegram.service';
 export const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ??
   `postgres://${process.env.USER}@localhost:5432/internal_system_test`;
+
+// Each spec rebuilds the schema from migrations, so there is no signed marker to check.
+// prisma-contract.int-spec.ts checks the contract against the schema instead.
+process.env.PRISMA_VERIFY_MARKER = 'false';
 
 /** Telegram is a courier, not part of the workflow under test. */
 export const telegramStub = {
@@ -78,7 +83,18 @@ export async function createTestApp(): Promise<TestingModule> {
       StockRequestsService,
       SuppliersService,
       { provide: TelegramService, useValue: telegramStub },
-      { provide: ConfigService, useValue: { get: () => undefined } },
+      PrismaService,
+      {
+        provide: ConfigService,
+        useValue: {
+          get: () => undefined,
+          getOrThrow: (key: string) => {
+            if (key !== 'database')
+              throw new Error(`No test config for ${key}`);
+            return { url: TEST_DATABASE_URL, maxConnections: 10 };
+          },
+        },
+      },
     ],
   }).compile();
 
