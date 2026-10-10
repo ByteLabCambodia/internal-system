@@ -10,7 +10,7 @@ import { RequirePermission } from '../permissions/require-permission.decorator';
 import { setFlash } from '../common/web/flash';
 
 /**
- * Admin → Settings: the C2 approval thresholds, the C3 tolerances the triggers read, and
+ * Admin → Settings: the C2 approval thresholds, the C3 receipt/payment tolerances, and
  * the integration status panel.
  */
 @RequirePermission(PermissionEnum['users.manage'])
@@ -93,7 +93,7 @@ export class AdminSettingsController {
     return response.redirect('/admin/settings');
   }
 
-  /** C3: read by triggers T3 and T5, so they live in app_settings, not env. */
+  /** C3: read by claim confirmation and payment recording; editable without a deploy. */
   @Post('tolerances')
   async saveTolerances(
     @Body() body: { receipt?: string; payment?: string },

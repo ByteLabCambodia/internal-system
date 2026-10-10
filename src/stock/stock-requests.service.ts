@@ -4,9 +4,14 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { QueryFailedError, Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
+import Decimal from 'decimal.js';
 import { StockRequestEntity } from './entities/stock-request.entity';
-import { StockRequestStatusEnum } from '../common/enums';
+import { MovementReasonEnum, StockRequestStatusEnum } from '../common/enums';
+import { InventoryService } from '../inventory/inventory.service';
+import { InventoryItemEntity } from '../inventory/entities/inventory-item.entity';
+import { PurchaseRequestsService } from '../procurement/purchase-requests.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { ActivityService } from '../activity/activity.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { User } from '../users/domain/user';
@@ -23,6 +28,10 @@ export class StockRequestsService {
   constructor(
     @InjectRepository(StockRequestEntity)
     private readonly repository: Repository<StockRequestEntity>,
+    private readonly dataSource: DataSource,
+    private readonly inventory: InventoryService,
+    private readonly purchaseRequests: PurchaseRequestsService,
+    private readonly notifications: NotificationsService,
     private readonly activity: ActivityService,
     private readonly permissions: PermissionsService,
   ) {}
@@ -130,40 +139,64 @@ export class StockRequestsService {
   }
 
   /**
-   * Fulfilment is trigger T4's job: it locks the item, refuses to go below zero, decrements,
-   * appends the ledger row, and raises the auto-reorder PR plus its notifications when the
-   * balance lands at or below the reorder point. We flip the status and re-read.
+   * Fulfilment hands the stock out: locks the request (so it is fulfilled once), moves the
+   * stock out through the locked item row, refuses to go below zero and appends the ledger
+   * row. If that lands the item at or below its reorder point, a draft reorder PR is raised
+   * in the same transaction and managers are notified once it commits.
    */
   async fulfil(actor: User, id: number): Promise<void> {
-    const request = await this.repository.findOne({ where: { id } });
-    if (!request) throw new NotFoundException('Stock request not found');
+    const reorder = await this.dataSource.transaction(async (manager) => {
+      const request = await manager
+        .createQueryBuilder(StockRequestEntity, 'request')
+        .innerJoinAndSelect('request.requester', 'requester')
+        .innerJoinAndSelect('request.inventoryItem', 'item')
+        .setLock('pessimistic_write', undefined, ['request'])
+        .where('request.id = :id', { id })
+        .getOne();
 
-    if (request.status === StockRequestStatusEnum.fulfilled) {
-      throw new UnprocessableEntityException(
-        'This request has already been fulfilled.',
-      );
-    }
-    if (request.status === StockRequestStatusEnum.rejected) {
-      throw new UnprocessableEntityException(
-        'A rejected request cannot be fulfilled.',
-      );
-    }
+      if (!request) throw new NotFoundException('Stock request not found');
 
-    try {
-      await this.repository.update(id, {
-        status: StockRequestStatusEnum.fulfilled,
-        fulfilledBy: { id: Number(actor.id) } as never,
-      });
-    } catch (error) {
-      // "insufficient stock for SKU-1: 5.0000 on hand, 999.0000 requested"
-      if (error instanceof QueryFailedError) {
+      if (request.status === StockRequestStatusEnum.fulfilled) {
         throw new UnprocessableEntityException(
-          (error as QueryFailedError & { driverError?: { message?: string } })
-            .driverError?.message ?? error.message,
+          'This request has already been fulfilled.',
         );
       }
-      throw error;
-    }
+      if (request.status === StockRequestStatusEnum.rejected) {
+        throw new UnprocessableEntityException(
+          'A rejected request cannot be fulfilled.',
+        );
+      }
+
+      const { item, balanceAfter } = await this.inventory.applyMovement(
+        manager,
+        {
+          itemId: request.inventoryItem.id,
+          delta: new Decimal(request.qty).negated(),
+          reason: MovementReasonEnum.stock_request,
+          refTable: 'stock_requests',
+          refId: request.id,
+          actorId: Number(actor.id),
+          onNegative: (locked) =>
+            `insufficient stock for ${locked.sku}: ${new Decimal(locked.stockQty).toFixed(4)} on hand, ${new Decimal(request.qty).toFixed(4)} requested`,
+        },
+      );
+
+      await manager.update(StockRequestEntity, id, {
+        status: StockRequestStatusEnum.fulfilled,
+        fulfilledBy: { id: Number(actor.id) } as never,
+        fulfilledAt: request.fulfilledAt ?? new Date(),
+      });
+
+      if (!this.needsReorder(item)) return null;
+
+      const purchaseRequestId = await this.purchaseRequests.createReorderDraft(
+        manager,
+        request.requester.id,
+        item,
+      );
+
+      return { item, balanceAfter, purchaseRequestId };
+    });
 
     await this.activity.log({
       entityType: 'stock_request',
@@ -171,6 +204,25 @@ export class StockRequestsService {
       action: 'fulfilled',
       actorId: Number(actor.id),
     });
+
+    if (reorder) {
+      // Keys match what the dashboard reads from the payload.
+      await this.notifications.notify('stock_below_reorder', {
+        inventory_item_id: reorder.item.id,
+        sku: reorder.item.sku,
+        name: reorder.item.name,
+        balance_after: reorder.balanceAfter,
+        reorder_point: reorder.item.reorderPoint,
+        purchase_request_id: reorder.purchaseRequestId,
+      });
+    }
+  }
+
+  private needsReorder(item: InventoryItemEntity): boolean {
+    return (
+      new Decimal(item.stockQty).lessThanOrEqualTo(item.reorderPoint) &&
+      new Decimal(item.reorderQty).greaterThan(0)
+    );
   }
 
   async reject(actor: User, id: number): Promise<void> {

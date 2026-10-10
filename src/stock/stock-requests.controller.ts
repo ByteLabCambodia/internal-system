@@ -183,7 +183,7 @@ export class StockRequestsController {
     return response.redirect(`/stock-requests/${id}`);
   }
 
-  /** Fulfilment moves stock and can trigger the auto-reorder PR (trigger T4). */
+  /** Fulfilment moves stock and can raise the auto-reorder PR. */
   @RequirePermission(PermissionEnum['stock.fulfil'])
   @Post(':id/fulfil')
   async fulfil(

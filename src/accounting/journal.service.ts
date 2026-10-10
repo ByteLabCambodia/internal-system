@@ -1,6 +1,6 @@
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { JournalEntryEntity } from './entities/journal-entry.entity';
 import { JournalLineEntity } from './entities/journal-line.entity';
 import { AccountEntity } from './entities/account.entity';
@@ -145,6 +145,78 @@ export class JournalService {
     });
 
     return entryId;
+  }
+
+  /**
+   * A payment, cash-basis (C5a): DR expense / CR 1000 Cash, nothing touches 2000 A/P.
+   * Runs inside the caller's transaction so the payment and its entry commit together.
+   * The expense account is the caller's choice if any (C1), else 6900 Miscellaneous.
+   */
+  async postPayment(
+    manager: EntityManager,
+    payment: {
+      id: number;
+      paidAt: Date;
+      memo: string;
+      currency: CurrencyEnum;
+      exchangeRate: string;
+      amountUsd: string;
+      expenseAccountId: number | null;
+      departmentId: number | null;
+      projectId: number | null;
+      actorId: number;
+    },
+  ): Promise<number> {
+    const cash = await manager.findOne(AccountEntity, {
+      where: { code: '1000' },
+    });
+    const expenseAccountId =
+      payment.expenseAccountId ??
+      (await manager.findOne(AccountEntity, { where: { code: '6900' } }))?.id;
+
+    if (!cash || !expenseAccountId) {
+      throw new UnprocessableEntityException(
+        'chart of accounts is not seeded: 1000 and 6900 are required',
+      );
+    }
+
+    const entry = await manager.save(
+      manager.create(JournalEntryEntity, {
+        entryDate: payment.paidAt.toISOString().slice(0, 10),
+        memo: payment.memo,
+        currency: payment.currency,
+        exchangeRate: payment.exchangeRate,
+        source: JournalSourceEnum.po_payment,
+        sourceRef: payment.id,
+        createdBy: { id: payment.actorId } as never,
+      }),
+    );
+
+    const dimensions = {
+      department: payment.departmentId
+        ? ({ id: payment.departmentId } as never)
+        : null,
+      project: payment.projectId ? ({ id: payment.projectId } as never) : null,
+    };
+
+    await manager.save([
+      manager.create(JournalLineEntity, {
+        entry: { id: entry.id } as never,
+        account: { id: expenseAccountId } as never,
+        debitUsd: payment.amountUsd,
+        creditUsd: '0',
+        ...dimensions,
+      }),
+      manager.create(JournalLineEntity, {
+        entry: { id: entry.id } as never,
+        account: { id: cash.id } as never,
+        debitUsd: '0',
+        creditUsd: payment.amountUsd,
+        ...dimensions,
+      }),
+    ]);
+
+    return entry.id;
   }
 
   /** Cash balance = debits minus credits on account 1000, in USD. */

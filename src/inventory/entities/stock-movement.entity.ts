@@ -13,7 +13,7 @@ import { numericTransformer } from '../../utils/transformers/numeric.transformer
 import { InventoryItemEntity } from './inventory-item.entity';
 import { UserEntity } from '../../users/infrastructure/persistence/relational/entities/user.entity';
 
-/** Append-only ledger. Written ONLY by triggers T3/T4 and the adjustStock service method. */
+/** Append-only ledger. Written ONLY by InventoryService.applyMovement. */
 @Entity({ name: 'stock_movements' })
 @Index('stock_movements_item_idx', ['inventoryItem', 'createdAt'])
 export class StockMovementEntity extends EntityRelationalHelper {

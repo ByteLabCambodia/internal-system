@@ -3,8 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AppSettingEntity } from '../../../../settings/entities/app-setting.entity';
 
-// C3 tolerances live in the DB because the guards are triggers and a trigger cannot read
-// the app's config. Both default to 0 — real purchasing sometimes wants 2–5%.
+// C3 tolerances live in the DB so an admin can change them without a deploy. Both
+// default to 0 — real purchasing sometimes wants 2–5%.
 const SETTINGS: { key: string; value: string; description: string }[] = [
   {
     key: 'receipt_tolerance_pct',

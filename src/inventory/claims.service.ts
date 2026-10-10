@@ -4,12 +4,14 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { QueryFailedError, Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import Decimal from 'decimal.js';
 import { InventoryClaimEntity } from './entities/inventory-claim.entity';
+import { InventoryService } from './inventory.service';
 import { PurchaseOrderItemEntity } from '../procurement/entities/purchase-order-item.entity';
-import { AppSettingEntity } from '../settings/entities/app-setting.entity';
-import { ClaimStatusEnum } from '../common/enums';
+import { PurchaseOrdersService } from '../procurement/purchase-orders.service';
+import { SettingsService } from '../settings/settings.service';
+import { ClaimStatusEnum, MovementReasonEnum } from '../common/enums';
 import { ActivityService } from '../activity/activity.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { User } from '../users/domain/user';
@@ -28,8 +30,10 @@ export class ClaimsService {
     private readonly repository: Repository<InventoryClaimEntity>,
     @InjectRepository(PurchaseOrderItemEntity)
     private readonly poItems: Repository<PurchaseOrderItemEntity>,
-    @InjectRepository(AppSettingEntity)
-    private readonly settings: Repository<AppSettingEntity>,
+    private readonly dataSource: DataSource,
+    private readonly inventory: InventoryService,
+    private readonly purchaseOrders: PurchaseOrdersService,
+    private readonly settings: SettingsService,
     private readonly activity: ActivityService,
     private readonly permissions: PermissionsService,
   ) {}
@@ -91,22 +95,9 @@ export class ClaimsService {
     return claim;
   }
 
-  private async receiptTolerance(): Promise<Decimal> {
-    const row = await this.settings.findOne({
-      where: { key: 'receipt_tolerance_pct' },
-    });
-
-    try {
-      return new Decimal(row?.value ?? 0);
-    } catch {
-      return new Decimal(0);
-    }
-  }
-
   /**
-   * The over-receipt rule is enforced by trigger T3 on confirmation. We check it here too,
-   * at submission, so the claimant gets a clean form error instead of a manager hitting a
-   * 500 later (C3 asks for exactly this).
+   * The over-receipt rule is enforced again, under lock, on confirmation. Checking it here
+   * too, at submission, gives the claimant a clean form error up front (C3 asks for this).
    */
   async create(
     actor: User,
@@ -123,7 +114,7 @@ export class ClaimsService {
       );
     }
 
-    const tolerance = await this.receiptTolerance();
+    const tolerance = await this.settings.numeric('receipt_tolerance_pct');
     const claimed = new Decimal(poItem.qtyClaimed);
     const ordered = new Decimal(poItem.qtyOrdered);
     const wanted = new Decimal(dto.qtyClaimed);
@@ -169,34 +160,55 @@ export class ClaimsService {
   }
 
   /**
-   * Confirming is the database's job: trigger T3 re-checks the over-receipt guard, moves
-   * the stock, appends the ledger row, advances the PO line and recomputes the order's
-   * status. We flip the status and let it raise.
+   * Confirming receives the goods: re-checks the over-receipt guard against the locked PO
+   * line, advances the line and the order, moves the stock in and appends the ledger row,
+   * all in one transaction. The claim row is locked first so it can only be confirmed once.
    */
   async confirm(actor: User, id: number): Promise<void> {
-    const claim = await this.repository.findOne({ where: { id } });
-    if (!claim) throw new NotFoundException('Claim not found');
+    const tolerance = await this.settings.numeric('receipt_tolerance_pct');
 
-    if (claim.status !== ClaimStatusEnum.pending) {
-      throw new UnprocessableEntityException(
-        `This claim is already ${claim.status}.`,
-      );
-    }
+    await this.dataSource.transaction(async (manager) => {
+      const claim = await manager
+        .createQueryBuilder(InventoryClaimEntity, 'claim')
+        .leftJoinAndSelect('claim.purchaseOrderItem', 'poItem')
+        .innerJoinAndSelect('claim.inventoryItem', 'item')
+        .setLock('pessimistic_write', undefined, ['claim'])
+        .where('claim.id = :id', { id })
+        .getOne();
 
-    try {
-      await this.repository.update(id, {
-        status: ClaimStatusEnum.confirmed,
-        confirmedBy: { id: Number(actor.id) } as never,
-      });
-    } catch (error) {
-      if (error instanceof QueryFailedError) {
+      if (!claim) throw new NotFoundException('Claim not found');
+
+      if (claim.status !== ClaimStatusEnum.pending) {
         throw new UnprocessableEntityException(
-          (error as QueryFailedError & { driverError?: { message?: string } })
-            .driverError?.message ?? error.message,
+          `This claim is already ${claim.status}.`,
         );
       }
-      throw error;
-    }
+
+      if (claim.purchaseOrderItem) {
+        await this.purchaseOrders.receive(
+          manager,
+          claim.purchaseOrderItem.id,
+          claim.qtyClaimed,
+          tolerance,
+        );
+      }
+
+      await this.inventory.applyMovement(manager, {
+        itemId: claim.inventoryItem.id,
+        delta: new Decimal(claim.qtyClaimed),
+        reason: MovementReasonEnum.claim,
+        refTable: 'inventory_claims',
+        refId: claim.id,
+        actorId: Number(actor.id),
+        onNegative: () => 'A claim cannot take stock below zero.',
+      });
+
+      await manager.update(InventoryClaimEntity, id, {
+        status: ClaimStatusEnum.confirmed,
+        confirmedBy: { id: Number(actor.id) } as never,
+        confirmedAt: claim.confirmedAt ?? new Date(),
+      });
+    });
 
     await this.activity.log({
       entityType: 'inventory_claim',

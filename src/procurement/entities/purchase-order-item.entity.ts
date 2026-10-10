@@ -41,7 +41,7 @@ export class PurchaseOrderItemEntity extends EntityRelationalHelper {
   })
   qtyOrdered: string;
 
-  // maintained by trigger T3 on claim confirmation
+  // maintained by PurchaseOrdersService.receive on claim confirmation
   @Column({
     name: 'qty_claimed',
     type: 'numeric',

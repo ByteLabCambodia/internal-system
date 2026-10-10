@@ -5,7 +5,7 @@ import { InventoryClaimEntity } from './entities/inventory-claim.entity';
 import { StockMovementEntity } from './entities/stock-movement.entity';
 import { CategoryEntity } from './entities/category.entity';
 import { PurchaseOrderItemEntity } from '../procurement/entities/purchase-order-item.entity';
-import { AppSettingEntity } from '../settings/entities/app-setting.entity';
+import { ProcurementModule } from '../procurement/procurement.module';
 import { InventoryService } from './inventory.service';
 import { CategoriesService } from './categories.service';
 import { ClaimsService } from './claims.service';
@@ -20,8 +20,8 @@ import { ClaimsController } from './claims.controller';
       StockMovementEntity,
       CategoryEntity,
       PurchaseOrderItemEntity,
-      AppSettingEntity,
     ]),
+    ProcurementModule,
   ],
   controllers: [InventoryController, ClaimsController],
   providers: [InventoryService, CategoriesService, ClaimsService],

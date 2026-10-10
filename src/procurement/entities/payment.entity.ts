@@ -55,7 +55,7 @@ export class PaymentEntity extends EntityRelationalHelper {
   })
   exchangeRate: string;
 
-  // derived by trigger T1 — never write this directly
+  // amount_original / exchange_rate, set by PaymentsService via MoneyService.toUsd
   @Column({
     name: 'amount_usd',
     type: 'numeric',
@@ -108,7 +108,7 @@ export class PaymentEntity extends EntityRelationalHelper {
   @JoinColumn({ name: 'recorded_by' })
   recordedBy: UserEntity | null;
 
-  // set by trigger T5
+  // set by PaymentsService.record
   @ManyToOne(() => JournalEntryEntity, { nullable: true })
   @JoinColumn({ name: 'journal_entry_id' })
   journalEntry: JournalEntryEntity | null;

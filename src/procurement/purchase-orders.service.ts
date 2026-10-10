@@ -4,12 +4,14 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
+import Decimal from 'decimal.js';
 import { PurchaseOrderEntity } from './entities/purchase-order.entity';
 import { PurchaseOrderItemEntity } from './entities/purchase-order-item.entity';
 import { PurchaseRequestEntity } from './entities/purchase-request.entity';
+import { PaymentEntity } from './entities/payment.entity';
 import { CategoryEntity } from '../inventory/entities/category.entity';
-import { PoStatusEnum, PrStatusEnum } from '../common/enums';
+import { PaymentStatusEnum, PoStatusEnum, PrStatusEnum } from '../common/enums';
 import { MoneyService } from '../common/money/money.service';
 import { ActivityService } from '../activity/activity.service';
 import { PermissionsService } from '../permissions/permissions.service';
@@ -208,6 +210,7 @@ export class PurchaseOrdersService {
           currency: pr.currency,
           exchangeRate: pr.exchangeRate,
           totalOriginal,
+          totalUsd: this.money.toUsd(totalOriginal, pr.exchangeRate),
           department: pr.department,
           project: pr.project,
           createdBy: { id: Number(actor.id) } as never,
@@ -275,6 +278,105 @@ export class PurchaseOrdersService {
       entityId: id,
       action: 'cancelled',
       actorId: Number(actor.id),
+    });
+  }
+
+  /**
+   * Locks an order for the rest of the caller's transaction. Payments against the same
+   * order queue up here, so the over-payment check always sees every committed payment.
+   */
+  lockForPayment(
+    manager: EntityManager,
+    id: number,
+  ): Promise<PurchaseOrderEntity | null> {
+    return manager
+      .createQueryBuilder(PurchaseOrderEntity, 'po')
+      .leftJoinAndSelect('po.expenseAccount', 'expenseAccount')
+      .leftJoinAndSelect('po.department', 'department')
+      .leftJoinAndSelect('po.project', 'project')
+      .setLock('pessimistic_write', undefined, ['po'])
+      .where('po.id = :id', { id })
+      .getOne();
+  }
+
+  /** unpaid / partial / paid from the USD sum of every payment against the order. */
+  async rollUpPaymentStatus(
+    manager: EntityManager,
+    po: PurchaseOrderEntity,
+  ): Promise<void> {
+    const paid = await this.paidUsd(manager, po.id);
+
+    const paymentStatus =
+      this.money.compare(paid, po.totalUsd) >= 0
+        ? PaymentStatusEnum.paid
+        : this.money.isPositive(paid)
+          ? PaymentStatusEnum.partial
+          : PaymentStatusEnum.unpaid;
+
+    await manager.update(PurchaseOrderEntity, po.id, { paymentStatus });
+  }
+
+  async paidUsd(manager: EntityManager, poId: number): Promise<string> {
+    const row = await manager
+      .createQueryBuilder(PaymentEntity, 'payment')
+      .select('COALESCE(SUM(payment.amount_usd), 0)::text', 'total')
+      .where('payment.po_id = :poId', { poId })
+      .getRawOne<{ total: string }>();
+
+    return row?.total ?? '0';
+  }
+
+  /**
+   * Goods received against an order line (C3): refuses to go past the ordered quantity
+   * plus `tolerance`, advances the line, then moves the order to partial or complete. A
+   * cancelled order keeps its status. Locks line before order, the same order every
+   * other receipt takes.
+   */
+  async receive(
+    manager: EntityManager,
+    poItemId: number,
+    qty: string,
+    tolerance: Decimal,
+  ): Promise<void> {
+    const line = await manager
+      .createQueryBuilder(PurchaseOrderItemEntity, 'line')
+      .innerJoinAndSelect('line.purchaseOrder', 'po')
+      .setLock('pessimistic_write', undefined, ['line'])
+      .where('line.id = :id', { id: poItemId })
+      .getOne();
+
+    if (!line) throw new NotFoundException('Purchase order line not found');
+
+    const claimed = new Decimal(line.qtyClaimed);
+    const ordered = new Decimal(line.qtyOrdered);
+    const received = new Decimal(qty);
+
+    if (claimed.plus(received).greaterThan(ordered.times(tolerance.plus(1)))) {
+      throw new UnprocessableEntityException(
+        `over-receipt on purchase order line ${line.id}: ${claimed.toFixed(4)} already claimed + ${received.toFixed(4)} exceeds ${ordered.toFixed(4)} ordered`,
+      );
+    }
+
+    await manager.update(PurchaseOrderItemEntity, line.id, {
+      qtyClaimed: claimed.plus(received).toFixed(4),
+    });
+
+    const po = await manager
+      .createQueryBuilder(PurchaseOrderEntity, 'po')
+      .setLock('pessimistic_write')
+      .where('po.id = :id', { id: line.purchaseOrder.id })
+      .getOne();
+
+    if (!po || po.status === PoStatusEnum.cancelled) return;
+
+    const outstanding = await manager
+      .createQueryBuilder(PurchaseOrderItemEntity, 'line')
+      .where('line.po_id = :poId', { poId: po.id })
+      .andWhere('line.qty_claimed < line.qty_ordered')
+      .getCount();
+
+    await manager.update(PurchaseOrderEntity, po.id, {
+      status: outstanding === 0 ? PoStatusEnum.complete : PoStatusEnum.partial,
     });
   }
 
