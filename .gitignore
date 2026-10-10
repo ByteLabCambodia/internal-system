@@ -42,7 +42,6 @@ lerna-debug.log*
 
 # Claude Code runtime state
 .claude/scheduled_tasks.lock
-.vercel
 .env*
 
 # Terraform: .terraform.lock.hcl IS committed (pins provider versions) — everything
