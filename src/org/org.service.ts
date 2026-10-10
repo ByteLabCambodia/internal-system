@@ -1,72 +1,69 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { DepartmentEntity } from './entities/department.entity';
-import { ProjectEntity } from './entities/project.entity';
+import { PrismaService } from '../prisma/prisma.service';
+
+type OrgKind = 'department' | 'project';
 
 /** Departments and projects — the dimensions carried on PRs, POs and journal lines. */
 @Injectable()
 export class OrgService {
-  constructor(
-    @InjectRepository(DepartmentEntity)
-    private readonly departments: Repository<DepartmentEntity>,
-    @InjectRepository(ProjectEntity)
-    private readonly projects: Repository<ProjectEntity>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  findActiveDepartments(): Promise<DepartmentEntity[]> {
-    return this.departments.find({
-      where: { active: true },
-      order: { name: 'ASC' },
-    });
+  private get departments() {
+    return this.prisma.db.orm.public.Department;
   }
 
-  findActiveProjects(): Promise<ProjectEntity[]> {
-    return this.projects.find({
-      where: { active: true },
-      order: { name: 'ASC' },
-    });
+  private get projects() {
+    return this.prisma.db.orm.public.Project;
+  }
+
+  async findActiveDepartments() {
+    return await this.departments
+      .where({ active: true })
+      .orderBy((d) => d.name.asc())
+      .all();
+  }
+
+  async findActiveProjects() {
+    return await this.projects
+      .where({ active: true })
+      .orderBy((p) => p.name.asc())
+      .all();
   }
 
   // --- admin CRUD --------------------------------------------------------------------
-  findAllDepartments(): Promise<DepartmentEntity[]> {
-    return this.departments.find({ order: { name: 'ASC' } });
+  async findAllDepartments() {
+    return await this.departments.orderBy((d) => d.name.asc()).all();
   }
 
-  findAllProjects(): Promise<ProjectEntity[]> {
-    return this.projects.find({ order: { name: 'ASC' } });
+  async findAllProjects() {
+    return await this.projects.orderBy((p) => p.name.asc()).all();
   }
 
-  private repositoryFor(kind: 'department' | 'project') {
+  // Department and Project have the same shape; one collection type keeps the CRUD
+  // below shared without a cast at every call.
+  private collectionFor(kind: OrgKind) {
     return kind === 'department' ? this.departments : this.projects;
   }
 
-  async create(kind: 'department' | 'project', name: string): Promise<void> {
-    const repository = this.repositoryFor(kind);
-    await repository.save(repository.create({ name: name.trim() }));
+  async create(kind: OrgKind, name: string): Promise<void> {
+    await this.collectionFor(kind).create({ name: name.trim() });
   }
 
-  async rename(
-    kind: 'department' | 'project',
-    id: number,
-    name: string,
-  ): Promise<void> {
-    await this.repositoryFor(kind).update(id, { name: name.trim() });
+  async rename(kind: OrgKind, id: number, name: string): Promise<void> {
+    await this.collectionFor(kind).where({ id }).update({ name: name.trim() });
   }
 
   /** Deactivating hides it from new records without touching the history that used it. */
-  async toggleActive(
-    kind: 'department' | 'project',
-    id: number,
-  ): Promise<void> {
-    const repository = this.repositoryFor(kind);
-    const row = await repository.findOne({ where: { id } });
+  async toggleActive(kind: OrgKind, id: number): Promise<void> {
+    const row = await this.collectionFor(kind).where({ id }).first();
     if (!row) return;
 
-    await repository.update(id, { active: !row.active });
+    await this.collectionFor(kind)
+      .where({ id })
+      .update({ active: !row.active });
   }
 
-  async remove(kind: 'department' | 'project', id: number): Promise<void> {
-    await this.repositoryFor(kind).delete(id);
+  async remove(kind: OrgKind, id: number): Promise<void> {
+    await this.collectionFor(kind).where({ id }).delete();
   }
 }

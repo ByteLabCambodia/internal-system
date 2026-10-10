@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import Decimal from 'decimal.js';
-import { ApprovalThresholdEntity } from './entities/approval-threshold.entity';
+import { PrismaService } from '../prisma/prisma.service';
+import { nullableMoney } from '../prisma/numeric';
 import { RoleEnum } from '../roles/roles.enum';
 
 export type ThresholdCheck =
@@ -15,19 +14,22 @@ export type ThresholdCheck =
  */
 @Injectable()
 export class ApprovalThresholdsService {
-  constructor(
-    @InjectRepository(ApprovalThresholdEntity)
-    private readonly repository: Repository<ApprovalThresholdEntity>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  findAll(): Promise<ApprovalThresholdEntity[]> {
-    return this.repository.find({ order: { id: 'ASC' } });
+  private get thresholds() {
+    return this.prisma.db.orm.public.ApprovalThreshold;
+  }
+
+  /** With `role` loaded: Admin → Settings matches rows by `threshold.role.id`. */
+  async findAll() {
+    return await this.thresholds
+      .include('role')
+      .orderBy((t) => t.id.asc())
+      .all();
   }
 
   async check(roleId: number, totalUsd: string): Promise<ThresholdCheck> {
-    const row = await this.repository.findOne({
-      where: { role: { id: roleId }, active: true },
-    });
+    const row = await this.thresholds.where({ roleId, active: true }).first();
 
     if (!row) {
       return {
@@ -53,7 +55,7 @@ export class ApprovalThresholdsService {
 
   /** Names the role the requester needs, so the error can say who to escalate to. */
   private async lowestSufficientRole(totalUsd: string): Promise<string | null> {
-    const rows = await this.repository.find({ where: { active: true } });
+    const rows = await this.thresholds.where({ active: true }).all();
     const amount = new Decimal(totalUsd);
 
     const sufficient = rows.filter(
@@ -73,26 +75,20 @@ export class ApprovalThresholdsService {
       );
     });
 
-    return RoleEnum[Number(sufficient[0].role.id)] ?? null;
+    return RoleEnum[sufficient[0].roleId] ?? null;
   }
 
   /** No row at all means the role cannot approve any amount. */
   async removeLimit(roleId: number): Promise<void> {
-    await this.repository.delete({ role: { id: roleId } });
+    await this.thresholds.where({ roleId }).deleteAll();
   }
 
   async setLimit(roleId: number, maxAmountUsd: string | null): Promise<void> {
-    const existing = await this.repository.findOne({
-      where: { role: { id: roleId } },
+    const limit = nullableMoney(maxAmountUsd);
+    await this.thresholds.upsert({
+      create: { roleId, maxAmountUsd: limit },
+      update: { maxAmountUsd: limit },
+      conflictOn: { roleId },
     });
-
-    if (existing) {
-      await this.repository.update(existing.id, { maxAmountUsd });
-      return;
-    }
-
-    await this.repository.save(
-      this.repository.create({ role: { id: roleId } as never, maxAmountUsd }),
-    );
   }
 }

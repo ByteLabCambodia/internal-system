@@ -1,13 +1,22 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
-import { In, Repository } from 'typeorm';
 import { InlineKeyboard } from 'grammy';
-import { NotificationEntity } from './entities/notification.entity';
-import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
+import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { RoleEnum } from '../roles/roles.enum';
 import { AllConfigType } from '../config/config.type';
+
+/** Who a notification goes to. telegramId is a string, as Telegram's chat id. */
+type Recipient = { id: number; telegramId: string | null };
+
+const toRecipient = (user: {
+  id: number;
+  telegramId: bigint | null;
+}): Recipient => ({
+  id: user.id,
+  // bigint column: Prisma returns BigInt, which grammy and JSON cannot take.
+  telegramId: user.telegramId === null ? null : String(user.telegramId),
+});
 
 export type NotificationEvent =
   | 'pr_created'
@@ -75,29 +84,41 @@ export class NotificationsService {
   };
 
   constructor(
-    @InjectRepository(NotificationEntity)
-    private readonly repository: Repository<NotificationEntity>,
-    @InjectRepository(UserEntity)
-    private readonly users: Repository<UserEntity>,
+    private readonly prisma: PrismaService,
     private readonly telegram: TelegramService,
     private readonly configService: ConfigService<AllConfigType>,
   ) {}
 
-  private async usersInRoles(roles: RoleEnum[]): Promise<UserEntity[]> {
-    return this.users.find({
-      where: { active: true, role: { id: In(roles) } },
-    });
+  private get notifications() {
+    return this.prisma.db.orm.public.Notification;
   }
 
-  private async usersByIds(ids: number[]): Promise<UserEntity[]> {
+  /** Active, not soft-deleted users (TypeORM's find skipped deletedAt rows implicitly). */
+  private recipientsWhere() {
+    return this.prisma.db.orm.public.User.where({ active: true }).where((u) =>
+      u.deletedAt.isNull(),
+    );
+  }
+
+  private async usersInRoles(roles: RoleEnum[]): Promise<Recipient[]> {
+    const users = await this.recipientsWhere()
+      .where((u) => u.roleId.in(roles))
+      .all();
+    return users.map(toRecipient);
+  }
+
+  private async usersByIds(ids: number[]): Promise<Recipient[]> {
     if (!ids.length) return [];
-    return this.users.find({ where: { id: In(ids), active: true } });
+    const users = await this.recipientsWhere()
+      .where((u) => u.id.in(ids))
+      .all();
+    return users.map(toRecipient);
   }
 
   private async resolveRecipients(
     route: Route,
     recipientIds: number[],
-  ): Promise<UserEntity[]> {
+  ): Promise<Recipient[]> {
     switch (route.target) {
       case 'manager':
         return this.usersInRoles([RoleEnum.manager, RoleEnum.admin]);
@@ -129,14 +150,10 @@ export class NotificationsService {
       // In-app rows first: they are the durable record, Telegram is the courier. Written
       // for every recipient regardless of whether they have linked Telegram.
       if (recipients.length) {
-        await this.repository.save(
-          recipients.map((user) =>
-            this.repository.create({
-              user: { id: user.id } as never,
-              event,
-              payload: detail,
-            }),
-          ),
+        // Round-trip so the column gets plain JSON (undefined values dropped), as before.
+        const json = JSON.parse(JSON.stringify(detail));
+        await this.notifications.createAll(
+          recipients.map((user) => ({ userId: user.id, event, payload: json })),
         );
       }
 
@@ -167,14 +184,10 @@ export class NotificationsService {
   ): Promise<void> {
     if (!userIds.length) return;
 
-    await this.repository
-      .createQueryBuilder()
-      .update(NotificationEntity)
-      .set({ telegramSent: true })
-      .where('user_id IN (:...userIds)', { userIds })
-      .andWhere('event = :event', { event })
-      .andWhere('telegram_sent = false')
-      .execute();
+    await this.notifications
+      .where((n) => n.userId.in(userIds))
+      .where({ event, telegramSent: false })
+      .updateAll({ telegramSent: true });
   }
 
   /**
@@ -333,9 +346,8 @@ export class NotificationsService {
 
   /** The in-app panel; the dashboard reads unread rows for the signed-in user. */
   async markAllRead(userId: number): Promise<void> {
-    await this.repository.update(
-      { user: { id: userId }, read: false },
-      { read: true },
-    );
+    await this.notifications
+      .where({ userId, read: false })
+      .updateAll({ read: true });
   }
 }

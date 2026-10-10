@@ -2,7 +2,7 @@ import { FileType } from '../../../../domain/file';
 import { FileEntity } from '../entities/file.entity';
 
 export class FileMapper {
-  static toDomain(raw: FileEntity): FileType {
+  static toDomain(raw: { id: string; path: string }): FileType {
     const domainEntity = new FileType();
     domainEntity.id = raw.id;
     domainEntity.path = raw.path;
