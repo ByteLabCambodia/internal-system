@@ -5,6 +5,13 @@
   "testRegex": ".e2e-spec.ts$",
   "testPathIgnorePatterns": ["/node_modules/", "<rootDir>/generators/"],
   "transform": {
-    "^.+\\.(t|j)s$": "ts-jest"
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "diagnostics": {
+          "ignoreCodes": [151002]
+        }
+      }
+    ]
   }
 }

@@ -56,6 +56,7 @@
     "@nestjs/swagger": "11.4.6",
     "@nestjs/throttler": "^6.5.0",
     "@nestjs/typeorm": "11.0.1",
+    "@prisma/orm-postgres": "8.0.0-rc.17",
     "@types/multer-s3": "3.0.3",
     "apple-signin-auth": "2.0.0",
     "bcryptjs": "3.0.3",
@@ -84,9 +85,12 @@
     "rxjs": "7.8.2",
     "source-map-support": "0.5.21",
     "swagger-ui-express": "5.0.1",
+    "temporal-polyfill": "1.0.4",
     "typeorm": "0.3.31"
   },
   "devDependencies": {
+    "@babel/core": "7.29.7",
+    "@babel/plugin-transform-modules-commonjs": "7.29.7",
     "@commitlint/cli": "20.5.0",
     "@commitlint/config-conventional": "20.5.0",
     "@eslint/eslintrc": "^3.3.5",
@@ -95,6 +99,7 @@
     "@nestjs/schematics": "11.0.10",
     "@nestjs/testing": "11.1.18",
     "@playwright/test": "1.64.0",
+    "@prisma/cli-engine": "0.7.0",
     "@release-it/conventional-changelog": "12.0.0",
     "@swc/cli": "0.8.1",
     "@swc/core": "1.15.18",
@@ -113,6 +118,7 @@
     "@typescript-eslint/eslint-plugin": "8.57.1",
     "@typescript-eslint/parser": "8.57.1",
     "alpinejs": "^3.15.12",
+    "babel-jest": "30.3.0",
     "chart.js": "^4.5.1",
     "env-cmd": "11.0.0",
     "eslint": "10.0.3",
@@ -125,6 +131,7 @@
     "is-ci": "4.1.0",
     "jest": "30.3.0",
     "prettier": "3.8.1",
+    "prisma": "8.0.0-rc.22",
     "prompts": "2.4.2",
     "release-it": "21.0.1",
     "supertest": "7.2.2",
@@ -145,7 +152,16 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.(t|j)s$": [
+        "ts-jest",
+        {
+          "diagnostics": {
+            "ignoreCodes": [
+              151002
+            ]
+          }
+        }
+      ]
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"

@@ -22,6 +22,7 @@ import { PurchaseRequestsService } from '../../../src/procurement/purchase-reque
 import { SettingsService } from '../../../src/settings/settings.service';
 import { StockRequestsService } from '../../../src/stock/stock-requests.service';
 import { TelegramService } from '../../../src/telegram/telegram.service';
+import { PrismaService } from '../../../src/prisma/prisma.service';
 
 /**
  * A dedicated, disposable database. Never point this at a database you care about: every
@@ -78,7 +79,18 @@ export async function createTestApp(): Promise<TestingModule> {
       StockRequestsService,
       SuppliersService,
       { provide: TelegramService, useValue: telegramStub },
-      { provide: ConfigService, useValue: { get: () => undefined } },
+      PrismaService,
+      {
+        provide: ConfigService,
+        useValue: {
+          get: () => undefined,
+          getOrThrow: (key: string) => {
+            if (key !== 'database')
+              throw new Error(`No test config for ${key}`);
+            return { url: TEST_DATABASE_URL, maxConnections: 10 };
+          },
+        },
+      },
     ],
   }).compile();
 

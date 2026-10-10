@@ -1,0 +1,608 @@
+// use prisma-8
+// The data contract. Edit, then run `npm run prisma:emit` (prisma contract emit).
+
+namespace public {
+  model Account {
+    id             Int                  @id(map: "PK_accounts") @default(autoincrement())
+    code           String               @unique(map: "accounts_code_key")
+    name           String
+    type          pg.enum(AccountType) @map("type")
+    active         Boolean              @default(true)
+    createdAt      TimestamptzString    @default(now()) @map("created_at")
+    updatedAt      temporal.updatedAtString()    @map("updated_at")
+    categories     Category[]
+    journalLines   JournalLine[]
+    payments       Payment[]
+    purchaseOrders PurchaseOrder[]
+
+    @@map("accounts")
+  }
+
+  model File {
+    id   Uuid    @id(map: "PK_36b46d232307066b3a2c9ea3a1d") @default(sql`gen_random_uuid()`)
+    path VarChar
+    user User?
+
+    @@map("file")
+  }
+
+  model Role {
+    id                 Int                 @id(map: "PK_b36bcfe02fc8de3c57a8b2391c2")
+    name               VarChar
+    approvalThresholds ApprovalThreshold?
+    users              User[]
+
+    @@map("role")
+  }
+
+  model User {
+    id                               Int                @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
+    email                            VarChar?           @unique(map: "UQ_e12875dfb3b1d92d7d7c5377e22")
+    password                         VarChar?
+    provider                         VarChar            @default("email")
+    socialId                         VarChar?
+    firstName                        VarChar?
+    lastName                         VarChar?
+    createdAt                        TimestampString    @default(now())
+    updatedAt                        TimestampString    @default(now())
+    deletedAt                        TimestampString?
+    photoId                          Uuid?              @unique(map: "REL_75e2be4ce11d447ef43be0e374")
+    roleId                           Int?
+    active                           Boolean            @default(true)
+    mustChangePassword               Boolean            @default(false) @map("must_change_password")
+    telegramId                       BigInt?            @unique(map: "user_telegram_id_key") @map("telegram_id")
+    telegramUsername                 VarChar?           @map("telegram_username")
+    telegramLinkToken                VarChar?           @map("telegram_link_token")
+    telegramLinkExpiresAt            TimestamptzString? @map("telegram_link_expires_at")
+    department                       VarChar?
+    paymentLink                      VarChar?           @map("payment_link")
+    paymentQrObjectKey               VarChar?           @map("payment_qr_object_key")
+    activityEvents                   ActivityEvent[]
+    authTokens                       AuthToken[]
+    journalEntries                   JournalEntry[]
+    notifications                    Notification[]
+    payments                         Payment[]
+    purchaseOrders                   PurchaseOrder[]
+    sessions                         Session[]
+    stockMovements                   StockMovement[]
+    claimsFiled                  InventoryClaim[]  @relation(name: "FK_inventory_claims_claimed_by")
+    claimsConfirmed   InventoryClaim[]  @relation(name: "FK_inventory_claims_confirmed_by")
+    purchaseRequestsApproved                 PurchaseRequest[] @relation(name: "FK_purchase_requests_approver")
+    purchaseRequests PurchaseRequest[] @relation(name: "FK_purchase_requests_requester")
+    stockRequestsApproved                    StockRequest[]    @relation(name: "FK_stock_requests_approved_by")
+    stockRequestsFulfilled       StockRequest[]    @relation(name: "FK_stock_requests_fulfilled_by")
+    stockRequests                   StockRequest[]    @relation(name: "FK_stock_requests_requester")
+    photo                            File?              @relation(fields: [photoId], references: [id], map: "FK_75e2be4ce11d447ef43be0e374f")
+    role                             Role?              @relation(fields: [roleId], references: [id], map: "FK_c28e52f758e7bbc53828db92194", index: false)
+
+    @@index([firstName], map: "IDX_58e4dbff0e1a32a9bdc861bb29")
+    @@index([socialId], map: "IDX_9bd2fe7a8e694dedc4ec2f666f")
+    @@index([lastName], map: "IDX_f0e1b4ecdca13b177e2e3a0613")
+    @@index([telegramLinkToken], map: "user_telegram_link_token_idx", where: "(telegram_link_token IS NOT NULL)", unique: true)
+    @@map("user")
+  }
+
+  model ActivityEvent {
+    id         Int               @id(map: "PK_activity_events") @default(autoincrement())
+    entityType String            @map("entity_type")
+    entityId   Int               @map("entity_id")
+    action     String
+    actorId    Int?              @map("actor_id")
+    detail     Jsonb?
+    createdAt  TimestamptzString @default(now()) @map("created_at")
+    actor      User?             @relation(fields: [actorId], references: [id], map: "FK_activity_events_actor")
+
+    @@index([actorId], map: "activity_events_actor_idx")
+    @@index([entityType, entityId, createdAt], map: "activity_events_entity_idx")
+    @@map("activity_events")
+  }
+
+  model AppSetting {
+    key         String            @id(map: "PK_app_settings")
+    value       String
+    description String?
+    updatedAt   temporal.updatedAtString() @map("updated_at")
+
+    @@map("app_settings")
+  }
+
+  model ApprovalThreshold {
+    id           Int             @id(map: "PK_approval_thresholds") @default(autoincrement())
+    roleId       Int             @unique(map: "approval_thresholds_role_key") @map("role_id")
+    maxAmountUsd Numeric(18, 4)? @map("max_amount_usd")
+    active       Boolean         @default(true)
+    role         Role            @relation(fields: [roleId], references: [id], map: "FK_approval_thresholds_role")
+
+    @@map("approval_thresholds")
+  }
+
+  model AuthToken {
+    id        Int                @id(map: "PK_auth_tokens") @default(autoincrement())
+    userId    Int                @map("user_id")
+    tokenHash String             @unique(map: "auth_tokens_token_hash_key") @map("token_hash")
+    purpose   String
+    expiresAt TimestamptzString  @map("expires_at")
+    usedAt    TimestamptzString? @map("used_at")
+    createdAt TimestamptzString  @default(now()) @map("created_at")
+    user      User               @relation(fields: [userId], references: [id], onDelete: Cascade, map: "FK_auth_tokens_user", index: "auth_tokens_user_idx")
+
+    @@index([userId, purpose], map: "auth_tokens_user_idx")
+    @@check(expression: "(purpose = ANY (ARRAY['invite'::text, 'reset'::text]))", map: "auth_tokens_purpose_check")
+    @@map("auth_tokens")
+  }
+
+  model Department {
+    id               Int                @id(map: "PK_departments") @default(autoincrement())
+    name             String
+    active           Boolean            @default(true)
+    createdAt        TimestamptzString  @default(now()) @map("created_at")
+    updatedAt        temporal.updatedAtString()  @map("updated_at")
+    budgets          Budget[]
+    journalLines     JournalLine[]
+    purchaseOrders   PurchaseOrder[]
+    purchaseRequests PurchaseRequest[]
+
+    @@map("departments")
+  }
+
+  model Project {
+    id               Int                @id(map: "PK_projects") @default(autoincrement())
+    name             String
+    active           Boolean            @default(true)
+    createdAt        TimestamptzString  @default(now()) @map("created_at")
+    updatedAt        temporal.updatedAtString()  @map("updated_at")
+    budgets          Budget[]
+    journalLines     JournalLine[]
+    purchaseOrders   PurchaseOrder[]
+    purchaseRequests PurchaseRequest[]
+
+    @@map("projects")
+  }
+
+  model Budget {
+    id           Int               @id(map: "PK_budgets") @default(autoincrement())
+    departmentId Int?              @map("department_id")
+    projectId    Int?              @map("project_id")
+    category     String?
+    period       DateString
+    amountUsd    Numeric(18, 4)    @default(0) @map("amount_usd")
+    createdAt    TimestamptzString @default(now()) @map("created_at")
+    updatedAt    temporal.updatedAtString() @map("updated_at")
+    department   Department?      @relation(fields: [departmentId], references: [id], map: "FK_budgets_department", index: false)
+    project      Project?         @relation(fields: [projectId], references: [id], map: "FK_budgets_project", index: false)
+
+    @@map("budgets")
+  }
+
+  model Category {
+    id               Int               @id(map: "PK_categories") @default(autoincrement())
+    name             String            @unique(map: "categories_name_key")
+    description      String?
+    expenseAccountId Int?              @map("expense_account_id")
+    createdAt        TimestamptzString @default(now()) @map("created_at")
+    updatedAt        temporal.updatedAtString() @map("updated_at")
+    expenseAccount   Account?         @relation(fields: [expenseAccountId], references: [id], map: "FK_categories_expense_account", index: false)
+
+    @@map("categories")
+  }
+
+  model ExchangeRate {
+    id        Int                 @id(map: "PK_exchange_rates") @default(autoincrement())
+    rateDate  DateString          @map("rate_date")
+    currency  pg.enum(Currency)
+    rateToUsd Numeric(18, 6)      @map("rate_to_usd")
+    source    pg.enum(RateSource) @default("manual")
+    createdAt TimestamptzString   @default(now()) @map("created_at")
+    updatedAt temporal.updatedAtString()   @map("updated_at")
+
+    @@unique([rateDate, currency], map: "exchange_rates_date_currency_key")
+    @@map("exchange_rates")
+  }
+
+  model InventoryItem {
+    id                   Int                    @id(map: "PK_inventory_items") @default(autoincrement())
+    sku                  String                 @unique(map: "inventory_items_sku_key")
+    name                 String
+    category             String?
+    unit                 String                 @default("pcs")
+    stockQty             Numeric(18, 4)         @default(0) @map("stock_qty")
+    reorderPoint         Numeric(18, 4)         @default(0) @map("reorder_point")
+    reorderQty           Numeric(18, 4)         @default(0) @map("reorder_qty")
+    active               Boolean                @default(true)
+    createdAt            TimestamptzString      @default(now()) @map("created_at")
+    updatedAt            temporal.updatedAtString()      @map("updated_at")
+    inventoryClaims      InventoryClaim[]
+    purchaseOrderItems   PurchaseOrderItem[]
+    purchaseRequestItems PurchaseRequestItem[]
+    stockMovements       StockMovement[]
+    stockRequests        StockRequest[]
+
+    @@map("inventory_items")
+  }
+
+  model PurchaseRequest {
+    id                   Int                    @id(map: "PK_purchase_requests") @default(autoincrement())
+    prNumber             String                 @default(sql`('PR-'::text || lpad((nextval('pr_number_seq'::regclass))::text, 4, '0'::text))`) @map("pr_number")
+    requesterId          Int                    @map("requester_id")
+    status               pg.enum(PrStatus)      @default("draft")
+    currency             pg.enum(Currency)      @default("USD")
+    exchangeRate         Numeric(18, 6)         @default(1) @map("exchange_rate")
+    totalOriginal        Numeric(18, 4)         @default(0) @map("total_original")
+    totalUsd             Numeric(18, 4)         @default(0) @map("total_usd")
+    departmentId         Int?                   @map("department_id")
+    projectId            Int?                   @map("project_id")
+    note                 String?
+    approverId           Int?                   @map("approver_id")
+    decidedAt            TimestamptzString?     @map("decided_at")
+    telegramMessageId    BigInt?                @map("telegram_message_id")
+    telegramChatId       BigInt?                @map("telegram_chat_id")
+    autoGenerated        Boolean                @default(false) @map("auto_generated")
+    createdAt            TimestamptzString      @default(now()) @map("created_at")
+    updatedAt            temporal.updatedAtString()      @map("updated_at")
+    purchaseOrders       PurchaseOrder[]
+    purchaseRequestItems PurchaseRequestItem[]
+    approver             User?                  @relation(name: "FK_purchase_requests_approver", fields: [approverId], references: [id], map: "FK_purchase_requests_approver", index: false)
+    department           Department?           @relation(fields: [departmentId], references: [id], map: "FK_purchase_requests_department", index: false)
+    project              Project?              @relation(fields: [projectId], references: [id], map: "FK_purchase_requests_project", index: false)
+    requester            User                   @relation(name: "FK_purchase_requests_requester", fields: [requesterId], references: [id], map: "FK_purchase_requests_requester")
+
+    @@index([requesterId], map: "purchase_requests_requester_idx")
+    @@index([status], map: "purchase_requests_status_idx")
+    @@check(expression: "(exchange_rate > (0)::numeric)", map: "purchase_requests_exchange_rate_positive")
+    @@map("purchase_requests")
+  }
+
+  model Supplier {
+    id               Int               @id(map: "PK_suppliers") @default(autoincrement())
+    name             String            @unique(map: "suppliers_name_key")
+    contactName      String?           @map("contact_name")
+    phone            String?
+    email            String?
+    address          String?
+    bankAccount      String?           @map("bank_account")
+    paymentTermsDays Int?              @map("payment_terms_days")
+    note             String?
+    active           Boolean           @default(true)
+    createdAt        TimestamptzString @default(now()) @map("created_at")
+    updatedAt        temporal.updatedAtString() @map("updated_at")
+    purchaseOrders   PurchaseOrder[]
+
+    @@map("suppliers")
+  }
+
+  model PurchaseOrder {
+    id                 Int                    @id(map: "PK_purchase_orders") @default(autoincrement())
+    poNumber           String                 @default(sql`('PO-'::text || lpad((nextval('po_number_seq'::regclass))::text, 4, '0'::text))`) @map("po_number")
+    prId               Int?                   @map("pr_id")
+    type              pg.enum(PoType)        @default("online") @map("type")
+    supplierName       String?                @map("supplier")
+    supplierId         Int?                   @map("supplier_id")
+    expenseAccountId   Int?                   @map("expense_account_id")
+    currency           pg.enum(Currency)      @default("USD")
+    exchangeRate       Numeric(18, 6)         @default(1) @map("exchange_rate")
+    status             pg.enum(PoStatus)      @default("open")
+    paymentStatus      pg.enum(PaymentStatus) @default("unpaid") @map("payment_status")
+    totalOriginal      Numeric(18, 4)         @default(0) @map("total_original")
+    totalUsd           Numeric(18, 4)         @default(0) @map("total_usd")
+    departmentId       Int?                   @map("department_id")
+    projectId          Int?                   @map("project_id")
+    createdBy          Int?                   @map("created_by")
+    createdAt          TimestamptzString      @default(now()) @map("created_at")
+    updatedAt          temporal.updatedAtString()      @map("updated_at")
+    inventoryClaims    InventoryClaim[]
+    payments           Payment[]
+    purchaseOrderItems PurchaseOrderItem[]
+    creator               User?                  @relation(fields: [createdBy], references: [id], map: "FK_purchase_orders_created_by", index: false)
+    department         Department?           @relation(fields: [departmentId], references: [id], map: "FK_purchase_orders_department", index: false)
+    expenseAccount     Account?              @relation(fields: [expenseAccountId], references: [id], map: "FK_purchase_orders_expense_account", index: false)
+    purchaseRequest                 PurchaseRequest?      @relation(fields: [prId], references: [id], map: "FK_purchase_orders_pr", index: false)
+    project            Project?              @relation(fields: [projectId], references: [id], map: "FK_purchase_orders_project", index: false)
+    supplier  Supplier?             @relation(fields: [supplierId], references: [id], map: "FK_purchase_orders_supplier", index: false)
+
+    @@index([status], map: "purchase_orders_status_idx")
+    @@check(expression: "(exchange_rate > (0)::numeric)", map: "purchase_orders_exchange_rate_positive")
+    @@map("purchase_orders")
+  }
+
+  model PurchaseOrderItem {
+    id                Int               @id(map: "PK_purchase_order_items") @default(autoincrement())
+    poId              Int               @map("po_id")
+    inventoryItemId   Int?              @map("inventory_item_id")
+    name              String
+    qtyOrdered        Numeric(18, 4)    @default(1) @map("qty_ordered")
+    qtyClaimed        Numeric(18, 4)    @default(0) @map("qty_claimed")
+    unitPriceOriginal Numeric(18, 4)    @default(0) @map("unit_price_original")
+    createdAt         TimestamptzString @default(now()) @map("created_at")
+    inventoryClaims   InventoryClaim[]
+    inventoryItem     InventoryItem?   @relation(fields: [inventoryItemId], references: [id], map: "FK_purchase_order_items_item", index: false)
+    purchaseOrder                PurchaseOrder    @relation(fields: [poId], references: [id], onDelete: Cascade, map: "FK_purchase_order_items_po")
+
+    @@index([poId], map: "purchase_order_items_po_idx")
+    @@map("purchase_order_items")
+  }
+
+  model InventoryClaim {
+    id               Int                  @id(map: "PK_inventory_claims") @default(autoincrement())
+    poId             Int?                 @map("po_id")
+    poItemId         Int?                 @map("po_item_id")
+    inventoryItemId  Int                  @map("inventory_item_id")
+    qtyClaimed       Numeric(18, 4)       @map("qty_claimed")
+    status           pg.enum(ClaimStatus) @default("pending")
+    receiptObjectKey String?              @map("receipt_object_key")
+    claimedBy        Int?                 @map("claimed_by")
+    confirmedBy      Int?                 @map("confirmed_by")
+    confirmedAt      TimestamptzString?   @map("confirmed_at")
+    createdAt        TimestamptzString    @default(now()) @map("created_at")
+    updatedAt        temporal.updatedAtString()    @map("updated_at")
+    claimant             User?                @relation(name: "FK_inventory_claims_claimed_by", fields: [claimedBy], references: [id], map: "FK_inventory_claims_claimed_by", index: false)
+    confirmer         User?                @relation(name: "FK_inventory_claims_confirmed_by", fields: [confirmedBy], references: [id], map: "FK_inventory_claims_confirmed_by", index: false)
+    inventoryItem    InventoryItem       @relation(fields: [inventoryItemId], references: [id], map: "FK_inventory_claims_item", index: false)
+    purchaseOrder               PurchaseOrder?      @relation(fields: [poId], references: [id], map: "FK_inventory_claims_po")
+    purchaseOrderItem           PurchaseOrderItem?  @relation(fields: [poItemId], references: [id], map: "FK_inventory_claims_po_item", index: false)
+
+    @@index([poId], map: "inventory_claims_po_idx")
+    @@check(expression: "(qty_claimed > (0)::numeric)", map: "inventory_claims_qty_check")
+    @@map("inventory_claims")
+  }
+
+  model JournalEntry {
+    id           Int                    @id(map: "PK_journal_entries") @default(autoincrement())
+    entryDate    DateString             @default(sql`CURRENT_DATE`) @map("entry_date")
+    memo         String?
+    currency     pg.enum(Currency)      @default("USD")
+    exchangeRate Numeric(18, 6)         @default(1) @map("exchange_rate")
+    source       pg.enum(JournalSource)
+    sourceRef    Int?                   @map("source_ref")
+    createdBy    Int?                   @map("created_by")
+    createdAt    TimestamptzString      @default(now()) @map("created_at")
+    updatedAt    temporal.updatedAtString()      @map("updated_at")
+    journalLines JournalLine[]
+    payments     Payment[]
+    creator         User?                  @relation(fields: [createdBy], references: [id], map: "FK_journal_entries_created_by", index: false)
+
+    @@map("journal_entries")
+  }
+
+  model JournalLine {
+    id                    Int               @id(map: "PK_journal_lines") @default(autoincrement())
+    entryId               Int               @map("entry_id")
+    accountId             Int               @map("account_id")
+    debitUsd              Numeric(18, 4)    @default(0) @map("debit_usd")
+    creditUsd             Numeric(18, 4)    @default(0) @map("credit_usd")
+    dimensionDepartmentId Int?              @map("dimension_department_id")
+    dimensionProjectId    Int?              @map("dimension_project_id")
+    createdAt             TimestamptzString @default(now()) @map("created_at")
+    account               Account          @relation(fields: [accountId], references: [id], map: "FK_journal_lines_account")
+    dimensionDepartment   Department?      @relation(fields: [dimensionDepartmentId], references: [id], map: "FK_journal_lines_department", index: false)
+    entry                 JournalEntry    @relation(fields: [entryId], references: [id], onDelete: Cascade, map: "FK_journal_lines_entry")
+    dimensionProject      Project?         @relation(fields: [dimensionProjectId], references: [id], map: "FK_journal_lines_project", index: false)
+
+    @@index([accountId], map: "journal_lines_account_idx")
+    @@index([entryId], map: "journal_lines_entry_idx")
+    @@check(expression: "((debit_usd >= (0)::numeric) AND (credit_usd >= (0)::numeric) AND (NOT ((debit_usd > (0)::numeric) AND (credit_usd > (0)::numeric))))", map: "journal_line_one_sided")
+    @@map("journal_lines")
+  }
+
+
+  model Notification {
+    id           Int               @id(map: "PK_notifications") @default(autoincrement())
+    userId       Int               @map("user_id")
+    event        String
+    payload      Jsonb             @default(json`{}`)
+    telegramSent Boolean           @default(false) @map("telegram_sent")
+    read         Boolean           @default(false)
+    createdAt    TimestamptzString @default(now()) @map("created_at")
+    user         User              @relation(fields: [userId], references: [id], onDelete: Cascade, map: "FK_notifications_user", index: "notifications_user_idx")
+
+    @@index([userId, read], map: "notifications_user_idx")
+    @@map("notifications")
+  }
+
+  model Payment {
+    id               Int                     @id(map: "PK_payments") @default(autoincrement())
+    poId             Int?                    @map("po_id")
+    amountOriginal   Numeric(18, 4)          @map("amount_original")
+    currency         pg.enum(Currency)       @default("USD")
+    exchangeRate     Numeric(18, 6)          @default(1) @map("exchange_rate")
+    amountUsd        Numeric(18, 4)          @default(0) @map("amount_usd")
+    expenseAccountId Int?                    @map("expense_account_id")
+    method           pg.enum(PaymentMethod)?
+    bankAccount      String?                 @map("bank_account")
+    reference        String?
+    trxId            String?                 @map("trx_id")
+    sender           String?
+    transferTo       String?                 @map("transfer_to")
+    remark           String?
+    paidAt           TimestamptzString       @default(now()) @map("paid_at")
+    receiptObjectKey String?                 @map("receipt_object_key")
+    recordedBy       Int?                    @map("recorded_by")
+    journalEntryId   Int?                    @map("journal_entry_id")
+    createdAt        TimestamptzString       @default(now()) @map("created_at")
+    updatedAt        temporal.updatedAtString()       @map("updated_at")
+    expenseAccount   Account?               @relation(fields: [expenseAccountId], references: [id], map: "FK_payments_expense_account", index: false)
+    journalEntry     JournalEntry?         @relation(fields: [journalEntryId], references: [id], map: "FK_payments_journal_entry", index: false)
+    purchaseOrder               PurchaseOrder?         @relation(fields: [poId], references: [id], map: "FK_payments_po")
+    recorder             User?                   @relation(fields: [recordedBy], references: [id], map: "FK_payments_recorded_by", index: false)
+
+    @@index([poId], map: "payments_po_idx")
+    @@check(expression: "(exchange_rate > (0)::numeric)", map: "payments_exchange_rate_positive")
+    @@map("payments")
+  }
+
+  model PurchaseRequestItem {
+    id                Int               @id(map: "PK_purchase_request_items") @default(autoincrement())
+    prId              Int               @map("pr_id")
+    name              String
+    qty               Numeric(18, 4)    @default(1)
+    unitPriceOriginal Numeric(18, 4)    @default(0) @map("unit_price_original")
+    inventoryItemId   Int?              @map("inventory_item_id")
+    category          String?
+    createdAt         TimestamptzString @default(now()) @map("created_at")
+    inventoryItem     InventoryItem?   @relation(fields: [inventoryItemId], references: [id], map: "FK_purchase_request_items_item", index: false)
+    purchaseRequest                PurchaseRequest  @relation(fields: [prId], references: [id], onDelete: Cascade, map: "FK_purchase_request_items_pr")
+
+    @@index([prId], map: "purchase_request_items_pr_idx")
+    @@map("purchase_request_items")
+  }
+
+  model Session {
+    id        Int              @id(map: "PK_f55da76ac1c3ac420f444d2ff11") @default(autoincrement())
+    hash      VarChar
+    createdAt TimestampString  @default(now())
+    updatedAt TimestampString  @default(now())
+    deletedAt TimestampString?
+    userId    Int?
+    user      User?            @relation(fields: [userId], references: [id], map: "FK_3d2f174ef04fb312fdebd0ddc53")
+
+    @@index([userId], map: "IDX_3d2f174ef04fb312fdebd0ddc5")
+    @@map("session")
+  }
+
+  model StockMovement {
+    id              Int                     @id(map: "PK_stock_movements") @default(autoincrement())
+    inventoryItemId Int                     @map("inventory_item_id")
+    delta           Numeric(18, 4)
+    reason          pg.enum(MovementReason)
+    refTable        String?                 @map("ref_table")
+    refId           Int?                    @map("ref_id")
+    balanceAfter    Numeric(18, 4)          @map("balance_after")
+    createdBy       Int?                    @map("created_by")
+    createdAt       TimestamptzString       @default(now()) @map("created_at")
+    creator            User?                   @relation(fields: [createdBy], references: [id], map: "FK_stock_movements_created_by", index: false)
+    inventoryItem   InventoryItem          @relation(fields: [inventoryItemId], references: [id], map: "FK_stock_movements_item", index: "stock_movements_item_idx")
+
+    @@index([inventoryItemId, createdAt], map: "stock_movements_item_idx")
+    @@map("stock_movements")
+  }
+
+  model StockRequest {
+    id              Int                         @id(map: "PK_stock_requests") @default(autoincrement())
+    requesterId     Int                         @map("requester_id")
+    inventoryItemId Int                         @map("inventory_item_id")
+    qty             Numeric(18, 4)
+    status          pg.enum(StockRequestStatus) @default("pending")
+    priority        pg.enum(StockPriority)      @default("medium")
+    department      String?
+    approvedBy      Int?                        @map("approved_by")
+    approvedAt      TimestamptzString?          @map("approved_at")
+    fulfilledBy     Int?                        @map("fulfilled_by")
+    fulfilledAt     TimestamptzString?          @map("fulfilled_at")
+    note            String?
+    createdAt       TimestamptzString           @default(now()) @map("created_at")
+    updatedAt       temporal.updatedAtString()           @map("updated_at")
+    approver            User?                       @relation(name: "FK_stock_requests_approved_by", fields: [approvedBy], references: [id], map: "FK_stock_requests_approved_by", index: false)
+    fulfiller        User?                       @relation(name: "FK_stock_requests_fulfilled_by", fields: [fulfilledBy], references: [id], map: "FK_stock_requests_fulfilled_by", index: false)
+    inventoryItem   InventoryItem              @relation(fields: [inventoryItemId], references: [id], map: "FK_stock_requests_item", index: false)
+    requester       User                        @relation(name: "FK_stock_requests_requester", fields: [requesterId], references: [id], map: "FK_stock_requests_requester")
+
+    @@index([requesterId], map: "stock_requests_requester_idx")
+    @@check(expression: "(qty > (0)::numeric)", map: "stock_requests_qty_check")
+    @@map("stock_requests")
+  }
+
+  model TelegramUpdate {
+    updateId    BigInt            @id(map: "PK_telegram_updates") @map("update_id")
+    processedAt TimestamptzString @default(now()) @map("processed_at")
+
+    @@map("telegram_updates")
+  }
+
+  native_enum AccountType {
+    asset = "asset"
+    liability = "liability"
+    equity = "equity"
+    income = "income"
+    expense = "expense"
+    @@map("account_type")
+  }
+
+  native_enum ClaimStatus {
+    pending = "pending"
+    confirmed = "confirmed"
+    rejected = "rejected"
+    @@map("claim_status")
+  }
+
+  native_enum Currency {
+    USD = "USD"
+    KHR = "KHR"
+    CNY = "CNY"
+    @@map("currency")
+  }
+
+  native_enum JournalSource {
+    po_payment = "po_payment"
+    manual_income = "manual_income"
+    manual = "manual"
+    @@map("journal_source")
+  }
+
+  native_enum MovementReason {
+    claim = "claim"
+    stock_request = "stock_request"
+    adjustment = "adjustment"
+    @@map("movement_reason")
+  }
+
+  native_enum PaymentMethod {
+    bank_transfer = "bank_transfer"
+    cash = "cash"
+    card = "card"
+    mobile = "mobile"
+    other = "other"
+    @@map("payment_method")
+  }
+
+  native_enum PaymentStatus {
+    unpaid = "unpaid"
+    partial = "partial"
+    paid = "paid"
+    @@map("payment_status")
+  }
+
+  native_enum PoStatus {
+    open = "open"
+    partial = "partial"
+    complete = "complete"
+    cancelled = "cancelled"
+    @@map("po_status")
+  }
+
+  native_enum PoType {
+    online = "online"
+    physical = "physical"
+    @@map("po_type")
+  }
+
+  native_enum PrStatus {
+    draft = "draft"
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+    cancelled = "cancelled"
+    converted = "converted"
+    @@map("pr_status")
+  }
+
+  native_enum RateSource {
+    api = "api"
+    manual = "manual"
+    @@map("rate_source")
+  }
+
+  native_enum StockPriority {
+    low = "low"
+    medium = "medium"
+    high = "high"
+    urgent = "urgent"
+    @@map("stock_priority")
+  }
+
+  native_enum StockRequestStatus {
+    pending = "pending"
+    approved = "approved"
+    fulfilled = "fulfilled"
+    rejected = "rejected"
+    @@map("stock_request_status")
+  }
+}

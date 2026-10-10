@@ -19,7 +19,14 @@ to debug, and Phase 2 becomes much simpler because almost no logic is left in ra
   services. Migrations `1785888700000-MoveWorkflowTriggersToServices` and
   `1785888800000-MoveUsdAndTimestampsToApp` drop them (both `down`s verified). Only T2
   (`journal_lines_balanced`) remains in the database.
-- **Phase 2: not started.** Deploy and verify Phase 1 first.
+- **Phase 2: in progress on `refactor/prisma` (draft PR #2), using Prisma ORM 8 RC.**
+  Prisma 8 replaced the Prisma 7 API this plan was written against: the schema is a
+  "contract" (`src/prisma/contract.prisma`), queries are chains
+  (`db.orm.public.Payment.where(...).forUpdate().first()`), transactions are
+  `db.transaction(async (tx) => …)`, numerics come back as strings and timestamps as
+  Postgres text (`toDate()` converts). The Phase 2 steps below still apply in order; the
+  Prisma 7 command names in them do not. Done: setup alongside TypeORM, settings,
+  activity. Next: notifications, files, telegram, org.
 
 Decisions taken: deploy Phase 1 in a short maintenance window; keep T2 only; T1 becomes
 code plus `CHECK (exchange_rate > 0)`; low-stock alerts now go through

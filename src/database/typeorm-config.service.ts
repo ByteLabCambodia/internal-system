@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions, TypeOrmOptionsFactory } from '@nestjs/typeorm';
 import { AllConfigType } from '../config/config.type';
+import { poolShare } from '../prisma/pool-share';
 
 @Injectable()
 export class TypeOrmConfigService implements TypeOrmOptionsFactory {
@@ -33,7 +34,11 @@ export class TypeOrmConfigService implements TypeOrmOptionsFactory {
       extra: {
         // based on https://node-postgres.com/apis/pool
         // max connection pool size
-        max: this.configService.get('database.maxConnections', { infer: true }),
+        max: poolShare(
+          this.configService.getOrThrow('database.maxConnections', {
+            infer: true,
+          }),
+        ).typeorm,
         // node-postgres has no connection timeout by default — if the DB is unreachable
         // (wrong host, network path blocked, etc.) it hangs forever instead of erroring,
         // which on a serverless platform just looks like the request never responding.
