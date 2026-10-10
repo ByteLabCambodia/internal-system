@@ -10,12 +10,10 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { InlineKeyboard } from 'grammy';
 import { TelegramService } from './telegram.service';
 import { TelegramLinkService } from './telegram-link.service';
-import { TelegramUpdateEntity } from './entities/telegram-update.entity';
+import { PrismaService } from '../prisma/prisma.service';
 import { AllConfigType } from '../config/config.type';
 import { PublicPage } from '../common/web/public-page.decorator';
 import { PermissionEnum } from '../permissions/permissions.enum';
@@ -34,8 +32,7 @@ type TelegramUpdate = {
 @Controller('telegram')
 export class TelegramController {
   constructor(
-    @InjectRepository(TelegramUpdateEntity)
-    private readonly updates: Repository<TelegramUpdateEntity>,
+    private readonly prisma: PrismaService,
     private readonly telegram: TelegramService,
     private readonly links: TelegramLinkService,
     private readonly configService: ConfigService<AllConfigType>,
@@ -66,7 +63,9 @@ export class TelegramController {
     if (!update?.update_id) return { ok: true };
 
     try {
-      await this.updates.insert({ updateId: String(update.update_id) });
+      await this.prisma.db.orm.public.TelegramUpdate.create({
+        updateId: BigInt(update.update_id),
+      });
     } catch {
       // Already processed — Telegram retries on any non-200, so this is expected traffic.
       return { ok: true, duplicate: true };
