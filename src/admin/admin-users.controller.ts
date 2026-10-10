@@ -9,9 +9,6 @@ import {
   Res,
 } from '@nestjs/common';
 import { Response } from 'express';
-import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Not, Repository } from 'typeorm';
-import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { SessionService } from '../session/session.service';
 import { WebAuthService } from '../auth/web/web-auth.service';
@@ -36,8 +33,6 @@ const ROLE_OPTIONS = [
 @Controller('admin/users')
 export class AdminUsersController {
   constructor(
-    @InjectRepository(UserEntity)
-    private readonly users: Repository<UserEntity>,
     private readonly usersService: UsersService,
     private readonly sessions: SessionService,
     private readonly webAuth: WebAuthService,
@@ -47,20 +42,23 @@ export class AdminUsersController {
 
   /** A user with no password and an unused invite token is "pending invite". */
   private async listRows() {
-    const rows = await this.users.find({ order: { id: 'ASC' } });
+    const rows = await this.usersService.findAll();
 
     const pending = new Set<number>();
     for (const row of rows) {
-      if (!row.password && (await this.tokens.hasPendingInvite(row.id))) {
-        pending.add(row.id);
+      if (
+        !row.password &&
+        (await this.tokens.hasPendingInvite(Number(row.id)))
+      ) {
+        pending.add(Number(row.id));
       }
     }
 
     return rows.map((row) => ({
       ...row,
-      pendingInvite: pending.has(row.id),
+      pendingInvite: pending.has(Number(row.id)),
       // No password and no live invite: the account cannot be signed into at all.
-      stranded: !row.password && !pending.has(row.id),
+      stranded: !row.password && !pending.has(Number(row.id)),
     }));
   }
 
@@ -90,7 +88,7 @@ export class AdminUsersController {
     @Res() response: Response,
     @Query('sent') sent?: string,
   ) {
-    const editing = await this.users.findOne({ where: { id } });
+    const editing = await this.usersService.findById(id);
 
     return this.render(response, {
       editing,
@@ -144,7 +142,7 @@ export class AdminUsersController {
       });
     }
 
-    const existing = await this.users.findOne({ where: { email: dto.email } });
+    const existing = await this.usersService.findByEmail(dto.email);
     if (existing) {
       return response.status(422).render('admin/users', {
         title: 'Users',
@@ -166,12 +164,12 @@ export class AdminUsersController {
     });
 
     if (usePassword) {
-      await this.users.update(Number(created.id), {
+      await this.usersService.updateAdminFields(created.id, {
         mustChangePassword: true,
         department: dto.department ?? null,
       });
     } else {
-      await this.users.update(Number(created.id), {
+      await this.usersService.updateAdminFields(created.id, {
         department: dto.department ?? null,
       });
     }
@@ -221,7 +219,7 @@ export class AdminUsersController {
     @Res() response: Response,
   ) {
     const form = await validateForm(UpdateUserFormDto, body);
-    const editing = await this.users.findOne({ where: { id } });
+    const editing = await this.usersService.findById(id);
 
     if (!form.ok || !editing) {
       return response.status(422).render('admin/users', {
@@ -246,7 +244,7 @@ export class AdminUsersController {
       active: dto.active === 'true',
     });
 
-    await this.users.update(id, {
+    await this.usersService.updateAdminFields(id, {
       department: dto.department ?? null,
       telegramId: dto.telegramId ? String(dto.telegramId) : null,
     });
@@ -397,11 +395,12 @@ export class AdminUsersController {
     }
 
     // Never leave the system with no way in.
-    const otherAdmins = await this.users.count({
-      where: { role: { id: RoleEnum.admin }, active: true, id: Not(id) },
-    });
+    const otherAdmins = await this.usersService.countActiveWithRole(
+      RoleEnum.admin,
+      id,
+    );
 
-    const target = await this.users.findOne({ where: { id } });
+    const target = await this.usersService.findById(id);
     if (target?.role?.id === RoleEnum.admin && otherAdmins === 0) {
       setFlash(response, 'error', 'This is the last active admin.');
       return response.redirect('/admin/users');
@@ -434,10 +433,8 @@ export class AdminUsersController {
   /** Accounts that can never sign in: no password and no live invite. */
   @Get('stranded')
   async stranded(@Res() response: Response) {
-    const rows = await this.users.find({
-      where: { password: IsNull(), email: Not(IsNull()) },
+    return response.json({
+      count: await this.usersService.countWithoutPassword(),
     });
-
-    return response.json({ count: rows.length });
   }
 }

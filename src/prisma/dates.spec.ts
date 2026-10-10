@@ -1,4 +1,4 @@
-import { toDate } from './dates';
+import { toDate, toTimestamp } from './dates';
 
 describe('toDate', () => {
   it('should read a timestamptz with an hour offset', () => {
@@ -31,5 +31,13 @@ describe('toDate', () => {
 
   it('should throw on garbage instead of returning an invalid date', () => {
     expect(() => toDate('not a date')).toThrow('Unparseable timestamp');
+  });
+});
+
+describe('toTimestamp', () => {
+  it('should round-trip a Date through a zone-less timestamp', () => {
+    const now = new Date(2026, 9, 10, 9, 5, 3, 7);
+    expect(toTimestamp(now)).toBe('2026-10-10 09:05:03.007');
+    expect(toDate(toTimestamp(now)).getTime()).toBe(now.getTime());
   });
 });
