@@ -2,7 +2,7 @@ import { Body, Controller, Get, Post, Query, Req, Res } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { WebAuthService } from './web-auth.service';
-import { AuthTokenPurposeEnum } from '../entities/auth-token.entity';
+import { AuthTokenPurposeEnum } from '../auth-token-purpose.enum';
 import { SignInFormDto } from './dto/sign-in-form.dto';
 import { EmailFormDto } from './dto/email-form.dto';
 import { NewPasswordFormDto } from './dto/new-password-form.dto';

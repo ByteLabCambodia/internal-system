@@ -23,6 +23,9 @@ RUN npm ci --omit=dev --ignore-scripts
 COPY --from=build /usr/src/app/dist ./dist
 COPY --from=build /usr/src/app/public ./public
 COPY --from=build /usr/src/app/src/views ./src/views
+# Prisma migrations and contract snapshots, read by `npm run migrate:prod` (the one-off
+# ECS task the deploy runs before new tasks start).
+COPY --from=build /usr/src/app/migrations ./migrations
 COPY --from=build /usr/src/app/src/i18n ./src/i18n
 # mail.service.ts resolves templates from process.cwd()/src/mail/mail-templates at
 # runtime (not from dist) — see app.config.ts's workingDirectory.

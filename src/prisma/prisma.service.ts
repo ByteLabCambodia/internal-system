@@ -1,18 +1,18 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Pool } from 'pg';
 import postgres from '@prisma/orm-postgres/runtime';
 import type { Contract } from './contract.d';
 import contractJson from './contract.json';
 import { databaseUrl } from './database-url';
-import { poolShare } from './pool-share';
 import { AllConfigType } from '../config/config.type';
 
-function createDb(pool: Pool, verifyMarker: boolean) {
+function createDb(pool: Pool) {
   return postgres<Contract>({
     contractJson,
     pg: pool,
-    verifyMarker: verifyMarker ? 'onFirstUse' : false,
+    // Prisma's own check only logs a warning; assertSigned() below refuses to start.
+    verifyMarker: false,
   });
 }
 
@@ -22,12 +22,14 @@ export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 export type Queryable = Pick<Db, 'orm'> | Tx;
 
 /**
- * The Prisma ORM 8 client. Shares the pool settings TypeORM uses (size, timeout, SSL).
- * With PRISMA_VERIFY_MARKER=true it checks on first use that the database is signed with
- * this contract, so a deploy whose migrations have not run fails loudly.
+ * The Prisma ORM 8 client, on a pg pool sized and secured by the DATABASE_* settings.
+ * At startup it checks that the database is signed with this contract (npm run migrate
+ * signs it) and refuses to start otherwise, so code deployed ahead of its migrations
+ * fails its health check instead of misreading the schema. PRISMA_VERIFY_MARKER=false
+ * turns the check off.
  */
 @Injectable()
-export class PrismaService implements OnModuleDestroy {
+export class PrismaService implements OnModuleInit, OnModuleDestroy {
   readonly pool: Pool;
   readonly db: Db;
 
@@ -43,7 +45,7 @@ export class PrismaService implements OnModuleDestroy {
         DATABASE_PASSWORD: database.password,
         DATABASE_NAME: database.name,
       }),
-      max: poolShare(database.maxConnections).prisma,
+      max: database.maxConnections,
       connectionTimeoutMillis: 10_000,
       ssl: database.sslEnabled
         ? {
@@ -55,14 +57,40 @@ export class PrismaService implements OnModuleDestroy {
         : undefined,
     });
 
-    // Opt-in until Prisma owns migrations: nothing signs the production database yet
-    // (TypeORM still migrates it), so a default-on check would fail every query. The
-    // integration suite checks the contract against the migrated schema instead.
-    this.db = createDb(this.pool, process.env.PRISMA_VERIFY_MARKER === 'true');
+    this.db = createDb(this.pool);
+  }
+
+  async onModuleInit(): Promise<void> {
+    if (process.env.PRISMA_VERIFY_MARKER === 'false') return;
+    await assertSigned(this.pool);
   }
 
   async onModuleDestroy(): Promise<void> {
     await this.db.close();
     await this.pool.end();
+  }
+}
+
+/** Throws unless the database's marker names the contract this build was emitted from. */
+export async function assertSigned(pool: Pool): Promise<void> {
+  const expected = contractJson.storage.storageHash;
+  const { rows } = await pool
+    .query<{
+      core_hash: string;
+    }>(`SELECT core_hash FROM prisma_contract.marker WHERE space = 'app'`)
+    .catch((error: { code?: string }) => {
+      // No marker table at all: never signed. Anything else (unreachable) is rethrown.
+      if (error.code === '42P01')
+        return { rows: [] as { core_hash: string }[] };
+      throw error;
+    });
+  const actual = rows[0]?.core_hash;
+
+  if (actual !== expected) {
+    throw new Error(
+      actual
+        ? `The database is at contract ${actual.slice(0, 12)}, this build expects ${expected.slice(0, 12)}. Run \`npm run migrate\` first.`
+        : `The database is not signed with a Prisma contract. Run \`npm run migrate\` first.`,
+    );
   }
 }

@@ -13,7 +13,7 @@ import { UsersService } from '../users/users.service';
 import { SessionService } from '../session/session.service';
 import { WebAuthService } from '../auth/web/web-auth.service';
 import { AuthTokensService } from '../auth/auth-tokens.service';
-import { AuthTokenPurposeEnum } from '../auth/entities/auth-token.entity';
+import { AuthTokenPurposeEnum } from '../auth/auth-token-purpose.enum';
 import { ActivityService } from '../activity/activity.service';
 import { RoleEnum } from '../roles/roles.enum';
 import { PermissionEnum } from '../permissions/permissions.enum';

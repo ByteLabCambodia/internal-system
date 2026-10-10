@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import crypto from 'crypto';
-import { AuthTokenPurposeEnum } from './entities/auth-token.entity';
+import { AuthTokenPurposeEnum } from './auth-token-purpose.enum';
 import { PrismaService } from '../prisma/prisma.service';
 import { toDate } from '../prisma/dates';
 import { timestamptz } from '../prisma/numeric';
