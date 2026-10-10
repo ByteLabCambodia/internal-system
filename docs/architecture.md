@@ -111,7 +111,7 @@ export class UsersRelationalRepository implements UserRepository {
 
 ### Is there a way to generate a new resource (controller, service, DTOs, etc) with Hexagonal Architecture?
 
-Yes, you can use the [CLI](cli.md) to generate a new resource with Hexagonal Architecture.
+No. The generators were TypeORM-specific and were removed with it; see [Database](database.md) for adding a table.
 
 ---
 
@@ -123,4 +123,4 @@ Yes, you can use the [CLI](cli.md) to generate a new resource with Hexagonal Arc
 
 Previous: [Installing and Running](installing-and-running.md)
 
-Next: [Command Line Interface](cli.md)
+Next: [Database](database.md)
