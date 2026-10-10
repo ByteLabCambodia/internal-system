@@ -311,6 +311,9 @@ importers:
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.0.3(jiti@1.21.7)(supports-color@8.1.1))
+      '@jest/globals':
+        specifier: 30.3.0
+        version: 30.3.0(supports-color@8.1.1)
       '@nestjs/cli':
         specifier: 11.0.18
         version: 11.0.18(@swc/cli@0.8.1(@swc/core@1.15.18)(chokidar@4.0.3)(supports-color@8.1.1))(@swc/core@1.15.18)(@types/node@25.5.0)(esbuild@0.28.2)(uglify-js@3.19.3)
