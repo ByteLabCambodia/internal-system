@@ -23,7 +23,7 @@ ECS task runs `pnpm run migrate:prod`). There are no entity classes and no gener
    - A relation must not share its name with a column (an include is aliased by the
      relation name and would overwrite the column; see `PurchaseOrder.supplierRecord`).
 2. **Emit:** `pnpm run prisma:emit` (writes `src/prisma/contract.json` and `contract.d.ts`).
-3. **Plan:** `pnpm run migration:plan -- <snake_name>`. Read the `from:` line: it must be
+3. **Plan:** `pnpm run migration:plan <snake_name>`. Read the `from:` line: it must be
    the previous migration's hash, never `(baseline)`. If the plan needs a data backfill,
    `migration.ts` contains `placeholder(...)`: fill it in, then self-emit with
    `node migrations/app/<dir>/migration.ts`. Anything the contract cannot describe

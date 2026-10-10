@@ -26,7 +26,7 @@ PostgreSQL, through [Prisma ORM 8](https://www.prisma.io) (release candidate).
 
 1. Edit `src/prisma/contract.prisma`.
 2. `pnpm run prisma:emit`
-3. `pnpm run migration:plan -- <snake_case_name>`. The plan's `from:` must be the previous
+3. `pnpm run migration:plan <snake_case_name>`. The plan's `from:` must be the previous
    migration's hash, never `(baseline)`. Fill in any `placeholder(...)` data transforms in
    the new `migration.ts`, then re-emit it with `node migrations/app/<dir>/migration.ts`.
 4. `pnpm run migrate`, then `pnpm exec prisma db verify --db "$DATABASE_URL"`.
