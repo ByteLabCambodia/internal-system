@@ -108,7 +108,7 @@ export class PurchaseOrderEntity extends EntityRelationalHelper {
   })
   totalOriginal: string;
 
-  // derived by trigger T1 — never write this directly
+  // total_original / exchange_rate, set by PurchaseOrdersService via MoneyService.toUsd
   @Column({
     name: 'total_usd',
     type: 'numeric',

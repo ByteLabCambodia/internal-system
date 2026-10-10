@@ -3,9 +3,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 /**
  * Manager approval limit removed: manager is now unlimited (null), same as admin.
  */
-export class RemoveManagerApprovalLimit1785888600000
-  implements MigrationInterface
-{
+export class RemoveManagerApprovalLimit1785888600000 implements MigrationInterface {
   name = 'RemoveManagerApprovalLimit1785888600000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

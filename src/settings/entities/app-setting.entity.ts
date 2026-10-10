@@ -2,9 +2,8 @@ import { Column, Entity, PrimaryColumn, UpdateDateColumn } from 'typeorm';
 import { EntityRelationalHelper } from '../../utils/relational-entity-helper';
 
 /**
- * Key/value settings that the DB triggers themselves must read (a trigger cannot see the
- * app's env), plus anything Admin → Settings edits. Values are stored as text and cast
- * where used; see app_setting_numeric() in the trigger migration.
+ * Key/value settings Admin → Settings edits at runtime, such as the C3 tolerances. Values
+ * are stored as text and cast where used; see SettingsService.numeric().
  */
 @Entity({ name: 'app_settings' })
 export class AppSettingEntity extends EntityRelationalHelper {

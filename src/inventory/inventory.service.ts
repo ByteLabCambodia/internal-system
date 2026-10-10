@@ -4,7 +4,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, ILike, Repository } from 'typeorm';
+import { DataSource, EntityManager, ILike, Repository } from 'typeorm';
 import Decimal from 'decimal.js';
 import { InventoryItemEntity } from './entities/inventory-item.entity';
 import { StockMovementEntity } from './entities/stock-movement.entity';
@@ -134,8 +134,8 @@ export class InventoryService {
   }
 
   async update(actor: User, id: number, dto: InventoryItemDto): Promise<void> {
-    // stock_qty is deliberately absent: stock only moves through adjustStock and the
-    // triggers, so the ledger and the balance can never disagree.
+    // stock_qty is deliberately absent: stock only moves through applyMovement, so the
+    // ledger and the balance can never disagree.
     await this.items.update(id, {
       sku: dto.sku.trim(),
       name: dto.name.trim(),
@@ -174,39 +174,17 @@ export class InventoryService {
     }
 
     const balanceAfter = await this.dataSource.transaction(async (manager) => {
-      const item = await manager
-        .createQueryBuilder(InventoryItemEntity, 'item')
-        .setLock('pessimistic_write')
-        .where('item.id = :id', { id: itemId })
-        .getOne();
-
-      if (!item) throw new NotFoundException('Inventory item not found');
-
-      const balance = new Decimal(item.stockQty).plus(amount);
-
-      if (balance.isNegative()) {
-        throw new UnprocessableEntityException(
+      const { balanceAfter } = await this.applyMovement(manager, {
+        itemId,
+        delta: amount,
+        reason: MovementReasonEnum.adjustment,
+        refTable: 'inventory_items',
+        refId: itemId,
+        actorId: Number(actor.id),
+        onNegative: (item, balance) =>
           `That would take ${item.sku} to ${balance.toFixed(4)}. Stock cannot go below zero.`,
-        );
-      }
-
-      await manager.update(InventoryItemEntity, itemId, {
-        stockQty: balance.toFixed(4),
       });
-
-      await manager.save(
-        manager.create(StockMovementEntity, {
-          inventoryItem: { id: itemId } as never,
-          delta: amount.toFixed(4),
-          reason: MovementReasonEnum.adjustment,
-          refTable: 'inventory_items',
-          refId: itemId,
-          balanceAfter: balance.toFixed(4),
-          createdBy: { id: Number(actor.id) } as never,
-        }),
-      );
-
-      return balance.toFixed(4);
+      return balanceAfter;
     });
 
     await this.activity.log({
@@ -218,5 +196,63 @@ export class InventoryService {
     });
 
     return balanceAfter;
+  }
+
+  /**
+   * The only way stock changes: locks the item row, refuses to go below zero, updates the
+   * balance and appends the movement ledger row, all inside the caller's transaction. The
+   * lock means a concurrent claim, fulfilment or adjustment queues behind this one, so
+   * `balance_after` is always the true running balance.
+   */
+  async applyMovement(
+    manager: EntityManager,
+    movement: {
+      itemId: number;
+      delta: Decimal;
+      reason: MovementReasonEnum;
+      refTable: string;
+      refId: number;
+      actorId: number | null;
+      onNegative: (item: InventoryItemEntity, balance: Decimal) => string;
+    },
+  ): Promise<{ item: InventoryItemEntity; balanceAfter: string }> {
+    const item = await manager
+      .createQueryBuilder(InventoryItemEntity, 'item')
+      .setLock('pessimistic_write')
+      .where('item.id = :id', { id: movement.itemId })
+      .getOne();
+
+    if (!item) throw new NotFoundException('Inventory item not found');
+
+    const balance = new Decimal(item.stockQty).plus(movement.delta);
+
+    if (balance.isNegative()) {
+      throw new UnprocessableEntityException(
+        movement.onNegative(item, balance),
+      );
+    }
+
+    const balanceAfter = balance.toFixed(4);
+
+    await manager.update(InventoryItemEntity, item.id, {
+      stockQty: balanceAfter,
+    });
+
+    await manager.save(
+      manager.create(StockMovementEntity, {
+        inventoryItem: { id: item.id } as never,
+        delta: movement.delta.toFixed(4),
+        reason: movement.reason,
+        refTable: movement.refTable,
+        refId: movement.refId,
+        balanceAfter,
+        createdBy: movement.actorId
+          ? ({ id: movement.actorId } as never)
+          : null,
+      }),
+    );
+
+    item.stockQty = balanceAfter;
+    return { item, balanceAfter };
   }
 }

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ProcurementModule } from '../procurement/procurement.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { StockRequestEntity } from './entities/stock-request.entity';
 import { InventoryModule } from '../inventory/inventory.module';
@@ -10,6 +11,7 @@ import { StockRequestsController } from './stock-requests.controller';
   imports: [
     TypeOrmModule.forFeature([StockRequestEntity]),
     InventoryModule,
+    ProcurementModule,
     OrgModule,
   ],
   controllers: [StockRequestsController],
