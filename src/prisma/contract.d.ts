@@ -312,9 +312,9 @@ export type FieldOutputTypes = {
       readonly path: CodecTypes['sql/varchar@1']['output'];
     };
     readonly InventoryClaim: {
-      readonly claimedBy: CodecTypes['pg/int4@1']['output'] | null;
+      readonly claimedById: CodecTypes['pg/int4@1']['output'] | null;
       readonly confirmedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
-      readonly confirmedBy: CodecTypes['pg/int4@1']['output'] | null;
+      readonly confirmedById: CodecTypes['pg/int4@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly inventoryItemId: CodecTypes['pg/int4@1']['output'];
@@ -340,7 +340,7 @@ export type FieldOutputTypes = {
     };
     readonly JournalEntry: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
-      readonly createdBy: CodecTypes['pg/int4@1']['output'] | null;
+      readonly createdById: CodecTypes['pg/int4@1']['output'] | null;
       readonly currency: 'USD' | 'KHR' | 'CNY';
       readonly entryDate: CodecTypes['pg/date-string@1']['output'];
       readonly exchangeRate: Numeric<18, 6>;
@@ -383,7 +383,7 @@ export type FieldOutputTypes = {
       readonly paidAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly poId: CodecTypes['pg/int4@1']['output'] | null;
       readonly receiptObjectKey: CodecTypes['pg/text@1']['output'] | null;
-      readonly recordedBy: CodecTypes['pg/int4@1']['output'] | null;
+      readonly recordedById: CodecTypes['pg/int4@1']['output'] | null;
       readonly reference: CodecTypes['pg/text@1']['output'] | null;
       readonly remark: CodecTypes['pg/text@1']['output'] | null;
       readonly sender: CodecTypes['pg/text@1']['output'] | null;
@@ -400,7 +400,7 @@ export type FieldOutputTypes = {
     };
     readonly PurchaseOrder: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
-      readonly createdBy: CodecTypes['pg/int4@1']['output'] | null;
+      readonly createdById: CodecTypes['pg/int4@1']['output'] | null;
       readonly currency: 'USD' | 'KHR' | 'CNY';
       readonly departmentId: CodecTypes['pg/int4@1']['output'] | null;
       readonly exchangeRate: Numeric<18, 6>;
@@ -473,7 +473,7 @@ export type FieldOutputTypes = {
     readonly StockMovement: {
       readonly balanceAfter: Numeric<18, 4>;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
-      readonly createdBy: CodecTypes['pg/int4@1']['output'] | null;
+      readonly createdById: CodecTypes['pg/int4@1']['output'] | null;
       readonly delta: Numeric<18, 4>;
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly inventoryItemId: CodecTypes['pg/int4@1']['output'];
@@ -483,11 +483,11 @@ export type FieldOutputTypes = {
     };
     readonly StockRequest: {
       readonly approvedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
-      readonly approvedBy: CodecTypes['pg/int4@1']['output'] | null;
+      readonly approvedById: CodecTypes['pg/int4@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly department: CodecTypes['pg/text@1']['output'] | null;
       readonly fulfilledAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
-      readonly fulfilledBy: CodecTypes['pg/int4@1']['output'] | null;
+      readonly fulfilledById: CodecTypes['pg/int4@1']['output'] | null;
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly inventoryItemId: CodecTypes['pg/int4@1']['output'];
       readonly note: CodecTypes['pg/text@1']['output'] | null;
@@ -620,9 +620,9 @@ export type FieldInputTypes = {
       readonly path: CodecTypes['sql/varchar@1']['input'];
     };
     readonly InventoryClaim: {
-      readonly claimedBy: CodecTypes['pg/int4@1']['input'] | null;
+      readonly claimedById: CodecTypes['pg/int4@1']['input'] | null;
       readonly confirmedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
-      readonly confirmedBy: CodecTypes['pg/int4@1']['input'] | null;
+      readonly confirmedById: CodecTypes['pg/int4@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly id: CodecTypes['pg/int4@1']['input'];
       readonly inventoryItemId: CodecTypes['pg/int4@1']['input'];
@@ -648,7 +648,7 @@ export type FieldInputTypes = {
     };
     readonly JournalEntry: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
-      readonly createdBy: CodecTypes['pg/int4@1']['input'] | null;
+      readonly createdById: CodecTypes['pg/int4@1']['input'] | null;
       readonly currency: 'USD' | 'KHR' | 'CNY';
       readonly entryDate: CodecTypes['pg/date-string@1']['input'];
       readonly exchangeRate: CodecTypes['pg/numeric@1']['input'];
@@ -691,7 +691,7 @@ export type FieldInputTypes = {
       readonly paidAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly poId: CodecTypes['pg/int4@1']['input'] | null;
       readonly receiptObjectKey: CodecTypes['pg/text@1']['input'] | null;
-      readonly recordedBy: CodecTypes['pg/int4@1']['input'] | null;
+      readonly recordedById: CodecTypes['pg/int4@1']['input'] | null;
       readonly reference: CodecTypes['pg/text@1']['input'] | null;
       readonly remark: CodecTypes['pg/text@1']['input'] | null;
       readonly sender: CodecTypes['pg/text@1']['input'] | null;
@@ -708,7 +708,7 @@ export type FieldInputTypes = {
     };
     readonly PurchaseOrder: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
-      readonly createdBy: CodecTypes['pg/int4@1']['input'] | null;
+      readonly createdById: CodecTypes['pg/int4@1']['input'] | null;
       readonly currency: 'USD' | 'KHR' | 'CNY';
       readonly departmentId: CodecTypes['pg/int4@1']['input'] | null;
       readonly exchangeRate: CodecTypes['pg/numeric@1']['input'];
@@ -781,7 +781,7 @@ export type FieldInputTypes = {
     readonly StockMovement: {
       readonly balanceAfter: CodecTypes['pg/numeric@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
-      readonly createdBy: CodecTypes['pg/int4@1']['input'] | null;
+      readonly createdById: CodecTypes['pg/int4@1']['input'] | null;
       readonly delta: CodecTypes['pg/numeric@1']['input'];
       readonly id: CodecTypes['pg/int4@1']['input'];
       readonly inventoryItemId: CodecTypes['pg/int4@1']['input'];
@@ -791,11 +791,11 @@ export type FieldInputTypes = {
     };
     readonly StockRequest: {
       readonly approvedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
-      readonly approvedBy: CodecTypes['pg/int4@1']['input'] | null;
+      readonly approvedById: CodecTypes['pg/int4@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly department: CodecTypes['pg/text@1']['input'] | null;
       readonly fulfilledAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
-      readonly fulfilledBy: CodecTypes['pg/int4@1']['input'] | null;
+      readonly fulfilledById: CodecTypes['pg/int4@1']['input'] | null;
       readonly id: CodecTypes['pg/int4@1']['input'];
       readonly inventoryItemId: CodecTypes['pg/int4@1']['input'];
       readonly note: CodecTypes['pg/text@1']['input'] | null;
@@ -1569,9 +1569,9 @@ export namespace Models {
     readonly [RelationKeys]?: 'user';
   };
   export type public_InventoryClaim = {
-    claimedBy: CodecTypes['pg/int4@1']['output'] | null;
+    claimedById: CodecTypes['pg/int4@1']['output'] | null;
     confirmedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
-    confirmedBy: CodecTypes['pg/int4@1']['output'] | null;
+    confirmedById: CodecTypes['pg/int4@1']['output'] | null;
     createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
     id: CodecTypes['pg/int4@1']['output'];
     inventoryItemId: CodecTypes['pg/int4@1']['output'];
@@ -1581,13 +1581,13 @@ export namespace Models {
     receiptObjectKey: CodecTypes['pg/text@1']['output'] | null;
     status: 'pending' | 'confirmed' | 'rejected';
     updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
-    claimant: public_User | null;
-    confirmer: public_User | null;
+    claimedBy: public_User | null;
+    confirmedBy: public_User | null;
     inventoryItem: public_InventoryItem;
     purchaseOrder: public_PurchaseOrder | null;
     purchaseOrderItem: public_PurchaseOrderItem | null;
     readonly [RelationKeys]?:
-      'claimant' | 'confirmer' | 'inventoryItem' | 'purchaseOrder' | 'purchaseOrderItem';
+      'claimedBy' | 'confirmedBy' | 'inventoryItem' | 'purchaseOrder' | 'purchaseOrderItem';
   };
   export type public_InventoryItem = {
     active: CodecTypes['pg/bool@1']['output'];
@@ -1615,7 +1615,7 @@ export namespace Models {
   };
   export type public_JournalEntry = {
     createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
-    createdBy: CodecTypes['pg/int4@1']['output'] | null;
+    createdById: CodecTypes['pg/int4@1']['output'] | null;
     currency: 'USD' | 'KHR' | 'CNY';
     entryDate: CodecTypes['pg/date-string@1']['output'];
     exchangeRate: Numeric<18, 6>;
@@ -1624,10 +1624,10 @@ export namespace Models {
     source: 'po_payment' | 'manual_income' | 'manual';
     sourceRef: CodecTypes['pg/int4@1']['output'] | null;
     updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
-    creator: public_User | null;
-    journalLines: public_JournalLine[];
+    createdBy: public_User | null;
+    lines: public_JournalLine[];
     payments: public_Payment[];
-    readonly [RelationKeys]?: 'creator' | 'journalLines' | 'payments';
+    readonly [RelationKeys]?: 'createdBy' | 'lines' | 'payments';
   };
   export type public_JournalLine = {
     accountId: CodecTypes['pg/int4@1']['output'];
@@ -1639,10 +1639,10 @@ export namespace Models {
     entryId: CodecTypes['pg/int4@1']['output'];
     id: CodecTypes['pg/int4@1']['output'];
     account: public_Account;
-    dimensionDepartment: public_Department | null;
-    dimensionProject: public_Project | null;
+    department: public_Department | null;
     entry: public_JournalEntry;
-    readonly [RelationKeys]?: 'account' | 'dimensionDepartment' | 'dimensionProject' | 'entry';
+    project: public_Project | null;
+    readonly [RelationKeys]?: 'account' | 'department' | 'entry' | 'project';
   };
   export type public_Notification = {
     createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -1669,7 +1669,7 @@ export namespace Models {
     paidAt: CodecTypes['pg/timestamptz-string@1']['output'];
     poId: CodecTypes['pg/int4@1']['output'] | null;
     receiptObjectKey: CodecTypes['pg/text@1']['output'] | null;
-    recordedBy: CodecTypes['pg/int4@1']['output'] | null;
+    recordedById: CodecTypes['pg/int4@1']['output'] | null;
     reference: CodecTypes['pg/text@1']['output'] | null;
     remark: CodecTypes['pg/text@1']['output'] | null;
     sender: CodecTypes['pg/text@1']['output'] | null;
@@ -1679,8 +1679,8 @@ export namespace Models {
     expenseAccount: public_Account | null;
     journalEntry: public_JournalEntry | null;
     purchaseOrder: public_PurchaseOrder | null;
-    recorder: public_User | null;
-    readonly [RelationKeys]?: 'expenseAccount' | 'journalEntry' | 'purchaseOrder' | 'recorder';
+    recordedBy: public_User | null;
+    readonly [RelationKeys]?: 'expenseAccount' | 'journalEntry' | 'purchaseOrder' | 'recordedBy';
   };
   export type public_Project = {
     active: CodecTypes['pg/bool@1']['output'];
@@ -1696,7 +1696,7 @@ export namespace Models {
   };
   export type public_PurchaseOrder = {
     createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
-    createdBy: CodecTypes['pg/int4@1']['output'] | null;
+    createdById: CodecTypes['pg/int4@1']['output'] | null;
     currency: 'USD' | 'KHR' | 'CNY';
     departmentId: CodecTypes['pg/int4@1']['output'] | null;
     exchangeRate: Numeric<18, 6>;
@@ -1713,25 +1713,25 @@ export namespace Models {
     totalUsd: Numeric<18, 4>;
     type: 'online' | 'physical';
     updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
-    creator: public_User | null;
+    createdBy: public_User | null;
     department: public_Department | null;
     expenseAccount: public_Account | null;
     inventoryClaims: public_InventoryClaim[];
+    items: public_PurchaseOrderItem[];
     payments: public_Payment[];
     project: public_Project | null;
-    purchaseOrderItems: public_PurchaseOrderItem[];
     purchaseRequest: public_PurchaseRequest | null;
-    supplier: public_Supplier | null;
+    supplierRecord: public_Supplier | null;
     readonly [RelationKeys]?:
-      | 'creator'
+      | 'createdBy'
       | 'department'
       | 'expenseAccount'
       | 'inventoryClaims'
+      | 'items'
       | 'payments'
       | 'project'
-      | 'purchaseOrderItems'
       | 'purchaseRequest'
-      | 'supplier';
+      | 'supplierRecord';
   };
   export type public_PurchaseOrderItem = {
     createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
@@ -1768,17 +1768,12 @@ export namespace Models {
     updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     approver: public_User | null;
     department: public_Department | null;
+    items: public_PurchaseRequestItem[];
     project: public_Project | null;
     purchaseOrders: public_PurchaseOrder[];
-    purchaseRequestItems: public_PurchaseRequestItem[];
     requester: public_User;
     readonly [RelationKeys]?:
-      | 'approver'
-      | 'department'
-      | 'project'
-      | 'purchaseOrders'
-      | 'purchaseRequestItems'
-      | 'requester';
+      'approver' | 'department' | 'items' | 'project' | 'purchaseOrders' | 'requester';
   };
   export type public_PurchaseRequestItem = {
     category: CodecTypes['pg/text@1']['output'] | null;
@@ -1813,24 +1808,24 @@ export namespace Models {
   export type public_StockMovement = {
     balanceAfter: Numeric<18, 4>;
     createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
-    createdBy: CodecTypes['pg/int4@1']['output'] | null;
+    createdById: CodecTypes['pg/int4@1']['output'] | null;
     delta: Numeric<18, 4>;
     id: CodecTypes['pg/int4@1']['output'];
     inventoryItemId: CodecTypes['pg/int4@1']['output'];
     reason: 'claim' | 'stock_request' | 'adjustment';
     refId: CodecTypes['pg/int4@1']['output'] | null;
     refTable: CodecTypes['pg/text@1']['output'] | null;
-    creator: public_User | null;
+    createdBy: public_User | null;
     inventoryItem: public_InventoryItem;
-    readonly [RelationKeys]?: 'creator' | 'inventoryItem';
+    readonly [RelationKeys]?: 'createdBy' | 'inventoryItem';
   };
   export type public_StockRequest = {
     approvedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
-    approvedBy: CodecTypes['pg/int4@1']['output'] | null;
+    approvedById: CodecTypes['pg/int4@1']['output'] | null;
     createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
     department: CodecTypes['pg/text@1']['output'] | null;
     fulfilledAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
-    fulfilledBy: CodecTypes['pg/int4@1']['output'] | null;
+    fulfilledById: CodecTypes['pg/int4@1']['output'] | null;
     id: CodecTypes['pg/int4@1']['output'];
     inventoryItemId: CodecTypes['pg/int4@1']['output'];
     note: CodecTypes['pg/text@1']['output'] | null;
@@ -1839,11 +1834,11 @@ export namespace Models {
     requesterId: CodecTypes['pg/int4@1']['output'];
     status: 'pending' | 'approved' | 'fulfilled' | 'rejected';
     updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
-    approver: public_User | null;
-    fulfiller: public_User | null;
+    approvedBy: public_User | null;
+    fulfilledBy: public_User | null;
     inventoryItem: public_InventoryItem;
     requester: public_User;
-    readonly [RelationKeys]?: 'approver' | 'fulfiller' | 'inventoryItem' | 'requester';
+    readonly [RelationKeys]?: 'approvedBy' | 'fulfilledBy' | 'inventoryItem' | 'requester';
   };
   export type public_Supplier = {
     active: CodecTypes['pg/bool@1']['output'];
@@ -5635,7 +5630,7 @@ type ContractBase = Omit<
           };
           readonly InventoryClaim: {
             readonly fields: {
-              readonly claimedBy: {
+              readonly claimedById: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
               };
@@ -5646,7 +5641,7 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/timestamptz-string@1';
                 };
               };
-              readonly confirmedBy: {
+              readonly confirmedById: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
               };
@@ -5702,21 +5697,21 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
-              readonly claimant: {
+              readonly claimedBy: {
                 readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
                 readonly cardinality: 'N:1';
                 readonly nullable: true;
                 readonly on: {
-                  readonly localFields: readonly ['claimedBy'];
+                  readonly localFields: readonly ['claimedById'];
                   readonly targetFields: readonly ['id'];
                 };
               };
-              readonly confirmer: {
+              readonly confirmedBy: {
                 readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
                 readonly cardinality: 'N:1';
                 readonly nullable: true;
                 readonly on: {
-                  readonly localFields: readonly ['confirmedBy'];
+                  readonly localFields: readonly ['confirmedById'];
                   readonly targetFields: readonly ['id'];
                 };
               };
@@ -5761,9 +5756,9 @@ type ContractBase = Omit<
               readonly table: 'inventory_claims';
               readonly namespaceId: 'public';
               readonly fields: {
-                readonly claimedBy: { readonly column: 'claimed_by' };
+                readonly claimedById: { readonly column: 'claimed_by' };
                 readonly confirmedAt: { readonly column: 'confirmed_at' };
-                readonly confirmedBy: { readonly column: 'confirmed_by' };
+                readonly confirmedById: { readonly column: 'confirmed_by' };
                 readonly createdAt: { readonly column: 'created_at' };
                 readonly id: { readonly column: 'id' };
                 readonly inventoryItemId: { readonly column: 'inventory_item_id' };
@@ -5925,7 +5920,7 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/timestamptz-string@1';
                 };
               };
-              readonly createdBy: {
+              readonly createdById: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
               };
@@ -5978,16 +5973,16 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
-              readonly creator: {
+              readonly createdBy: {
                 readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
                 readonly cardinality: 'N:1';
                 readonly nullable: true;
                 readonly on: {
-                  readonly localFields: readonly ['createdBy'];
+                  readonly localFields: readonly ['createdById'];
                   readonly targetFields: readonly ['id'];
                 };
               };
-              readonly journalLines: {
+              readonly lines: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
                   readonly model: 'JournalLine';
@@ -6015,7 +6010,7 @@ type ContractBase = Omit<
               readonly namespaceId: 'public';
               readonly fields: {
                 readonly createdAt: { readonly column: 'created_at' };
-                readonly createdBy: { readonly column: 'created_by' };
+                readonly createdById: { readonly column: 'created_by' };
                 readonly currency: { readonly column: 'currency' };
                 readonly entryDate: { readonly column: 'entry_date' };
                 readonly exchangeRate: { readonly column: 'exchange_rate' };
@@ -6086,7 +6081,7 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['id'];
                 };
               };
-              readonly dimensionDepartment: {
+              readonly department: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
                   readonly model: 'Department';
@@ -6095,18 +6090,6 @@ type ContractBase = Omit<
                 readonly nullable: true;
                 readonly on: {
                   readonly localFields: readonly ['dimensionDepartmentId'];
-                  readonly targetFields: readonly ['id'];
-                };
-              };
-              readonly dimensionProject: {
-                readonly to: {
-                  readonly namespace: 'public' & NamespaceId;
-                  readonly model: 'Project';
-                };
-                readonly cardinality: 'N:1';
-                readonly nullable: true;
-                readonly on: {
-                  readonly localFields: readonly ['dimensionProjectId'];
                   readonly targetFields: readonly ['id'];
                 };
               };
@@ -6119,6 +6102,18 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly on: {
                   readonly localFields: readonly ['entryId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly project: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Project';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['dimensionProjectId'];
                   readonly targetFields: readonly ['id'];
                 };
               };
@@ -6277,7 +6272,7 @@ type ContractBase = Omit<
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
-              readonly recordedBy: {
+              readonly recordedById: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
               };
@@ -6346,12 +6341,12 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['id'];
                 };
               };
-              readonly recorder: {
+              readonly recordedBy: {
                 readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
                 readonly cardinality: 'N:1';
                 readonly nullable: true;
                 readonly on: {
-                  readonly localFields: readonly ['recordedBy'];
+                  readonly localFields: readonly ['recordedById'];
                   readonly targetFields: readonly ['id'];
                 };
               };
@@ -6373,7 +6368,7 @@ type ContractBase = Omit<
                 readonly paidAt: { readonly column: 'paid_at' };
                 readonly poId: { readonly column: 'po_id' };
                 readonly receiptObjectKey: { readonly column: 'receipt_object_key' };
-                readonly recordedBy: { readonly column: 'recorded_by' };
+                readonly recordedById: { readonly column: 'recorded_by' };
                 readonly reference: { readonly column: 'reference' };
                 readonly remark: { readonly column: 'remark' };
                 readonly sender: { readonly column: 'sender' };
@@ -6479,7 +6474,7 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/timestamptz-string@1';
                 };
               };
-              readonly createdBy: {
+              readonly createdById: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
               };
@@ -6580,12 +6575,12 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
-              readonly creator: {
+              readonly createdBy: {
                 readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
                 readonly cardinality: 'N:1';
                 readonly nullable: true;
                 readonly on: {
-                  readonly localFields: readonly ['createdBy'];
+                  readonly localFields: readonly ['createdById'];
                   readonly targetFields: readonly ['id'];
                 };
               };
@@ -6624,6 +6619,17 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['poId'];
                 };
               };
+              readonly items: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'PurchaseOrderItem';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['poId'];
+                };
+              };
               readonly payments: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -6647,17 +6653,6 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['id'];
                 };
               };
-              readonly purchaseOrderItems: {
-                readonly to: {
-                  readonly namespace: 'public' & NamespaceId;
-                  readonly model: 'PurchaseOrderItem';
-                };
-                readonly cardinality: '1:N';
-                readonly on: {
-                  readonly localFields: readonly ['id'];
-                  readonly targetFields: readonly ['poId'];
-                };
-              };
               readonly purchaseRequest: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -6670,7 +6665,7 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['id'];
                 };
               };
-              readonly supplier: {
+              readonly supplierRecord: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
                   readonly model: 'Supplier';
@@ -6688,7 +6683,7 @@ type ContractBase = Omit<
               readonly namespaceId: 'public';
               readonly fields: {
                 readonly createdAt: { readonly column: 'created_at' };
-                readonly createdBy: { readonly column: 'created_by' };
+                readonly createdById: { readonly column: 'created_by' };
                 readonly currency: { readonly column: 'currency' };
                 readonly departmentId: { readonly column: 'department_id' };
                 readonly exchangeRate: { readonly column: 'exchange_rate' };
@@ -6936,6 +6931,17 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['id'];
                 };
               };
+              readonly items: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'PurchaseRequestItem';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['prId'];
+                };
+              };
               readonly project: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -6952,17 +6958,6 @@ type ContractBase = Omit<
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
                   readonly model: 'PurchaseOrder';
-                };
-                readonly cardinality: '1:N';
-                readonly on: {
-                  readonly localFields: readonly ['id'];
-                  readonly targetFields: readonly ['prId'];
-                };
-              };
-              readonly purchaseRequestItems: {
-                readonly to: {
-                  readonly namespace: 'public' & NamespaceId;
-                  readonly model: 'PurchaseRequestItem';
                 };
                 readonly cardinality: '1:N';
                 readonly on: {
@@ -7211,7 +7206,7 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/timestamptz-string@1';
                 };
               };
-              readonly createdBy: {
+              readonly createdById: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
               };
@@ -7249,12 +7244,12 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
-              readonly creator: {
+              readonly createdBy: {
                 readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
                 readonly cardinality: 'N:1';
                 readonly nullable: true;
                 readonly on: {
-                  readonly localFields: readonly ['createdBy'];
+                  readonly localFields: readonly ['createdById'];
                   readonly targetFields: readonly ['id'];
                 };
               };
@@ -7277,7 +7272,7 @@ type ContractBase = Omit<
               readonly fields: {
                 readonly balanceAfter: { readonly column: 'balance_after' };
                 readonly createdAt: { readonly column: 'created_at' };
-                readonly createdBy: { readonly column: 'created_by' };
+                readonly createdById: { readonly column: 'created_by' };
                 readonly delta: { readonly column: 'delta' };
                 readonly id: { readonly column: 'id' };
                 readonly inventoryItemId: { readonly column: 'inventory_item_id' };
@@ -7296,7 +7291,7 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/timestamptz-string@1';
                 };
               };
-              readonly approvedBy: {
+              readonly approvedById: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
               };
@@ -7318,7 +7313,7 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/timestamptz-string@1';
                 };
               };
-              readonly fulfilledBy: {
+              readonly fulfilledById: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
               };
@@ -7371,21 +7366,21 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
-              readonly approver: {
+              readonly approvedBy: {
                 readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
                 readonly cardinality: 'N:1';
                 readonly nullable: true;
                 readonly on: {
-                  readonly localFields: readonly ['approvedBy'];
+                  readonly localFields: readonly ['approvedById'];
                   readonly targetFields: readonly ['id'];
                 };
               };
-              readonly fulfiller: {
+              readonly fulfilledBy: {
                 readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
                 readonly cardinality: 'N:1';
                 readonly nullable: true;
                 readonly on: {
-                  readonly localFields: readonly ['fulfilledBy'];
+                  readonly localFields: readonly ['fulfilledById'];
                   readonly targetFields: readonly ['id'];
                 };
               };
@@ -7416,11 +7411,11 @@ type ContractBase = Omit<
               readonly namespaceId: 'public';
               readonly fields: {
                 readonly approvedAt: { readonly column: 'approved_at' };
-                readonly approvedBy: { readonly column: 'approved_by' };
+                readonly approvedById: { readonly column: 'approved_by' };
                 readonly createdAt: { readonly column: 'created_at' };
                 readonly department: { readonly column: 'department' };
                 readonly fulfilledAt: { readonly column: 'fulfilled_at' };
-                readonly fulfilledBy: { readonly column: 'fulfilled_by' };
+                readonly fulfilledById: { readonly column: 'fulfilled_by' };
                 readonly id: { readonly column: 'id' };
                 readonly inventoryItemId: { readonly column: 'inventory_item_id' };
                 readonly note: { readonly column: 'note' };
@@ -7675,7 +7670,7 @@ type ContractBase = Omit<
                 readonly cardinality: '1:N';
                 readonly on: {
                   readonly localFields: readonly ['id'];
-                  readonly targetFields: readonly ['confirmedBy'];
+                  readonly targetFields: readonly ['confirmedById'];
                 };
               };
               readonly claimsFiled: {
@@ -7686,7 +7681,7 @@ type ContractBase = Omit<
                 readonly cardinality: '1:N';
                 readonly on: {
                   readonly localFields: readonly ['id'];
-                  readonly targetFields: readonly ['claimedBy'];
+                  readonly targetFields: readonly ['claimedById'];
                 };
               };
               readonly journalEntries: {
@@ -7697,7 +7692,7 @@ type ContractBase = Omit<
                 readonly cardinality: '1:N';
                 readonly on: {
                   readonly localFields: readonly ['id'];
-                  readonly targetFields: readonly ['createdBy'];
+                  readonly targetFields: readonly ['createdById'];
                 };
               };
               readonly notifications: {
@@ -7719,7 +7714,7 @@ type ContractBase = Omit<
                 readonly cardinality: '1:N';
                 readonly on: {
                   readonly localFields: readonly ['id'];
-                  readonly targetFields: readonly ['recordedBy'];
+                  readonly targetFields: readonly ['recordedById'];
                 };
               };
               readonly photo: {
@@ -7739,7 +7734,7 @@ type ContractBase = Omit<
                 readonly cardinality: '1:N';
                 readonly on: {
                   readonly localFields: readonly ['id'];
-                  readonly targetFields: readonly ['createdBy'];
+                  readonly targetFields: readonly ['createdById'];
                 };
               };
               readonly purchaseRequests: {
@@ -7792,7 +7787,7 @@ type ContractBase = Omit<
                 readonly cardinality: '1:N';
                 readonly on: {
                   readonly localFields: readonly ['id'];
-                  readonly targetFields: readonly ['createdBy'];
+                  readonly targetFields: readonly ['createdById'];
                 };
               };
               readonly stockRequests: {
@@ -7814,7 +7809,7 @@ type ContractBase = Omit<
                 readonly cardinality: '1:N';
                 readonly on: {
                   readonly localFields: readonly ['id'];
-                  readonly targetFields: readonly ['approvedBy'];
+                  readonly targetFields: readonly ['approvedById'];
                 };
               };
               readonly stockRequestsFulfilled: {
@@ -7825,7 +7820,7 @@ type ContractBase = Omit<
                 readonly cardinality: '1:N';
                 readonly on: {
                   readonly localFields: readonly ['id'];
-                  readonly targetFields: readonly ['fulfilledBy'];
+                  readonly targetFields: readonly ['fulfilledById'];
                 };
               };
             };

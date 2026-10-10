@@ -118,7 +118,7 @@ if (can['po.cancel'] && !['cancelled', 'complete'].includes(po.status)) {
       <div><dt class="text-gray-500 dark:text-gray-400">Payment status</dt>
         <dd class="mt-0.5"><%- include('../partials/status-badge', { status: po.paymentStatus }) %></dd></div>
       <div><dt class="text-gray-500 dark:text-gray-400">Supplier</dt>
-        <dd class="text-gray-900 dark:text-white"><%= po.supplier ? po.supplier.name : (po.supplierName || '—') %></dd></div>
+        <dd class="text-gray-900 dark:text-white"><%= po.supplierRecord ? po.supplierRecord.name : (po.supplierName || '—') %></dd></div>
       <div><dt class="text-gray-500 dark:text-gray-400">Type</dt>
         <dd class="capitalize text-gray-900 dark:text-white"><%= po.type %></dd></div>
       <div><dt class="text-gray-500 dark:text-gray-400">Expense account</dt>

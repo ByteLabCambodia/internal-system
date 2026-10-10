@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { contains, escapeLike } from '../prisma/like';
 
 export type SupplierInput = {
   name?: string;
@@ -13,9 +14,6 @@ export type SupplierInput = {
   active?: boolean;
 };
 
-/** `%` and `_` in a name are literal text, not ILIKE wildcards. */
-const escapeLike = (text: string) => text.replace(/[\\%_]/g, '\\$&');
-
 /** C4: the supplier master that replaces purchase_orders.supplier free text. */
 @Injectable()
 export class SuppliersService {
@@ -27,7 +25,7 @@ export class SuppliersService {
 
   async findAll(search?: string) {
     const query = search
-      ? this.suppliers.where((s) => s.name.ilike(`%${escapeLike(search)}%`))
+      ? this.suppliers.where((s) => s.name.ilike(contains(search)))
       : this.suppliers;
     return await query.orderBy((s) => s.name.asc()).all();
   }

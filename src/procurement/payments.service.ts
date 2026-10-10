@@ -3,11 +3,9 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
 import Decimal from 'decimal.js';
-import { PaymentEntity } from './entities/payment.entity';
-import { PurchaseOrderEntity } from './entities/purchase-order.entity';
+import { PrismaService } from '../prisma/prisma.service';
+import { money, rate, timestamptz } from '../prisma/numeric';
 import { PurchaseOrdersService } from './purchase-orders.service';
 import { RatesService } from '../accounting/rates.service';
 import { JournalService } from '../accounting/journal.service';
@@ -21,9 +19,7 @@ import { RecordPaymentDto } from './dto/record-payment.dto';
 @Injectable()
 export class PaymentsService {
   constructor(
-    @InjectRepository(PaymentEntity)
-    private readonly repository: Repository<PaymentEntity>,
-    private readonly dataSource: DataSource,
+    private readonly prisma: PrismaService,
     private readonly rates: RatesService,
     private readonly journal: JournalService,
     private readonly purchaseOrders: PurchaseOrdersService,
@@ -32,30 +28,33 @@ export class PaymentsService {
     private readonly activity: ActivityService,
   ) {}
 
-  listForOrder(poId: number): Promise<PaymentEntity[]> {
-    return this.repository.find({
-      where: { purchaseOrder: { id: poId } },
-      relations: ['recordedBy', 'expenseAccount'],
-      order: { paidAt: 'DESC' },
-    });
+  private get payments() {
+    return this.prisma.db.orm.public.Payment;
   }
 
-  async findOne(id: number): Promise<PaymentEntity> {
-    const payment = await this.repository.findOne({
-      where: { id },
-      relations: [
-        'purchaseOrder',
-        'expenseAccount',
-        'recordedBy',
-        'journalEntry',
-      ],
-    });
+  async listForOrder(poId: number) {
+    return await this.payments
+      .where({ poId })
+      .include('recordedBy')
+      .include('expenseAccount')
+      .orderBy([(p) => p.paidAt.desc(), (p) => p.id.desc()])
+      .all();
+  }
+
+  async findOne(id: number) {
+    const payment = await this.payments
+      .where({ id })
+      .include('purchaseOrder')
+      .include('expenseAccount')
+      .include('recordedBy')
+      .include('journalEntry')
+      .first();
 
     if (!payment) throw new NotFoundException('Payment not found');
     return payment;
   }
 
-  private async lockRate(currency: CurrencyEnum): Promise<string> {
+  private async lockRate(currency: `${CurrencyEnum}`): Promise<string> {
     const rate = await this.rates.getCurrentRate(currency);
 
     if (!rate) {
@@ -72,7 +71,7 @@ export class PaymentsService {
    * transaction. The order row is locked first, so concurrent payments against it are
    * checked one after another against everything already paid (C3).
    */
-  async record(actor: User, dto: RecordPaymentDto): Promise<PaymentEntity> {
+  async record(actor: User, dto: RecordPaymentDto) {
     if (!dto.poId && !dto.expenseAccountId) {
       throw new UnprocessableEntityException(
         'A payment with no purchase order needs an expense account.',
@@ -85,9 +84,9 @@ export class PaymentsService {
     const tolerance = await this.settings.numeric('payment_tolerance_pct');
     const paidAt = dto.paidAt ? new Date(dto.paidAt) : new Date();
 
-    const paymentId = await this.dataSource.transaction(async (manager) => {
+    const paymentId = await this.prisma.db.transaction(async (tx) => {
       const po = dto.poId
-        ? await this.purchaseOrders.lockForPayment(manager, dto.poId)
+        ? await this.purchaseOrders.lockForPayment(tx, dto.poId)
         : null;
 
       if (dto.poId && !po) {
@@ -97,54 +96,49 @@ export class PaymentsService {
       if (po) {
         this.assertNotOverpaid(
           po,
-          await this.purchaseOrders.paidUsd(manager, po.id),
+          await this.purchaseOrders.paidUsd(tx, po.id),
           amountUsd,
           tolerance,
         );
       }
 
-      const payment = await manager.save(
-        manager.create(PaymentEntity, {
-          purchaseOrder: po ? ({ id: po.id } as never) : null,
-          amountOriginal,
-          currency: dto.currency,
-          exchangeRate,
-          amountUsd,
-          expenseAccount: dto.expenseAccountId
-            ? ({ id: dto.expenseAccountId } as never)
-            : null,
-          method: dto.method ?? null,
-          bankAccount: dto.bankAccount ?? null,
-          reference: dto.reference ?? null,
-          trxId: dto.trxId ?? null,
-          sender: dto.sender ?? null,
-          transferTo: dto.transferTo ?? null,
-          remark: dto.remark ?? null,
-          paidAt,
-          receiptObjectKey: dto.receiptObjectKey ?? null,
-          recordedBy: { id: Number(actor.id) } as never,
-        }),
-      );
+      const payment = await tx.orm.public.Payment.create({
+        poId: po?.id ?? null,
+        amountOriginal: money(amountOriginal),
+        currency: dto.currency,
+        exchangeRate: rate(exchangeRate),
+        amountUsd: money(amountUsd),
+        expenseAccountId: dto.expenseAccountId || null,
+        method: dto.method ?? null,
+        bankAccount: dto.bankAccount ?? null,
+        reference: dto.reference ?? null,
+        trxId: dto.trxId ?? null,
+        sender: dto.sender ?? null,
+        transferTo: dto.transferTo ?? null,
+        remark: dto.remark ?? null,
+        paidAt: timestamptz(paidAt),
+        receiptObjectKey: dto.receiptObjectKey ?? null,
+        recordedById: Number(actor.id),
+      });
 
-      const journalEntryId = await this.journal.postPayment(manager, {
+      const journalEntryId = await this.journal.postPayment(tx, {
         id: payment.id,
         paidAt,
         memo: po ? `Payment for ${po.poNumber}` : 'Payment (direct expense)',
         currency: dto.currency,
         exchangeRate,
         amountUsd,
-        expenseAccountId:
-          po?.expenseAccount?.id ?? dto.expenseAccountId ?? null,
-        departmentId: po?.department?.id ?? null,
-        projectId: po?.project?.id ?? null,
+        expenseAccountId: po?.expenseAccountId ?? dto.expenseAccountId ?? null,
+        departmentId: po?.departmentId ?? null,
+        projectId: po?.projectId ?? null,
         actorId: Number(actor.id),
       });
 
-      await manager.update(PaymentEntity, payment.id, {
-        journalEntry: { id: journalEntryId } as never,
+      await tx.orm.public.Payment.where({ id: payment.id }).update({
+        journalEntryId,
       });
 
-      if (po) await this.purchaseOrders.rollUpPaymentStatus(manager, po);
+      if (po) await this.purchaseOrders.rollUpPaymentStatus(tx, po);
 
       return payment.id;
     });
@@ -167,7 +161,7 @@ export class PaymentsService {
 
   /** Over-payment is compared in USD, against the order total plus the tolerance. */
   private assertNotOverpaid(
-    po: PurchaseOrderEntity,
+    po: { poNumber: string; totalUsd: string },
     alreadyPaid: string,
     amountUsd: string,
     tolerance: Decimal,

@@ -22,6 +22,7 @@ import { setFlash } from '../common/web/flash';
 import { validateForm } from '../common/web/validate-form';
 import { csvResponse } from '../common/web/csv';
 import { buildBaseQuery } from '../procurement/purchase-requests.controller';
+import { toDate } from '../prisma/dates';
 
 @Controller('claims')
 export class ClaimsController {
@@ -99,7 +100,7 @@ export class ClaimsController {
         [row.confirmedBy?.firstName, row.confirmedBy?.lastName]
           .filter(Boolean)
           .join(' '),
-        row.createdAt.toISOString(),
+        toDate(row.createdAt).toISOString(),
       ]),
     );
   }

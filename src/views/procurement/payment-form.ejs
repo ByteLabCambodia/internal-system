@@ -10,7 +10,7 @@ const orderOptions = orders.map(function (po) {
     poNumber: po.poNumber,
     currency: po.currency,
     totalUsd: po.totalUsd,
-    supplier: (po.supplier && po.supplier.name) || po.supplierName || '',
+    supplier: (po.supplierRecord && po.supplierRecord.name) || po.supplierName || '',
   };
 });
 %>

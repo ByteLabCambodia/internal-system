@@ -90,7 +90,7 @@
                 reorder point <%= Number(notification.payload.reorder_point) %>
               </p>
             <% } %>
-            <p class="mt-0.5 text-xs text-gray-400"><%= new Date(notification.created_at).toLocaleString() %></p>
+            <p class="mt-0.5 text-xs text-gray-400"><%= new Date(notification.createdAt).toLocaleString() %></p>
           </li>
         <% }); %>
       </ul>

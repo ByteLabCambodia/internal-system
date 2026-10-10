@@ -1,34 +1,33 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { AccountEntity } from './entities/account.entity';
+import { PrismaService } from '../prisma/prisma.service';
 import { AccountTypeEnum } from '../common/enums';
 
 export const MISC_EXPENSE_ACCOUNT_CODE = '6900';
 
 @Injectable()
 export class AccountsService {
-  constructor(
-    @InjectRepository(AccountEntity)
-    private readonly repository: Repository<AccountEntity>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  findAll(): Promise<AccountEntity[]> {
-    return this.repository.find({ order: { code: 'ASC' } });
+  private get accounts() {
+    return this.prisma.db.orm.public.Account;
   }
 
-  findExpenseAccounts(): Promise<AccountEntity[]> {
-    return this.repository.find({
-      where: { type: AccountTypeEnum.expense, active: true },
-      order: { code: 'ASC' },
-    });
+  async findAll() {
+    return await this.accounts.orderBy((a) => a.code.asc()).all();
   }
 
-  findByCode(code: string): Promise<AccountEntity | null> {
-    return this.repository.findOne({ where: { code } });
+  async findExpenseAccounts() {
+    return await this.accounts
+      .where({ type: AccountTypeEnum.expense, active: true })
+      .orderBy((a) => a.code.asc())
+      .all();
   }
 
-  findById(id: number): Promise<AccountEntity | null> {
-    return this.repository.findOne({ where: { id } });
+  async findByCode(code: string) {
+    return await this.accounts.where({ code }).first();
+  }
+
+  async findById(id: number) {
+    return await this.accounts.where({ id }).first();
   }
 }

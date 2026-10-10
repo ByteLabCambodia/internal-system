@@ -240,7 +240,7 @@ namespace public {
     createdAt            TimestamptzString      @default(now()) @map("created_at")
     updatedAt            temporal.updatedAtString()      @map("updated_at")
     purchaseOrders       PurchaseOrder[]
-    purchaseRequestItems PurchaseRequestItem[]
+    items                PurchaseRequestItem[]
     approver             User?                  @relation(name: "FK_purchase_requests_approver", fields: [approverId], references: [id], map: "FK_purchase_requests_approver", index: false)
     department           Department?           @relation(fields: [departmentId], references: [id], map: "FK_purchase_requests_department", index: false)
     project              Project?              @relation(fields: [projectId], references: [id], map: "FK_purchase_requests_project", index: false)
@@ -286,18 +286,20 @@ namespace public {
     totalUsd           Numeric(18, 4)         @default(0) @map("total_usd")
     departmentId       Int?                   @map("department_id")
     projectId          Int?                   @map("project_id")
-    createdBy          Int?                   @map("created_by")
+    createdById        Int?                   @map("created_by")
     createdAt          TimestamptzString      @default(now()) @map("created_at")
     updatedAt          temporal.updatedAtString()      @map("updated_at")
     inventoryClaims    InventoryClaim[]
     payments           Payment[]
-    purchaseOrderItems PurchaseOrderItem[]
-    creator               User?                  @relation(fields: [createdBy], references: [id], map: "FK_purchase_orders_created_by", index: false)
+    items              PurchaseOrderItem[]
+    createdBy          User?                  @relation(fields: [createdById], references: [id], map: "FK_purchase_orders_created_by", index: false)
     department         Department?           @relation(fields: [departmentId], references: [id], map: "FK_purchase_orders_department", index: false)
     expenseAccount     Account?              @relation(fields: [expenseAccountId], references: [id], map: "FK_purchase_orders_expense_account", index: false)
     purchaseRequest                 PurchaseRequest?      @relation(fields: [prId], references: [id], map: "FK_purchase_orders_pr", index: false)
     project            Project?              @relation(fields: [projectId], references: [id], map: "FK_purchase_orders_project", index: false)
-    supplier  Supplier?             @relation(fields: [supplierId], references: [id], map: "FK_purchase_orders_supplier", index: false)
+    // Not `supplier`: an include is aliased by relation name, which would collide with
+    // the legacy `supplier` text column (supplierName) and overwrite it.
+    supplierRecord     Supplier?             @relation(fields: [supplierId], references: [id], map: "FK_purchase_orders_supplier", index: false)
 
     @@index([status], map: "purchase_orders_status_idx")
     @@check(expression: "(exchange_rate > (0)::numeric)", map: "purchase_orders_exchange_rate_positive")
@@ -329,13 +331,13 @@ namespace public {
     qtyClaimed       Numeric(18, 4)       @map("qty_claimed")
     status           pg.enum(ClaimStatus) @default("pending")
     receiptObjectKey String?              @map("receipt_object_key")
-    claimedBy        Int?                 @map("claimed_by")
-    confirmedBy      Int?                 @map("confirmed_by")
+    claimedById      Int?                 @map("claimed_by")
+    confirmedById    Int?                 @map("confirmed_by")
     confirmedAt      TimestamptzString?   @map("confirmed_at")
     createdAt        TimestamptzString    @default(now()) @map("created_at")
     updatedAt        temporal.updatedAtString()    @map("updated_at")
-    claimant             User?                @relation(name: "FK_inventory_claims_claimed_by", fields: [claimedBy], references: [id], map: "FK_inventory_claims_claimed_by", index: false)
-    confirmer         User?                @relation(name: "FK_inventory_claims_confirmed_by", fields: [confirmedBy], references: [id], map: "FK_inventory_claims_confirmed_by", index: false)
+    claimedBy        User?                @relation(name: "FK_inventory_claims_claimed_by", fields: [claimedById], references: [id], map: "FK_inventory_claims_claimed_by", index: false)
+    confirmedBy      User?                @relation(name: "FK_inventory_claims_confirmed_by", fields: [confirmedById], references: [id], map: "FK_inventory_claims_confirmed_by", index: false)
     inventoryItem    InventoryItem       @relation(fields: [inventoryItemId], references: [id], map: "FK_inventory_claims_item", index: false)
     purchaseOrder               PurchaseOrder?      @relation(fields: [poId], references: [id], map: "FK_inventory_claims_po")
     purchaseOrderItem           PurchaseOrderItem?  @relation(fields: [poItemId], references: [id], map: "FK_inventory_claims_po_item", index: false)
@@ -353,12 +355,12 @@ namespace public {
     exchangeRate Numeric(18, 6)         @default(1) @map("exchange_rate")
     source       pg.enum(JournalSource)
     sourceRef    Int?                   @map("source_ref")
-    createdBy    Int?                   @map("created_by")
+    createdById  Int?                   @map("created_by")
     createdAt    TimestamptzString      @default(now()) @map("created_at")
     updatedAt    temporal.updatedAtString()      @map("updated_at")
-    journalLines JournalLine[]
+    lines        JournalLine[]
     payments     Payment[]
-    creator         User?                  @relation(fields: [createdBy], references: [id], map: "FK_journal_entries_created_by", index: false)
+    createdBy    User?                  @relation(fields: [createdById], references: [id], map: "FK_journal_entries_created_by", index: false)
 
     @@map("journal_entries")
   }
@@ -373,9 +375,9 @@ namespace public {
     dimensionProjectId    Int?              @map("dimension_project_id")
     createdAt             TimestamptzString @default(now()) @map("created_at")
     account               Account          @relation(fields: [accountId], references: [id], map: "FK_journal_lines_account")
-    dimensionDepartment   Department?      @relation(fields: [dimensionDepartmentId], references: [id], map: "FK_journal_lines_department", index: false)
+    department            Department?      @relation(fields: [dimensionDepartmentId], references: [id], map: "FK_journal_lines_department", index: false)
     entry                 JournalEntry    @relation(fields: [entryId], references: [id], onDelete: Cascade, map: "FK_journal_lines_entry")
-    dimensionProject      Project?         @relation(fields: [dimensionProjectId], references: [id], map: "FK_journal_lines_project", index: false)
+    project               Project?         @relation(fields: [dimensionProjectId], references: [id], map: "FK_journal_lines_project", index: false)
 
     @@index([accountId], map: "journal_lines_account_idx")
     @@index([entryId], map: "journal_lines_entry_idx")
@@ -415,14 +417,14 @@ namespace public {
     remark           String?
     paidAt           TimestamptzString       @default(now()) @map("paid_at")
     receiptObjectKey String?                 @map("receipt_object_key")
-    recordedBy       Int?                    @map("recorded_by")
+    recordedById     Int?                    @map("recorded_by")
     journalEntryId   Int?                    @map("journal_entry_id")
     createdAt        TimestamptzString       @default(now()) @map("created_at")
     updatedAt        temporal.updatedAtString()       @map("updated_at")
     expenseAccount   Account?               @relation(fields: [expenseAccountId], references: [id], map: "FK_payments_expense_account", index: false)
     journalEntry     JournalEntry?         @relation(fields: [journalEntryId], references: [id], map: "FK_payments_journal_entry", index: false)
     purchaseOrder               PurchaseOrder?         @relation(fields: [poId], references: [id], map: "FK_payments_po")
-    recorder             User?                   @relation(fields: [recordedBy], references: [id], map: "FK_payments_recorded_by", index: false)
+    recordedBy       User?                   @relation(fields: [recordedById], references: [id], map: "FK_payments_recorded_by", index: false)
 
     @@index([poId], map: "payments_po_idx")
     @@check(expression: "(exchange_rate > (0)::numeric)", map: "payments_exchange_rate_positive")
@@ -466,9 +468,9 @@ namespace public {
     refTable        String?                 @map("ref_table")
     refId           Int?                    @map("ref_id")
     balanceAfter    Numeric(18, 4)          @map("balance_after")
-    createdBy       Int?                    @map("created_by")
+    createdById     Int?                    @map("created_by")
     createdAt       TimestamptzString       @default(now()) @map("created_at")
-    creator            User?                   @relation(fields: [createdBy], references: [id], map: "FK_stock_movements_created_by", index: false)
+    createdBy       User?                   @relation(fields: [createdById], references: [id], map: "FK_stock_movements_created_by", index: false)
     inventoryItem   InventoryItem          @relation(fields: [inventoryItemId], references: [id], map: "FK_stock_movements_item", index: "stock_movements_item_idx")
 
     @@index([inventoryItemId, createdAt], map: "stock_movements_item_idx")
@@ -483,15 +485,15 @@ namespace public {
     status          pg.enum(StockRequestStatus) @default("pending")
     priority        pg.enum(StockPriority)      @default("medium")
     department      String?
-    approvedBy      Int?                        @map("approved_by")
+    approvedById    Int?                        @map("approved_by")
     approvedAt      TimestamptzString?          @map("approved_at")
-    fulfilledBy     Int?                        @map("fulfilled_by")
+    fulfilledById   Int?                        @map("fulfilled_by")
     fulfilledAt     TimestamptzString?          @map("fulfilled_at")
     note            String?
     createdAt       TimestamptzString           @default(now()) @map("created_at")
     updatedAt       temporal.updatedAtString()           @map("updated_at")
-    approver            User?                       @relation(name: "FK_stock_requests_approved_by", fields: [approvedBy], references: [id], map: "FK_stock_requests_approved_by", index: false)
-    fulfiller        User?                       @relation(name: "FK_stock_requests_fulfilled_by", fields: [fulfilledBy], references: [id], map: "FK_stock_requests_fulfilled_by", index: false)
+    approvedBy      User?                       @relation(name: "FK_stock_requests_approved_by", fields: [approvedById], references: [id], map: "FK_stock_requests_approved_by", index: false)
+    fulfilledBy     User?                       @relation(name: "FK_stock_requests_fulfilled_by", fields: [fulfilledById], references: [id], map: "FK_stock_requests_fulfilled_by", index: false)
     inventoryItem   InventoryItem              @relation(fields: [inventoryItemId], references: [id], map: "FK_stock_requests_item", index: false)
     requester       User                        @relation(name: "FK_stock_requests_requester", fields: [requesterId], references: [id], map: "FK_stock_requests_requester")
 

@@ -24,6 +24,7 @@ import { validateForm } from '../common/web/validate-form';
 import { FLOW_STEPS, flowIndex } from './support/flow-stepper';
 import { summarizeItems } from './support/notification-summary';
 import { csvResponse } from '../common/web/csv';
+import { toDate } from '../prisma/dates';
 
 @Controller('purchase-requests')
 export class PurchaseRequestsController {
@@ -109,7 +110,7 @@ export class PurchaseRequestsController {
         row.exchangeRate,
         row.totalOriginal,
         row.totalUsd,
-        row.createdAt.toISOString(),
+        toDate(row.createdAt).toISOString(),
       ]),
     );
   }

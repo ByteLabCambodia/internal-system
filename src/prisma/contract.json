@@ -1064,7 +1064,7 @@
           },
           "InventoryClaim": {
             "fields": {
-              "claimedBy": {
+              "claimedById": {
                 "nullable": true,
                 "type": {
                   "codecId": "pg/int4@1",
@@ -1078,7 +1078,7 @@
                   "kind": "scalar"
                 }
               },
-              "confirmedBy": {
+              "confirmedById": {
                 "nullable": true,
                 "type": {
                   "codecId": "pg/int4@1",
@@ -1157,12 +1157,12 @@
               }
             },
             "relations": {
-              "claimant": {
+              "claimedBy": {
                 "cardinality": "N:1",
                 "nullable": true,
                 "on": {
                   "localFields": [
-                    "claimedBy"
+                    "claimedById"
                   ],
                   "targetFields": [
                     "id"
@@ -1173,12 +1173,12 @@
                   "namespace": "public"
                 }
               },
-              "confirmer": {
+              "confirmedBy": {
                 "cardinality": "N:1",
                 "nullable": true,
                 "on": {
                   "localFields": [
-                    "confirmedBy"
+                    "confirmedById"
                   ],
                   "targetFields": [
                     "id"
@@ -1240,13 +1240,13 @@
             },
             "storage": {
               "fields": {
-                "claimedBy": {
+                "claimedById": {
                   "column": "claimed_by"
                 },
                 "confirmedAt": {
                   "column": "confirmed_at"
                 },
-                "confirmedBy": {
+                "confirmedById": {
                   "column": "confirmed_by"
                 },
                 "createdAt": {
@@ -1499,7 +1499,7 @@
                   "kind": "scalar"
                 }
               },
-              "createdBy": {
+              "createdById": {
                 "nullable": true,
                 "type": {
                   "codecId": "pg/int4@1",
@@ -1574,12 +1574,12 @@
               }
             },
             "relations": {
-              "creator": {
+              "createdBy": {
                 "cardinality": "N:1",
                 "nullable": true,
                 "on": {
                   "localFields": [
-                    "createdBy"
+                    "createdById"
                   ],
                   "targetFields": [
                     "id"
@@ -1590,7 +1590,7 @@
                   "namespace": "public"
                 }
               },
-              "journalLines": {
+              "lines": {
                 "cardinality": "1:N",
                 "on": {
                   "localFields": [
@@ -1626,7 +1626,7 @@
                 "createdAt": {
                   "column": "created_at"
                 },
-                "createdBy": {
+                "createdById": {
                   "column": "created_by"
                 },
                 "currency": {
@@ -1742,7 +1742,7 @@
                   "namespace": "public"
                 }
               },
-              "dimensionDepartment": {
+              "department": {
                 "cardinality": "N:1",
                 "nullable": true,
                 "on": {
@@ -1755,22 +1755,6 @@
                 },
                 "to": {
                   "model": "Department",
-                  "namespace": "public"
-                }
-              },
-              "dimensionProject": {
-                "cardinality": "N:1",
-                "nullable": true,
-                "on": {
-                  "localFields": [
-                    "dimensionProjectId"
-                  ],
-                  "targetFields": [
-                    "id"
-                  ]
-                },
-                "to": {
-                  "model": "Project",
                   "namespace": "public"
                 }
               },
@@ -1787,6 +1771,22 @@
                 },
                 "to": {
                   "model": "JournalEntry",
+                  "namespace": "public"
+                }
+              },
+              "project": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "dimensionProjectId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Project",
                   "namespace": "public"
                 }
               }
@@ -2031,7 +2031,7 @@
                   "kind": "scalar"
                 }
               },
-              "recordedBy": {
+              "recordedById": {
                 "nullable": true,
                 "type": {
                   "codecId": "pg/int4@1",
@@ -2130,12 +2130,12 @@
                   "namespace": "public"
                 }
               },
-              "recorder": {
+              "recordedBy": {
                 "cardinality": "N:1",
                 "nullable": true,
                 "on": {
                   "localFields": [
-                    "recordedBy"
+                    "recordedById"
                   ],
                   "targetFields": [
                     "id"
@@ -2188,7 +2188,7 @@
                 "receiptObjectKey": {
                   "column": "receipt_object_key"
                 },
-                "recordedBy": {
+                "recordedById": {
                   "column": "recorded_by"
                 },
                 "reference": {
@@ -2345,7 +2345,7 @@
                   "kind": "scalar"
                 }
               },
-              "createdBy": {
+              "createdById": {
                 "nullable": true,
                 "type": {
                   "codecId": "pg/int4@1",
@@ -2490,12 +2490,12 @@
               }
             },
             "relations": {
-              "creator": {
+              "createdBy": {
                 "cardinality": "N:1",
                 "nullable": true,
                 "on": {
                   "localFields": [
-                    "createdBy"
+                    "createdById"
                   ],
                   "targetFields": [
                     "id"
@@ -2553,6 +2553,21 @@
                   "namespace": "public"
                 }
               },
+              "items": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "poId"
+                  ]
+                },
+                "to": {
+                  "model": "PurchaseOrderItem",
+                  "namespace": "public"
+                }
+              },
               "payments": {
                 "cardinality": "1:N",
                 "on": {
@@ -2584,21 +2599,6 @@
                   "namespace": "public"
                 }
               },
-              "purchaseOrderItems": {
-                "cardinality": "1:N",
-                "on": {
-                  "localFields": [
-                    "id"
-                  ],
-                  "targetFields": [
-                    "poId"
-                  ]
-                },
-                "to": {
-                  "model": "PurchaseOrderItem",
-                  "namespace": "public"
-                }
-              },
               "purchaseRequest": {
                 "cardinality": "N:1",
                 "nullable": true,
@@ -2615,7 +2615,7 @@
                   "namespace": "public"
                 }
               },
-              "supplier": {
+              "supplierRecord": {
                 "cardinality": "N:1",
                 "nullable": true,
                 "on": {
@@ -2637,7 +2637,7 @@
                 "createdAt": {
                   "column": "created_at"
                 },
-                "createdBy": {
+                "createdById": {
                   "column": "created_by"
                 },
                 "currency": {
@@ -3024,6 +3024,21 @@
                   "namespace": "public"
                 }
               },
+              "items": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "prId"
+                  ]
+                },
+                "to": {
+                  "model": "PurchaseRequestItem",
+                  "namespace": "public"
+                }
+              },
               "project": {
                 "cardinality": "N:1",
                 "nullable": true,
@@ -3052,21 +3067,6 @@
                 },
                 "to": {
                   "model": "PurchaseOrder",
-                  "namespace": "public"
-                }
-              },
-              "purchaseRequestItems": {
-                "cardinality": "1:N",
-                "on": {
-                  "localFields": [
-                    "id"
-                  ],
-                  "targetFields": [
-                    "prId"
-                  ]
-                },
-                "to": {
-                  "model": "PurchaseRequestItem",
                   "namespace": "public"
                 }
               },
@@ -3451,7 +3451,7 @@
                   "kind": "scalar"
                 }
               },
-              "createdBy": {
+              "createdById": {
                 "nullable": true,
                 "type": {
                   "codecId": "pg/int4@1",
@@ -3509,12 +3509,12 @@
               }
             },
             "relations": {
-              "creator": {
+              "createdBy": {
                 "cardinality": "N:1",
                 "nullable": true,
                 "on": {
                   "localFields": [
-                    "createdBy"
+                    "createdById"
                   ],
                   "targetFields": [
                     "id"
@@ -3550,7 +3550,7 @@
                 "createdAt": {
                   "column": "created_at"
                 },
-                "createdBy": {
+                "createdById": {
                   "column": "created_by"
                 },
                 "delta": {
@@ -3585,7 +3585,7 @@
                   "kind": "scalar"
                 }
               },
-              "approvedBy": {
+              "approvedById": {
                 "nullable": true,
                 "type": {
                   "codecId": "pg/int4@1",
@@ -3613,7 +3613,7 @@
                   "kind": "scalar"
                 }
               },
-              "fulfilledBy": {
+              "fulfilledById": {
                 "nullable": true,
                 "type": {
                   "codecId": "pg/int4@1",
@@ -3688,12 +3688,12 @@
               }
             },
             "relations": {
-              "approver": {
+              "approvedBy": {
                 "cardinality": "N:1",
                 "nullable": true,
                 "on": {
                   "localFields": [
-                    "approvedBy"
+                    "approvedById"
                   ],
                   "targetFields": [
                     "id"
@@ -3704,12 +3704,12 @@
                   "namespace": "public"
                 }
               },
-              "fulfiller": {
+              "fulfilledBy": {
                 "cardinality": "N:1",
                 "nullable": true,
                 "on": {
                   "localFields": [
-                    "fulfilledBy"
+                    "fulfilledById"
                   ],
                   "targetFields": [
                     "id"
@@ -3758,7 +3758,7 @@
                 "approvedAt": {
                   "column": "approved_at"
                 },
-                "approvedBy": {
+                "approvedById": {
                   "column": "approved_by"
                 },
                 "createdAt": {
@@ -3770,7 +3770,7 @@
                 "fulfilledAt": {
                   "column": "fulfilled_at"
                 },
-                "fulfilledBy": {
+                "fulfilledById": {
                   "column": "fulfilled_by"
                 },
                 "id": {
@@ -4168,7 +4168,7 @@
                     "id"
                   ],
                   "targetFields": [
-                    "confirmedBy"
+                    "confirmedById"
                   ]
                 },
                 "to": {
@@ -4183,7 +4183,7 @@
                     "id"
                   ],
                   "targetFields": [
-                    "claimedBy"
+                    "claimedById"
                   ]
                 },
                 "to": {
@@ -4198,7 +4198,7 @@
                     "id"
                   ],
                   "targetFields": [
-                    "createdBy"
+                    "createdById"
                   ]
                 },
                 "to": {
@@ -4228,7 +4228,7 @@
                     "id"
                   ],
                   "targetFields": [
-                    "recordedBy"
+                    "recordedById"
                   ]
                 },
                 "to": {
@@ -4259,7 +4259,7 @@
                     "id"
                   ],
                   "targetFields": [
-                    "createdBy"
+                    "createdById"
                   ]
                 },
                 "to": {
@@ -4335,7 +4335,7 @@
                     "id"
                   ],
                   "targetFields": [
-                    "createdBy"
+                    "createdById"
                   ]
                 },
                 "to": {
@@ -4365,7 +4365,7 @@
                     "id"
                   ],
                   "targetFields": [
-                    "approvedBy"
+                    "approvedById"
                   ]
                 },
                 "to": {
@@ -4380,7 +4380,7 @@
                     "id"
                   ],
                   "targetFields": [
-                    "fulfilledBy"
+                    "fulfilledById"
                   ]
                 },
                 "to": {

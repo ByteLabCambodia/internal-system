@@ -3,15 +3,17 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
 import Decimal from 'decimal.js';
-import { InventoryClaimEntity } from './entities/inventory-claim.entity';
+import { PrismaService } from '../prisma/prisma.service';
+import { money, timestamptz } from '../prisma/numeric';
 import { InventoryService } from './inventory.service';
-import { PurchaseOrderItemEntity } from '../procurement/entities/purchase-order-item.entity';
 import { PurchaseOrdersService } from '../procurement/purchase-orders.service';
 import { SettingsService } from '../settings/settings.service';
-import { ClaimStatusEnum, MovementReasonEnum } from '../common/enums';
+import {
+  ClaimStatusEnum,
+  MovementReasonEnum,
+  PoStatusEnum,
+} from '../common/enums';
 import { ActivityService } from '../activity/activity.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { User } from '../users/domain/user';
@@ -26,11 +28,7 @@ export type ClaimListFilters = {
 @Injectable()
 export class ClaimsService {
   constructor(
-    @InjectRepository(InventoryClaimEntity)
-    private readonly repository: Repository<InventoryClaimEntity>,
-    @InjectRepository(PurchaseOrderItemEntity)
-    private readonly poItems: Repository<PurchaseOrderItemEntity>,
-    private readonly dataSource: DataSource,
+    private readonly prisma: PrismaService,
     private readonly inventory: InventoryService,
     private readonly purchaseOrders: PurchaseOrdersService,
     private readonly settings: SettingsService,
@@ -38,58 +36,47 @@ export class ClaimsService {
     private readonly permissions: PermissionsService,
   ) {}
 
+  private get claims() {
+    return this.prisma.db.orm.public.InventoryClaim;
+  }
+
   /** Own claims, or every claim for manager/finance/admin. */
-  private applyScope(
-    query: ReturnType<Repository<InventoryClaimEntity>['createQueryBuilder']>,
-    actor: User,
-  ) {
-    if (!this.permissions.seesAllRows(actor)) {
-      query.andWhere('claim.claimed_by = :actorId', { actorId: actor.id });
-    }
-    return query;
+  private scoped(actor: User) {
+    return this.permissions.seesAllRows(actor)
+      ? this.claims.where({})
+      : this.claims.where({ claimedById: Number(actor.id) });
   }
 
-  async list(
-    actor: User,
-    filters: ClaimListFilters,
-  ): Promise<{ rows: InventoryClaimEntity[]; count: number }> {
-    const query = this.repository
-      .createQueryBuilder('claim')
-      .leftJoinAndSelect('claim.inventoryItem', 'item')
-      .leftJoinAndSelect('claim.purchaseOrder', 'po')
-      .leftJoinAndSelect('claim.claimedBy', 'claimedBy')
-      .leftJoinAndSelect('claim.confirmedBy', 'confirmedBy');
+  async list(actor: User, filters: ClaimListFilters) {
+    const claims = filters.status
+      ? this.scoped(actor).where({ status: filters.status })
+      : this.scoped(actor);
 
-    this.applyScope(query, actor);
+    const [rows, total] = await Promise.all([
+      claims
+        .include('inventoryItem')
+        .include('purchaseOrder')
+        .include('claimedBy')
+        .include('confirmedBy')
+        .orderBy([(c) => c.createdAt.desc(), (c) => c.id.desc()])
+        .offset((filters.page - 1) * filters.limit)
+        .limit(filters.limit)
+        .all(),
+      claims.aggregate((a) => ({ count: a.count() })),
+    ]);
 
-    if (filters.status) {
-      query.andWhere('claim.status = :status', { status: filters.status });
-    }
-
-    const [rows, count] = await query
-      .orderBy('claim.createdAt', 'DESC')
-      .skip((filters.page - 1) * filters.limit)
-      .take(filters.limit)
-      .getManyAndCount();
-
-    return { rows, count };
+    return { rows, count: total.count };
   }
 
-  async findOneForActor(
-    actor: User,
-    id: number,
-  ): Promise<InventoryClaimEntity> {
-    const query = this.repository
-      .createQueryBuilder('claim')
-      .leftJoinAndSelect('claim.inventoryItem', 'item')
-      .leftJoinAndSelect('claim.purchaseOrder', 'po')
-      .leftJoinAndSelect('claim.purchaseOrderItem', 'poItem')
-      .leftJoinAndSelect('claim.claimedBy', 'claimedBy')
-      .where('claim.id = :id', { id });
+  async findOneForActor(actor: User, id: number) {
+    const claim = await this.scoped(actor)
+      .where({ id })
+      .include('inventoryItem')
+      .include('purchaseOrder')
+      .include('purchaseOrderItem')
+      .include('claimedBy')
+      .first();
 
-    this.applyScope(query, actor);
-
-    const claim = await query.getOne();
     if (!claim) throw new NotFoundException('Claim not found');
 
     return claim;
@@ -99,14 +86,10 @@ export class ClaimsService {
    * The over-receipt rule is enforced again, under lock, on confirmation. Checking it here
    * too, at submission, gives the claimant a clean form error up front (C3 asks for this).
    */
-  async create(
-    actor: User,
-    dto: CreateClaimDto,
-  ): Promise<InventoryClaimEntity> {
-    const poItem = await this.poItems.findOne({
-      where: { id: dto.poItemId },
-      relations: ['purchaseOrder', 'inventoryItem'],
-    });
+  async create(actor: User, dto: CreateClaimDto) {
+    const poItem = await this.prisma.db.orm.public.PurchaseOrderItem.where({
+      id: dto.poItemId,
+    }).first();
 
     if (!poItem) {
       throw new UnprocessableEntityException(
@@ -131,7 +114,7 @@ export class ClaimsService {
 
     // `||`, not `??`: the form's hidden "Receive into" select still posts an empty value
     // for a linked line, which arrives here as 0.
-    const inventoryItemId = dto.inventoryItemId || poItem.inventoryItem?.id;
+    const inventoryItemId = dto.inventoryItemId || poItem.inventoryItemId;
 
     if (!inventoryItemId) {
       throw new UnprocessableEntityException(
@@ -139,16 +122,14 @@ export class ClaimsService {
       );
     }
 
-    const claim = await this.repository.save(
-      this.repository.create({
-        purchaseOrder: poItem.purchaseOrder,
-        purchaseOrderItem: { id: poItem.id } as never,
-        inventoryItem: { id: inventoryItemId } as never,
-        qtyClaimed: String(dto.qtyClaimed),
-        receiptObjectKey: dto.receiptObjectKey ?? null,
-        claimedBy: { id: Number(actor.id) } as never,
-      }),
-    );
+    const claim = await this.claims.create({
+      poId: poItem.poId,
+      poItemId: poItem.id,
+      inventoryItemId,
+      qtyClaimed: money(String(dto.qtyClaimed)),
+      receiptObjectKey: dto.receiptObjectKey ?? null,
+      claimedById: Number(actor.id),
+    });
 
     await this.activity.log({
       entityType: 'inventory_claim',
@@ -169,14 +150,9 @@ export class ClaimsService {
   async confirm(actor: User, id: number): Promise<void> {
     const tolerance = await this.settings.numeric('receipt_tolerance_pct');
 
-    await this.dataSource.transaction(async (manager) => {
-      const claim = await manager
-        .createQueryBuilder(InventoryClaimEntity, 'claim')
-        .leftJoinAndSelect('claim.purchaseOrderItem', 'poItem')
-        .innerJoinAndSelect('claim.inventoryItem', 'item')
-        .setLock('pessimistic_write', undefined, ['claim'])
-        .where('claim.id = :id', { id })
-        .getOne();
+    await this.prisma.db.transaction(async (tx) => {
+      const claims = tx.orm.public.InventoryClaim;
+      const claim = await claims.where({ id }).forUpdate().first();
 
       if (!claim) throw new NotFoundException('Claim not found');
 
@@ -186,17 +162,17 @@ export class ClaimsService {
         );
       }
 
-      if (claim.purchaseOrderItem) {
+      if (claim.poItemId) {
         await this.purchaseOrders.receive(
-          manager,
-          claim.purchaseOrderItem.id,
+          tx,
+          claim.poItemId,
           claim.qtyClaimed,
           tolerance,
         );
       }
 
-      await this.inventory.applyMovement(manager, {
-        itemId: claim.inventoryItem.id,
+      await this.inventory.applyMovement(tx, {
+        itemId: claim.inventoryItemId,
         delta: new Decimal(claim.qtyClaimed),
         reason: MovementReasonEnum.claim,
         refTable: 'inventory_claims',
@@ -205,10 +181,10 @@ export class ClaimsService {
         onNegative: () => 'A claim cannot take stock below zero.',
       });
 
-      await manager.update(InventoryClaimEntity, id, {
+      await claims.where({ id }).update({
         status: ClaimStatusEnum.confirmed,
-        confirmedBy: { id: Number(actor.id) } as never,
-        confirmedAt: claim.confirmedAt ?? new Date(),
+        confirmedById: Number(actor.id),
+        confirmedAt: claim.confirmedAt ?? timestamptz(new Date()),
       });
     });
 
@@ -221,7 +197,7 @@ export class ClaimsService {
   }
 
   async reject(actor: User, id: number): Promise<void> {
-    const claim = await this.repository.findOne({ where: { id } });
+    const claim = await this.claims.where({ id }).first();
     if (!claim) throw new NotFoundException('Claim not found');
 
     if (claim.status !== ClaimStatusEnum.pending) {
@@ -230,9 +206,9 @@ export class ClaimsService {
       );
     }
 
-    await this.repository.update(id, {
+    await this.claims.where({ id }).update({
       status: ClaimStatusEnum.rejected,
-      confirmedBy: { id: Number(actor.id) } as never,
+      confirmedById: Number(actor.id),
     });
 
     await this.activity.log({
@@ -244,14 +220,17 @@ export class ClaimsService {
   }
 
   /** Order lines with something still outstanding — the options on the claim form. */
-  async claimableLines(): Promise<PurchaseOrderItemEntity[]> {
-    return this.poItems
-      .createQueryBuilder('poItem')
-      .leftJoinAndSelect('poItem.purchaseOrder', 'po')
-      .leftJoinAndSelect('poItem.inventoryItem', 'item')
-      .where('po.status != :cancelled', { cancelled: 'cancelled' })
-      .andWhere('poItem.qty_claimed < poItem.qty_ordered')
-      .orderBy('po.createdAt', 'DESC')
-      .getMany();
+  async claimableLines() {
+    return await this.prisma.db.orm.public.PurchaseOrderItem.where((line) =>
+      line.purchaseOrder.some((po) => po.status.neq(PoStatusEnum.cancelled)),
+    )
+      .where((line) => line.qtyClaimed.lt(line.qtyOrdered))
+      .include('purchaseOrder')
+      .include('inventoryItem')
+      .orderBy([
+        (line) => line.purchaseOrder.createdAt.desc(),
+        (line) => line.id.asc(),
+      ])
+      .all();
   }
 }

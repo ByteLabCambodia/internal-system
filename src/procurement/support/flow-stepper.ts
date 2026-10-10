@@ -17,9 +17,9 @@ export const FLOW_STEPS = [
  * derived from PR and PO status rather than stored anywhere.
  */
 export function flowIndex(input: {
-  prStatus?: PrStatusEnum | null;
-  poStatus?: PoStatusEnum | null;
-  paymentStatus?: PaymentStatusEnum | null;
+  prStatus?: `${PrStatusEnum}` | null;
+  poStatus?: `${PoStatusEnum}` | null;
+  paymentStatus?: `${PaymentStatusEnum}` | null;
 }): number {
   const { prStatus, poStatus, paymentStatus } = input;
 
