@@ -148,8 +148,10 @@ describe('users, sessions, auth tokens and Telegram linking', () => {
     });
 
     it('should page, filter by role and sort', async () => {
-      await newUser('a@test.local', { firstName: 'Zed' });
-      await newUser('b@test.local', { firstName: 'Amy' });
+      // Lowercase like the seeded 'finance', so the order is the same whatever the
+      // database collation (C sorts uppercase first, en_US ignores case).
+      await newUser('a@test.local', { firstName: 'zed' });
+      await newUser('b@test.local', { firstName: 'amy' });
 
       const finance = await users.findManyWithPagination({
         filterOptions: { roles: [{ id: RoleEnum.finance }] } as never,
@@ -157,9 +159,9 @@ describe('users, sessions, auth tokens and Telegram linking', () => {
         paginationOptions: { page: 1, limit: 10 },
       });
       expect(finance.map((u) => u.firstName)).toEqual([
-        'Amy',
-        'finance', // case-insensitive collation
-        'Zed',
+        'amy',
+        'finance',
+        'zed',
       ]);
 
       const page2 = await users.findManyWithPagination({
