@@ -51,7 +51,11 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Browser tests
-        run: npm run test:browser
+        # The app needs its auth secrets etc. to boot; the example env has test values.
+        # test/browser/env.ts overrides the database and turns off outbound services.
+        run: |
+          cp env-example-relational .env
+          npm run test:browser
 
       - uses: actions/upload-artifact@v7
         if: failure()
