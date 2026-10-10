@@ -1,8 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
-import { ENTITIES, MIGRATIONS } from './entities';
+import { TEST_DATABASE_URL, TestDb } from './test-db';
 import { AccountsService } from '../../../src/accounting/accounts.service';
 import { JournalService } from '../../../src/accounting/journal.service';
 import { RatesService } from '../../../src/accounting/rates.service';
@@ -38,13 +36,7 @@ import { SessionRelationalRepository } from '../../../src/session/infrastructure
 import { AuthTokensService } from '../../../src/auth/auth-tokens.service';
 import { PrismaService } from '../../../src/prisma/prisma.service';
 
-/**
- * A dedicated, disposable database. Never point this at a database you care about: every
- * spec file drops the schema and re-runs all migrations.
- */
-export const TEST_DATABASE_URL =
-  process.env.TEST_DATABASE_URL ??
-  `postgres://${process.env.USER}@localhost:5432/internal_system_test`;
+export { TEST_DATABASE_URL };
 
 /** Telegram is a courier, not part of the workflow under test. */
 export const telegramStub = {
@@ -55,27 +47,15 @@ export const telegramStub = {
 };
 
 /**
- * The services behind the trigger-backed workflows, wired against a real Postgres. Built
+ * The services, wired against a real Postgres. Built
  * from explicit providers instead of the feature modules so controllers, guards and
  * outbound integrations stay out of the picture.
  */
 export async function createTestApp(): Promise<TestingModule> {
   const moduleRef = await Test.createTestingModule({
-    imports: [
-      TypeOrmModule.forRoot({
-        type: 'postgres',
-        url: TEST_DATABASE_URL,
-        entities: ENTITIES,
-        migrations: MIGRATIONS,
-        dropSchema: true,
-        migrationsRun: true,
-        logging: false,
-        extra: { max: 10 },
-      }),
-      TypeOrmModule.forFeature(ENTITIES),
-    ],
     controllers: [TelegramController],
     providers: [
+      TestDb,
       FileRelationalRepository,
       { provide: FileRepository, useExisting: FileRelationalRepository },
       FilesService,
@@ -159,7 +139,7 @@ const TRUNCATE = [
   'file',
 ];
 
-export async function resetData(dataSource: DataSource): Promise<void> {
+export async function resetData(dataSource: TestDb): Promise<void> {
   await dataSource.query(
     `TRUNCATE ${TRUNCATE.map((t) => `"${t}"`).join(', ')} RESTART IDENTITY CASCADE`,
   );

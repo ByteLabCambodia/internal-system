@@ -1,12 +1,12 @@
 import { TestingModule } from '@nestjs/testing';
-import { DataSource } from 'typeorm';
 import bcrypt from 'bcryptjs';
 import { createTestApp, resetData } from './support/test-app';
+import { TestDb } from './support/test-db';
 import { q, seedRoles, seedWorld, World } from './support/fixtures';
 import { UsersService } from '../../src/users/users.service';
 import { SessionService } from '../../src/session/session.service';
 import { AuthTokensService } from '../../src/auth/auth-tokens.service';
-import { AuthTokenPurposeEnum } from '../../src/auth/entities/auth-token.entity';
+import { AuthTokenPurposeEnum } from '../../src/auth/auth-token-purpose.enum';
 import { TelegramLinkService } from '../../src/telegram/telegram-link.service';
 import { RoleEnum } from '../../src/roles/roles.enum';
 import { User } from '../../src/users/domain/user';
@@ -17,13 +17,13 @@ import { User } from '../../src/users/domain/user';
  */
 describe('users, sessions, auth tokens and Telegram linking', () => {
   let app: TestingModule;
-  let db: DataSource;
+  let db: TestDb;
   let world: World;
   let users: UsersService;
 
   beforeAll(async () => {
     app = await createTestApp();
-    db = app.get(DataSource);
+    db = app.get(TestDb);
     users = app.get(UsersService);
   });
 

@@ -2,7 +2,7 @@ import { expect, Page } from '@playwright/test';
 import { Client } from 'pg';
 import { BROWSER_DB } from './env';
 
-/** Seeded by src/database/seeds/relational/user: one account per role. */
+/** Seeded by src/database/seeds/seed.ts: one account per role. */
 export const USERS = {
   admin: 'admin@example.com',
   manager: 'manager@example.com',

@@ -1,5 +1,11 @@
 {
-  "moduleFileExtensions": ["js", "mjs", "cjs", "json", "ts"],
+  "moduleFileExtensions": [
+    "js",
+    "mjs",
+    "cjs",
+    "json",
+    "ts"
+  ],
   "rootDir": ".",
   "testEnvironment": "node",
   "testRegex": ".int-spec.ts$",
@@ -8,18 +14,25 @@
       "ts-jest",
       {
         "diagnostics": {
-          "ignoreCodes": [151002]
+          "ignoreCodes": [
+            151002
+          ]
         }
       }
     ],
     "^.+\\.m?js$": [
       "babel-jest",
       {
-        "plugins": ["@babel/plugin-transform-modules-commonjs"]
+        "plugins": [
+          "@babel/plugin-transform-modules-commonjs"
+        ]
       }
     ]
   },
   "transformIgnorePatterns": [],
   "testTimeout": 30000,
-  "setupFiles": ["<rootDir>/integration/support/realm.ts"]
+  "setupFiles": [
+    "<rootDir>/integration/support/realm.ts"
+  ],
+  "globalSetup": "<rootDir>/integration/support/global-setup.ts"
 }

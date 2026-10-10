@@ -1,7 +1,7 @@
 import { TestingModule } from '@nestjs/testing';
 import { UnprocessableEntityException } from '@nestjs/common';
-import { DataSource } from 'typeorm';
 import { createTestApp, resetData } from './support/test-app';
+import { TestDb } from './support/test-db';
 import {
   PoFixture,
   q,
@@ -20,14 +20,14 @@ import { ClaimsService } from '../../src/inventory/claims.service';
  */
 describe('ClaimsService.confirm', () => {
   let app: TestingModule;
-  let db: DataSource;
+  let db: TestDb;
   let claims: ClaimsService;
   let world: World;
   let po: PoFixture;
 
   beforeAll(async () => {
     app = await createTestApp();
-    db = app.get(DataSource);
+    db = app.get(TestDb);
     claims = app.get(ClaimsService);
   });
 
