@@ -1,8 +1,8 @@
 name: Deploy to AWS
 
-# Runs only after CI passes on main, same trigger pattern the old Vercel/Heroku
-# migrate.yml used. Builds the prod image, pushes to ECR, runs migrations as a one-off
-# ECS task, then updates the ECS service.
+# Production deploys come from main only: work merges into develop, then develop is
+# merged into main to release. Runs after CI passes on main, builds the prod image,
+# pushes to ECR, runs migrations as a one-off ECS task, then updates the ECS service.
 on:
   workflow_run:
     workflows: ['NestJS API CI']

@@ -20,18 +20,15 @@ DATABASE_REJECT_UNAUTHORIZED=false
 DATABASE_CA=
 DATABASE_KEY=
 DATABASE_CERT=
-# On Vercel/Heroku, set DATABASE_URL to the Heroku Postgres add-on's connection string
-# (`heroku config:get DATABASE_URL -a <app>`) instead of the DATABASE_HOST/PORT/etc above —
-# database.config.ts prefers DATABASE_URL when it's set. Heroku Postgres terminates TLS with
-# a self-signed cert, so also set DATABASE_SSL_ENABLED=true (DATABASE_REJECT_UNAUTHORIZED
-# stays false, since Heroku's cert isn't in a public CA chain).
+# database.config.ts prefers DATABASE_URL over the DATABASE_HOST/PORT/etc above when it's
+# set. In production (AWS RDS) the ECS task gets DATABASE_URL from Secrets Manager with
+# DATABASE_SSL_ENABLED=true — see infra/secrets.tf.
 
 DATABASE_URL=
 
 # Support "local", "s3", "s3-presigned"
-# On Vercel, "local" won't work in production — each invocation gets a fresh, mostly
-# read-only filesystem, so uploaded files vanish (or fail to write) between requests.
-# Use "s3" or "s3-presigned" (R2_ENDPOINT below covers Cloudflare R2's S3-compatible API).
+# Production uses "s3": ECS task filesystems are not persistent, so "local" uploads would
+# vanish on the next deploy (R2_ENDPOINT below covers Cloudflare R2's S3-compatible API).
 FILE_DRIVER=local
 ACCESS_KEY_ID=
 SECRET_ACCESS_KEY=
