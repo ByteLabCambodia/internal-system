@@ -5,6 +5,7 @@ import { createTestApp, resetData } from './support/test-app';
 import {
   PoFixture,
   q,
+  raceBehindLock,
   seedPurchaseOrder,
   seedRoles,
   seedWorld,
@@ -184,10 +185,15 @@ describe('ClaimsService.confirm', () => {
     const first = await claim(0, 6);
     const second = await claim(0, 6);
 
-    const results = await Promise.allSettled([
-      claims.confirm(world.manager, first),
-      claims.confirm(world.admin, second),
-    ]);
+    const results = await raceBehindLock(
+      db,
+      `SELECT 1 FROM purchase_order_items WHERE po_id = $1 FOR UPDATE`,
+      [po.poId],
+      [
+        () => claims.confirm(world.manager, first),
+        () => claims.confirm(world.admin, second),
+      ],
+    );
 
     expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
     expect(await stockOf(world.itemA)).toBe('16.0000');

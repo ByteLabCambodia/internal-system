@@ -190,3 +190,40 @@ export async function seedStockRequest(
 }
 
 export const q = one;
+
+/**
+ * Forces a race. A separate connection locks `lockSql`'s rows, the racers start, and the
+ * lock is released only once every racer is blocked on a lock inside its transaction.
+ * Without this, one racer usually finishes before the other starts, and a missing
+ * `FOR UPDATE` in the workflow would go unnoticed.
+ */
+export async function raceBehindLock<T>(
+  db: DataSource,
+  lockSql: string,
+  params: unknown[],
+  racers: (() => Promise<T>)[],
+): Promise<PromiseSettledResult<T>[]> {
+  const gate = db.createQueryRunner();
+  await gate.connect();
+  await gate.startTransaction();
+  try {
+    await gate.query(lockSql, params);
+    const settled = Promise.allSettled(racers.map((race) => race()));
+
+    for (let attempt = 0; ; attempt++) {
+      const [{ blocked }] = await db.query(
+        `SELECT count(*)::int AS blocked FROM pg_stat_activity
+          WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+      );
+      if (blocked >= racers.length) break;
+      if (attempt === 250) throw new Error('the racers never blocked');
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+
+    await gate.commitTransaction();
+    return await settled;
+  } finally {
+    if (gate.isTransactionActive) await gate.rollbackTransaction();
+    await gate.release();
+  }
+}

@@ -6,6 +6,8 @@ import { ENTITIES, MIGRATIONS } from './entities';
 import { AccountsService } from '../../../src/accounting/accounts.service';
 import { JournalService } from '../../../src/accounting/journal.service';
 import { RatesService } from '../../../src/accounting/rates.service';
+import { ReportsService } from '../../../src/accounting/reports.service';
+import { DashboardService } from '../../../src/dashboard/dashboard.service';
 import { ActivityService } from '../../../src/activity/activity.service';
 import { MoneyService } from '../../../src/common/money/money.service';
 import { CategoriesService } from '../../../src/inventory/categories.service';
@@ -88,6 +90,7 @@ export async function createTestApp(): Promise<TestingModule> {
       ApprovalThresholdsService,
       CategoriesService,
       ClaimsService,
+      DashboardService,
       InventoryService,
       JournalService,
       MoneyService,
@@ -98,6 +101,7 @@ export async function createTestApp(): Promise<TestingModule> {
       PurchaseOrdersService,
       PurchaseRequestsService,
       RatesService,
+      ReportsService,
       SettingsService,
       StockRequestsService,
       SuppliersService,
@@ -133,6 +137,7 @@ const TRUNCATE = [
   'inventory_claims',
   'journal_lines',
   'journal_entries',
+  'budgets',
   'payments',
   'purchase_order_items',
   'purchase_orders',
