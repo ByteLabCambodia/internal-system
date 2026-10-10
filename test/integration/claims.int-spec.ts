@@ -99,6 +99,23 @@ describe('ClaimsService.confirm', () => {
     expect(await poStatus()).toBe('partial');
   });
 
+  it("should receive into the line's own item when the form posts an empty item choice", async () => {
+    // The claim form hides "Receive into" for a linked line but still submits it empty,
+    // which the DTO turns into 0.
+    const claim = await claims.create(world.employee, {
+      poItemId: po.lineIds[0],
+      qtyClaimed: 2,
+      inventoryItemId: 0,
+    });
+
+    const row = await q(
+      db,
+      `SELECT inventory_item_id FROM inventory_claims WHERE id = $1`,
+      [claim.id],
+    );
+    expect(row.inventory_item_id).toBe(world.itemA);
+  });
+
   it('should complete the PO once every line is fully received', async () => {
     await claims.confirm(world.manager, await claim(0, 10));
     expect(await poStatus()).toBe('partial');
