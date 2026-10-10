@@ -1,8 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { ActivityEventEntity } from './entities/activity-event.entity';
-import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
+import { PrismaService } from '../prisma/prisma.service';
+import { toDate } from '../prisma/dates';
 
 export type ActivityEntityType =
   | 'purchase_request'
@@ -18,10 +16,11 @@ export type ActivityEntityType =
 export class ActivityService {
   private readonly logger = new Logger(ActivityService.name);
 
-  constructor(
-    @InjectRepository(ActivityEventEntity)
-    private readonly repository: Repository<ActivityEventEntity>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
+
+  private get events() {
+    return this.prisma.db.orm.public.ActivityEvent;
+  }
 
   /**
    * Best-effort audit write. A failure here is logged and swallowed — the activity log must
@@ -35,21 +34,16 @@ export class ActivityService {
     detail?: Record<string, unknown> | null;
   }): Promise<void> {
     try {
-      let actor: UserEntity | null = null;
-      if (params.actorId) {
-        actor = new UserEntity();
-        actor.id = params.actorId;
-      }
-
-      await this.repository.save(
-        this.repository.create({
-          entityType: params.entityType,
-          entityId: params.entityId,
-          action: params.action,
-          actor,
-          detail: params.detail ?? null,
-        }),
-      );
+      await this.events.create({
+        entityType: params.entityType,
+        entityId: params.entityId,
+        action: params.action,
+        actorId: params.actorId ?? null,
+        // Round-trip so the column gets plain JSON (undefined values dropped), as before.
+        detail: params.detail
+          ? JSON.parse(JSON.stringify(params.detail))
+          : null,
+      });
     } catch (error) {
       this.logger.error(
         `Failed to record activity ${params.action} on ${params.entityType}#${params.entityId}: ${error}`,
@@ -62,18 +56,18 @@ export class ActivityService {
     entityType: ActivityEntityType,
     entityId: number,
   ): Promise<{ action: string; actorName: string | null; createdAt: Date }[]> {
-    const rows = await this.repository.find({
-      where: { entityType, entityId },
-      relations: ['actor'],
-      order: { createdAt: 'ASC' },
-    });
+    const rows = await this.events
+      .where({ entityType, entityId })
+      .include('actor')
+      .orderBy([(e) => e.createdAt.asc(), (e) => e.id.asc()])
+      .all();
 
     return rows.map((row) => ({
       action: row.action,
       actorName: row.actor
         ? [row.actor.firstName, row.actor.lastName].filter(Boolean).join(' ')
         : null,
-      createdAt: row.createdAt,
+      createdAt: toDate(row.createdAt),
     }));
   }
 }

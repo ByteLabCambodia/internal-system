@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import Decimal from 'decimal.js';
-import { AppSettingEntity } from './entities/app-setting.entity';
+import { PrismaService } from '../prisma/prisma.service';
 
 /**
  * Key/value settings, including the C3 tolerances (`payment_tolerance_pct`,
@@ -10,18 +8,27 @@ import { AppSettingEntity } from './entities/app-setting.entity';
  */
 @Injectable()
 export class SettingsService {
-  constructor(
-    @InjectRepository(AppSettingEntity)
-    private readonly repository: Repository<AppSettingEntity>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  findAll(): Promise<AppSettingEntity[]> {
-    return this.repository.find({ order: { key: 'ASC' } });
+  private get settings() {
+    return this.prisma.db.orm.public.AppSetting;
+  }
+
+  async findAll() {
+    return await this.settings.orderBy((s) => s.key.asc()).all();
   }
 
   async get(key: string, fallback = ''): Promise<string> {
-    const row = await this.repository.findOne({ where: { key } });
+    const row = await this.settings.where({ key }).first();
     return row?.value ?? fallback;
+  }
+
+  async set(key: string, value: string): Promise<void> {
+    await this.settings.upsert({
+      create: { key, value },
+      update: { value },
+      conflictOn: { key },
+    });
   }
 
   /** A numeric setting. Missing, blank or unparseable values fall back rather than throw. */
@@ -34,16 +41,5 @@ export class SettingsService {
     } catch {
       return new Decimal(fallback);
     }
-  }
-
-  async set(key: string, value: string): Promise<void> {
-    const existing = await this.repository.findOne({ where: { key } });
-
-    if (existing) {
-      await this.repository.update({ key }, { value });
-      return;
-    }
-
-    await this.repository.save(this.repository.create({ key, value }));
   }
 }
