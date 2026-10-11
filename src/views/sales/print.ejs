@@ -80,6 +80,7 @@ const discountLabel = doc.discountType === 'percent' ? ' ' + Number(doc.discount
   td small { display: block; color: #444; }
   .n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .c { text-align: center; }
+  tfoot { display: table-row-group; } /* default table-footer-group repeats on every printed page */
   tfoot td { border: 1px solid #000; padding: 4px 6px; }
   tfoot .lbl { text-align: right; }
   tfoot .grand td { font-weight: 700; }
