@@ -1,12 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, LessThan, Repository } from 'typeorm';
 import crypto from 'crypto';
-import {
-  AuthTokenEntity,
-  AuthTokenPurposeEnum,
-} from './entities/auth-token.entity';
-import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
+import { AuthTokenPurposeEnum } from './auth-token-purpose.enum';
+import { PrismaService } from '../prisma/prisma.service';
+import { toDate } from '../prisma/dates';
+import { timestamptz } from '../prisma/numeric';
 
 /** Invites last 7 days, password resets 1 hour (Part 1 §2.10). Both are single-use. */
 export const TOKEN_TTL_MS: Record<AuthTokenPurposeEnum, number> = {
@@ -20,10 +17,11 @@ export type ConsumeResult =
 
 @Injectable()
 export class AuthTokensService {
-  constructor(
-    @InjectRepository(AuthTokenEntity)
-    private readonly repository: Repository<AuthTokenEntity>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
+
+  private get tokens() {
+    return this.prisma.db.orm.public.AuthToken;
+  }
 
   private hash(token: string): string {
     return crypto.createHash('sha256').update(token).digest('hex');
@@ -42,19 +40,28 @@ export class AuthTokensService {
 
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + TOKEN_TTL_MS[purpose]);
-    const user = new UserEntity();
-    user.id = userId;
 
-    await this.repository.save(
-      this.repository.create({
-        user,
-        tokenHash: this.hash(token),
-        purpose,
-        expiresAt,
-      }),
-    );
+    await this.tokens.create({
+      userId,
+      tokenHash: this.hash(token),
+      purpose,
+      expiresAt: timestamptz(expiresAt),
+    });
 
     return { token, expiresAt };
+  }
+
+  private async check(token: string, purpose: AuthTokenPurposeEnum) {
+    const row = await this.tokens
+      .where({ tokenHash: this.hash(token), purpose })
+      .first();
+
+    if (!row) return { result: { ok: false, reason: 'unknown' } as const };
+    if (row.usedAt) return { result: { ok: false, reason: 'used' } as const };
+    if (toDate(row.expiresAt).getTime() < Date.now()) {
+      return { result: { ok: false, reason: 'expired' } as const };
+    }
+    return { row };
   }
 
   /** Marks the token used and returns its owner. Never returns a user for a stale token. */
@@ -62,20 +69,18 @@ export class AuthTokensService {
     token: string,
     purpose: AuthTokenPurposeEnum,
   ): Promise<ConsumeResult> {
-    const row = await this.repository.findOne({
-      where: { tokenHash: this.hash(token), purpose },
-      relations: ['user'],
-    });
+    const { row, result } = await this.check(token, purpose);
+    if (!row) return result;
 
-    if (!row) return { ok: false, reason: 'unknown' };
-    if (row.usedAt) return { ok: false, reason: 'used' };
-    if (row.expiresAt.getTime() < Date.now()) {
-      return { ok: false, reason: 'expired' };
-    }
+    // Only the first of two concurrent uses wins: the update requires usedAt still null.
+    const claimed = await this.tokens
+      .where({ id: row.id })
+      .where((t) => t.usedAt.isNull())
+      .update({ usedAt: timestamptz(new Date()) });
 
-    await this.repository.update(row.id, { usedAt: new Date() });
-
-    return { ok: true, userId: row.user.id };
+    return claimed
+      ? { ok: true, userId: row.userId }
+      : { ok: false, reason: 'used' };
   }
 
   /** Verify without consuming — used to render the set/reset password form. */
@@ -83,43 +88,29 @@ export class AuthTokensService {
     token: string,
     purpose: AuthTokenPurposeEnum,
   ): Promise<ConsumeResult> {
-    const row = await this.repository.findOne({
-      where: { tokenHash: this.hash(token), purpose },
-      relations: ['user'],
-    });
-
-    if (!row) return { ok: false, reason: 'unknown' };
-    if (row.usedAt) return { ok: false, reason: 'used' };
-    if (row.expiresAt.getTime() < Date.now()) {
-      return { ok: false, reason: 'expired' };
-    }
-
-    return { ok: true, userId: row.user.id };
+    const { row, result } = await this.check(token, purpose);
+    return row ? { ok: true, userId: row.userId } : result;
   }
 
   async invalidateAll(
     userId: number,
     purpose: AuthTokenPurposeEnum,
   ): Promise<void> {
-    await this.repository.delete({ user: { id: userId }, purpose });
+    await this.tokens.where({ userId, purpose }).deleteAll();
   }
 
   async hasPendingInvite(userId: number): Promise<boolean> {
-    const count = await this.repository.count({
-      where: {
-        user: { id: userId },
-        purpose: AuthTokenPurposeEnum.invite,
-        usedAt: IsNull(),
-      },
-    });
+    const pending = await this.tokens
+      .where({ userId, purpose: AuthTokenPurposeEnum.invite })
+      .where((t) => t.usedAt.isNull())
+      .first();
 
-    return count > 0;
+    return pending !== null;
   }
 
   /** Housekeeping: drop tokens that expired more than a day ago. */
   async pruneExpired(): Promise<void> {
-    await this.repository.delete({
-      expiresAt: LessThan(new Date(Date.now() - 24 * 60 * 60 * 1000)),
-    });
+    const cutoff = timestamptz(new Date(Date.now() - 24 * 60 * 60 * 1000));
+    await this.tokens.where((t) => t.expiresAt.lt(cutoff)).deleteAll();
   }
 }

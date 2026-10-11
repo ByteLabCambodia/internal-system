@@ -15,7 +15,7 @@ import { CurrencyEnum } from '../../common/enums';
 export function buildPaymentLink(
   link: string,
   amount: number,
-  currency: CurrencyEnum,
+  currency: `${CurrencyEnum}`,
 ): string {
   let url: URL;
   try {

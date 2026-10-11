@@ -1,32 +1,44 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
-import { SupplierEntity } from './entities/supplier.entity';
+import { PrismaService } from '../prisma/prisma.service';
+import { contains, escapeLike } from '../prisma/like';
+
+export type SupplierInput = {
+  name?: string;
+  contactName?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  bankAccount?: string | null;
+  paymentTermsDays?: number | null;
+  note?: string | null;
+  active?: boolean;
+};
 
 /** C4: the supplier master that replaces purchase_orders.supplier free text. */
 @Injectable()
 export class SuppliersService {
-  constructor(
-    @InjectRepository(SupplierEntity)
-    private readonly repository: Repository<SupplierEntity>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  findAll(search?: string): Promise<SupplierEntity[]> {
-    return this.repository.find({
-      where: search ? { name: ILike(`%${search}%`) } : {},
-      order: { name: 'ASC' },
-    });
+  private get suppliers() {
+    return this.prisma.db.orm.public.Supplier;
   }
 
-  findActive(): Promise<SupplierEntity[]> {
-    return this.repository.find({
-      where: { active: true },
-      order: { name: 'ASC' },
-    });
+  async findAll(search?: string) {
+    const query = search
+      ? this.suppliers.where((s) => s.name.ilike(contains(search)))
+      : this.suppliers;
+    return await query.orderBy((s) => s.name.asc()).all();
   }
 
-  async findById(id: number): Promise<SupplierEntity> {
-    const supplier = await this.repository.findOne({ where: { id } });
+  async findActive() {
+    return await this.suppliers
+      .where({ active: true })
+      .orderBy((s) => s.name.asc())
+      .all();
+  }
+
+  async findById(id: number) {
+    const supplier = await this.suppliers.where({ id }).first();
     if (!supplier) throw new NotFoundException('Supplier not found');
     return supplier;
   }
@@ -35,26 +47,26 @@ export class SuppliersService {
    * Create-on-the-fly from the PO form: an exact (trimmed, case-insensitive) name match
    * reuses the existing supplier rather than minting "ABC Co." alongside "ABC Co".
    */
-  async findOrCreateByName(rawName: string): Promise<SupplierEntity> {
+  async findOrCreateByName(rawName: string) {
     const name = rawName.trim();
 
-    const existing = await this.repository.findOne({
-      where: { name: ILike(name) },
-    });
+    const existing = await this.suppliers
+      .where((s) => s.name.ilike(escapeLike(name)))
+      .first();
     if (existing) return existing;
 
-    return this.repository.save(this.repository.create({ name }));
+    return await this.suppliers.create({ name });
   }
 
-  create(data: Partial<SupplierEntity>): Promise<SupplierEntity> {
-    return this.repository.save(this.repository.create(data));
+  async create(data: SupplierInput & { name: string }) {
+    return await this.suppliers.create(data);
   }
 
-  async update(id: number, data: Partial<SupplierEntity>): Promise<void> {
-    await this.repository.update(id, data);
+  async update(id: number, data: SupplierInput): Promise<void> {
+    await this.suppliers.where({ id }).update(data);
   }
 
   async remove(id: number): Promise<void> {
-    await this.repository.delete(id);
+    await this.suppliers.where({ id }).delete();
   }
 }

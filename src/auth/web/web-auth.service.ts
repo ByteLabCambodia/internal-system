@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
 import { AuthService } from '../auth.service';
 import { AuthTokensService } from '../auth-tokens.service';
-import { AuthTokenPurposeEnum } from '../entities/auth-token.entity';
+import { AuthTokenPurposeEnum } from '../auth-token-purpose.enum';
 import { MailService } from '../../mail/mail.service';
 import { SessionService } from '../../session/session.service';
 import { UsersService } from '../../users/users.service';

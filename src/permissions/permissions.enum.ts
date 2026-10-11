@@ -17,4 +17,6 @@ export enum PermissionEnum {
   'rate.override' = 'rate.override',
   'users.manage' = 'users.manage',
   'suppliers.manage' = 'suppliers.manage',
+  'customers.manage' = 'customers.manage',
+  'sales.manage' = 'sales.manage',
 }

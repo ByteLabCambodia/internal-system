@@ -1,9 +1,11 @@
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { UserEntity } from '../users/infrastructure/persistence/relational/entities/user.entity';
+import { PrismaService } from '../prisma/prisma.service';
+import { toDate, toTimestamp } from '../prisma/dates';
+import { timestamp } from '../prisma/numeric';
+import { User } from '../users/domain/user';
+import { UserMapper } from '../users/infrastructure/persistence/relational/mappers/user.mapper';
 
 const LINK_TOKEN_TTL_MS = 15 * 60 * 1000;
 
@@ -14,10 +16,27 @@ const LINK_TOKEN_TTL_MS = 15 * 60 * 1000;
  */
 @Injectable()
 export class TelegramLinkService {
-  constructor(
-    @InjectRepository(UserEntity)
-    private readonly users: Repository<UserEntity>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
+
+  /** Live (not soft-deleted) users, as TypeORM's find returned. */
+  private live() {
+    return this.prisma.db.orm.public.User.where((u) => u.deletedAt.isNull());
+  }
+
+  private async setTelegram(
+    userId: number,
+    fields: {
+      telegramId?: string | null;
+      telegramUsername?: string | null;
+      telegramLinkToken?: string | null;
+      telegramLinkExpiresAt?: Date | null;
+    },
+  ): Promise<void> {
+    await this.prisma.db.orm.public.User.where({ id: userId }).update({
+      ...UserMapper.toWrite(fields),
+      updatedAt: timestamp(toTimestamp(new Date())),
+    });
+  }
 
   /** Issues a short-lived token the user pastes to the bot as `/link <token>`. */
   async issueLinkToken(
@@ -26,7 +45,7 @@ export class TelegramLinkService {
     const token = crypto.randomBytes(12).toString('hex');
     const expiresAt = new Date(Date.now() + LINK_TOKEN_TTL_MS);
 
-    await this.users.update(userId, {
+    await this.setTelegram(userId, {
       telegramLinkToken: token,
       telegramLinkExpiresAt: expiresAt,
     });
@@ -40,9 +59,7 @@ export class TelegramLinkService {
     telegramId: string,
     telegramUsername?: string,
   ): Promise<{ ok: boolean; message: string }> {
-    const user = await this.users.findOne({
-      where: { telegramLinkToken: token },
-    });
+    const user = await this.live().where({ telegramLinkToken: token }).first();
 
     if (!user) {
       return { ok: false, message: 'That link code is not valid.' };
@@ -50,7 +67,7 @@ export class TelegramLinkService {
 
     if (
       !user.telegramLinkExpiresAt ||
-      user.telegramLinkExpiresAt.getTime() < Date.now()
+      toDate(user.telegramLinkExpiresAt).getTime() < Date.now()
     ) {
       return {
         ok: false,
@@ -59,7 +76,9 @@ export class TelegramLinkService {
       };
     }
 
-    const taken = await this.users.findOne({ where: { telegramId } });
+    const taken = await this.live()
+      .where({ telegramId: BigInt(telegramId) })
+      .first();
     if (taken && taken.id !== user.id) {
       return {
         ok: false,
@@ -67,7 +86,7 @@ export class TelegramLinkService {
       };
     }
 
-    await this.users.update(user.id, {
+    await this.setTelegram(user.id, {
       telegramId,
       telegramUsername: telegramUsername ?? null,
       telegramLinkToken: null,
@@ -88,7 +107,7 @@ export class TelegramLinkService {
     telegramId: string,
     telegramUsername?: string,
   ): Promise<void> {
-    const user = await this.users.findOne({ where: { email } });
+    const user = await this.live().where({ email }).first();
 
     // One message for every failure mode: no account enumeration here either.
     const invalid = new UnprocessableEntityException(
@@ -98,14 +117,16 @@ export class TelegramLinkService {
     if (!user?.password || !user.active) throw invalid;
     if (!(await bcrypt.compare(password, user.password))) throw invalid;
 
-    const taken = await this.users.findOne({ where: { telegramId } });
+    const taken = await this.live()
+      .where({ telegramId: BigInt(telegramId) })
+      .first();
     if (taken && taken.id !== user.id) {
       throw new UnprocessableEntityException(
         'This Telegram account is already linked to another profile.',
       );
     }
 
-    await this.users.update(user.id, {
+    await this.setTelegram(user.id, {
       telegramId,
       telegramUsername: telegramUsername ?? null,
       telegramLinkToken: null,
@@ -114,7 +135,7 @@ export class TelegramLinkService {
   }
 
   async unlink(userId: number): Promise<void> {
-    await this.users.update(userId, {
+    await this.setTelegram(userId, {
       telegramId: null,
       telegramUsername: null,
       telegramLinkToken: null,
@@ -122,7 +143,14 @@ export class TelegramLinkService {
     });
   }
 
-  findByTelegramId(telegramId: string): Promise<UserEntity | null> {
-    return this.users.findOne({ where: { telegramId, active: true } });
+  async findByTelegramId(telegramId: string): Promise<User | null> {
+    if (!/^\d+$/.test(telegramId)) return null;
+
+    const row = await this.live()
+      .include('role')
+      .include('photo')
+      .where({ telegramId: BigInt(telegramId), active: true })
+      .first();
+    return row ? UserMapper.toDomain(row) : null;
   }
 }

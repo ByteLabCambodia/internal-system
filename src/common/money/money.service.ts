@@ -46,8 +46,8 @@ export class MoneyService {
   }
 
   /**
-   * amount_usd = amount_original / exchange_rate. The DB triggers derive this for stored
-   * records; this is for previews and for figures that never hit a trigger.
+   * amount_usd = amount_original / exchange_rate, at the stored scale. Every stored USD
+   * figure (payments, requests, orders) is derived through here.
    */
   toUsd(amountOriginal: MoneyInput, exchangeRate: MoneyInput): string {
     const rate = this.toDecimal(exchangeRate);

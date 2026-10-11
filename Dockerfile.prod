@@ -7,22 +7,30 @@ WORKDIR /usr/src/app
 
 # --ignore-scripts: the "prepare" script (is-ci || husky) sets up git hooks, which is
 # meaningless in a container build with no .git directory and no devDependencies.
-COPY package*.json ./
-RUN npm ci --ignore-scripts
+RUN npm install -g pnpm@12.10.1
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 COPY . .
-RUN npm run build
+RUN pnpm run build
 
 FROM node:24.14.1-alpine AS runtime
 WORKDIR /usr/src/app
 ENV NODE_ENV=production
+# Sales PDFs are printed by headless Chromium (PdfService); Khmer needs a Khmer font.
+ENV CHROMIUM_PATH=/usr/bin/chromium-browser
+RUN apk add --no-cache chromium font-noto-khmer font-noto
 
-COPY package*.json ./
-RUN npm ci --omit=dev --ignore-scripts
+RUN npm install -g pnpm@12.10.1
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --prod --frozen-lockfile --ignore-scripts
 
 COPY --from=build /usr/src/app/dist ./dist
 COPY --from=build /usr/src/app/public ./public
 COPY --from=build /usr/src/app/src/views ./src/views
+# Prisma migrations and contract snapshots, read by `pnpm run migrate:prod` (the one-off
+# ECS task the deploy runs before new tasks start).
+COPY --from=build /usr/src/app/migrations ./migrations
 COPY --from=build /usr/src/app/src/i18n ./src/i18n
 # mail.service.ts resolves templates from process.cwd()/src/mail/mail-templates at
 # runtime (not from dist) — see app.config.ts's workingDirectory.

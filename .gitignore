@@ -42,7 +42,6 @@ lerna-debug.log*
 
 # Claude Code runtime state
 .claude/scheduled_tasks.lock
-.vercel
 .env*
 
 # Terraform: .terraform.lock.hcl IS committed (pins provider versions) — everything
@@ -60,3 +59,10 @@ infra/override.tf
 infra/override.tf.json
 infra/*_override.tf
 infra/*_override.tf.json
+
+# Playwright output
+/test-results/
+/playwright-report/
+
+# pnpm is the package manager; an npm lockfile would drift from pnpm-lock.yaml.
+package-lock.json

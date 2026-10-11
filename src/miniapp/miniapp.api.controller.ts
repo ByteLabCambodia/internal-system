@@ -30,6 +30,7 @@ import { CreatePurchaseRequestDto } from '../procurement/dto/create-purchase-req
 import { CreateClaimDto } from '../inventory/dto/create-claim.dto';
 import { CreateStockRequestDto } from '../stock/dto/create-stock-request.dto';
 import { User } from '../users/domain/user';
+import { toDate } from '../prisma/dates';
 
 /**
  * The Mini App's JSON surface. Same services, same guards' worth of checks — the only
@@ -208,21 +209,21 @@ export class MiniAppApiController {
         number: row.prNumber,
         status: row.status,
         total: `${row.totalOriginal} ${row.currency}`,
-        createdAt: row.createdAt,
+        createdAt: toDate(row.createdAt),
       })),
       claims: claims.rows.map((row) => ({
         id: row.id,
         item: row.inventoryItem?.name ?? '',
         qty: row.qtyClaimed,
         status: row.status,
-        createdAt: row.createdAt,
+        createdAt: toDate(row.createdAt),
       })),
       stockRequests: stock.rows.map((row) => ({
         id: row.id,
         item: row.inventoryItem?.name ?? '',
         qty: row.qty,
         status: row.status,
-        createdAt: row.createdAt,
+        createdAt: toDate(row.createdAt),
       })),
     };
   }

@@ -1,7 +1,16 @@
 # Project instructions
 
-NestJS boilerplate supporting both relational (TypeORM/PostgreSQL) and document (Mongoose/MongoDB) persistence.
+Internal operations system (procurement, inventory, stock, accounting) on NestJS 11, EJS
+views and PostgreSQL through Prisma ORM 8.
 
-## When adding entities, schemas, or properties
+## Database schema changes
 
-Use the `generate` skill (auto-loaded from [.claude/skills/generate/SKILL.md](.claude/skills/generate/SKILL.md)). It documents the project's CLI generators (`npm run generate:resource:*`, `npm run add:property:to-*`) which keep both database variants, DTOs, modules, and migrations in sync. Do not hand-write entity files.
+Use the `schema-change` skill ([.claude/skills/schema-change/SKILL.md](.claude/skills/schema-change/SKILL.md)):
+edit `src/prisma/contract.prisma`, emit, plan a migration, apply it with `pnpm run migrate`.
+Seeds live in `src/database/seeds/seed.ts` (`pnpm run seed`).
+
+## Branches and deploys
+
+- `develop` is the default branch. Branch from it and open PRs against it.
+- `main` is production. Merging `develop` into `main` runs CI, then `.github/workflows/deploy.yml` deploys to AWS (ECS + RDS), running migrations first. Only merge to `main` to release.
+- Hosting is AWS only (see `infra/`). Vercel and Heroku are no longer used.

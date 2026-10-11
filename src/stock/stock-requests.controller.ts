@@ -22,6 +22,7 @@ import { setFlash } from '../common/web/flash';
 import { validateForm } from '../common/web/validate-form';
 import { csvResponse } from '../common/web/csv';
 import { buildBaseQuery } from '../procurement/purchase-requests.controller';
+import { toDate } from '../prisma/dates';
 
 @Controller('stock-requests')
 export class StockRequestsController {
@@ -96,7 +97,7 @@ export class StockRequestsController {
           .filter(Boolean)
           .join(' '),
         row.department ?? '',
-        row.createdAt.toISOString(),
+        toDate(row.createdAt).toISOString(),
       ]),
     );
   }
@@ -183,7 +184,7 @@ export class StockRequestsController {
     return response.redirect(`/stock-requests/${id}`);
   }
 
-  /** Fulfilment moves stock and can trigger the auto-reorder PR (trigger T4). */
+  /** Fulfilment moves stock and can raise the auto-reorder PR. */
   @RequirePermission(PermissionEnum['stock.fulfil'])
   @Post(':id/fulfil')
   async fulfil(

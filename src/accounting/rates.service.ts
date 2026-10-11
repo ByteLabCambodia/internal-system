@@ -1,16 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { LessThanOrEqual, Repository } from 'typeorm';
-import { ExchangeRateEntity } from './entities/exchange-rate.entity';
+import { PrismaService } from '../prisma/prisma.service';
 import { CurrencyEnum, RateSourceEnum } from '../common/enums';
+import { rate } from '../prisma/numeric';
 import { ExchangeRateDto } from './dto/exchange-rate.dto';
 
 @Injectable()
 export class RatesService {
-  constructor(
-    @InjectRepository(ExchangeRateEntity)
-    private readonly repository: Repository<ExchangeRateEntity>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
+
+  private get rates() {
+    return this.prisma.db.orm.public.ExchangeRate;
+  }
 
   private today(): string {
     return new Date().toISOString().slice(0, 10);
@@ -21,13 +21,22 @@ export class RatesService {
    * null when a foreign currency has no rate at all — callers must refuse to lock a record
    * to a rate that does not exist rather than silently using 1.
    */
-  async getCurrentRate(currency: CurrencyEnum): Promise<string | null> {
+  async getCurrentRate(currency: `${CurrencyEnum}`): Promise<string | null> {
+    return this.rateOn(currency, this.today());
+  }
+
+  /** The most recent rate on or before `date` (YYYY-MM-DD); same rules as above. */
+  async rateOn(
+    currency: `${CurrencyEnum}`,
+    date: string,
+  ): Promise<string | null> {
     if (currency === CurrencyEnum.USD) return '1.000000';
 
-    const row = await this.repository.findOne({
-      where: { currency, rateDate: LessThanOrEqual(this.today()) },
-      order: { rateDate: 'DESC' },
-    });
+    const row = await this.rates
+      .where({ currency })
+      .where((r) => r.rateDate.lte(date))
+      .orderBy((r) => r.rateDate.desc())
+      .first();
 
     return row?.rateToUsd ?? null;
   }
@@ -45,11 +54,11 @@ export class RatesService {
   }
 
   /** Recent rates for the accounting screen. */
-  history(limit = 60): Promise<ExchangeRateEntity[]> {
-    return this.repository.find({
-      order: { rateDate: 'DESC', currency: 'ASC' },
-      take: limit,
-    });
+  async history(limit = 60) {
+    return await this.rates
+      .orderBy([(r) => r.rateDate.desc(), (r) => r.currency.asc()])
+      .limit(limit)
+      .all();
   }
 
   /**
@@ -57,25 +66,17 @@ export class RatesService {
    * (date, currency) and correcting today's rate is the whole point.
    */
   async setManualRate(dto: ExchangeRateDto): Promise<void> {
-    const existing = await this.repository.findOne({
-      where: { rateDate: dto.rateDate, currency: dto.currency },
-    });
+    const rateToUsd = rate(String(dto.rateToUsd));
 
-    if (existing) {
-      await this.repository.update(existing.id, {
-        rateToUsd: String(dto.rateToUsd),
-        source: RateSourceEnum.manual,
-      });
-      return;
-    }
-
-    await this.repository.save(
-      this.repository.create({
+    await this.rates.upsert({
+      create: {
         rateDate: dto.rateDate,
         currency: dto.currency,
-        rateToUsd: String(dto.rateToUsd),
+        rateToUsd,
         source: RateSourceEnum.manual,
-      }),
-    );
+      },
+      update: { rateToUsd, source: RateSourceEnum.manual },
+      conflictOn: { rateDate: dto.rateDate, currency: dto.currency },
+    });
   }
 }

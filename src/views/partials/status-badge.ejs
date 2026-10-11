@@ -4,10 +4,10 @@
  * the call site. Usage: include('../partials/status-badge', { status: pr.status })
  */
 const STATUS_COLOURS = {
-  draft: 'grey', cancelled: 'grey', low: 'grey',
+  draft: 'grey', cancelled: 'grey', low: 'grey', void: 'grey',
   pending: 'amber', partial: 'amber', medium: 'amber',
-  approved: 'blue', open: 'blue',
-  converted: 'indigo',
+  approved: 'blue', open: 'blue', sent: 'blue', issued: 'blue',
+  converted: 'indigo', accepted: 'indigo',
   complete: 'green', paid: 'green', confirmed: 'green', fulfilled: 'green',
   rejected: 'red', unpaid: 'red', urgent: 'red',
   high: 'orange',

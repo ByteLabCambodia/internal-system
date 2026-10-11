@@ -3,13 +3,13 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
-import { PurchaseOrderEntity } from './entities/purchase-order.entity';
-import { PurchaseOrderItemEntity } from './entities/purchase-order-item.entity';
-import { PurchaseRequestEntity } from './entities/purchase-request.entity';
-import { CategoryEntity } from '../inventory/entities/category.entity';
-import { PoStatusEnum, PrStatusEnum } from '../common/enums';
+import Decimal from 'decimal.js';
+import { and, or, orderByField } from '@prisma/orm-postgres/orm-client';
+import { PrismaService, Tx } from '../prisma/prisma.service';
+import { money, rate } from '../prisma/numeric';
+import { contains } from '../prisma/like';
+import { nextDay } from '../prisma/dates-filter';
+import { PaymentStatusEnum, PoStatusEnum, PrStatusEnum } from '../common/enums';
 import { MoneyService } from '../common/money/money.service';
 import { ActivityService } from '../activity/activity.service';
 import { PermissionsService } from '../permissions/permissions.service';
@@ -32,23 +32,23 @@ export type PoListFilters = {
   order?: 'asc' | 'desc';
 };
 
-/** URL sort key → entity property; see the note in purchase-requests.service.ts. */
-const SORTABLE: Record<string, string> = {
+/** URL sort key → model field; the allowlist keeps a query parameter from reaching SQL. */
+const SORTABLE = {
   po_number: 'poNumber',
   status: 'status',
   payment_status: 'paymentStatus',
   total_usd: 'totalUsd',
   created_at: 'createdAt',
-};
+} as const;
+const SORT_FIELDS = Object.values(SORTABLE) as [
+  (typeof SORTABLE)[keyof typeof SORTABLE],
+  ...(typeof SORTABLE)[keyof typeof SORTABLE][],
+];
 
 @Injectable()
 export class PurchaseOrdersService {
   constructor(
-    @InjectRepository(PurchaseOrderEntity)
-    private readonly repository: Repository<PurchaseOrderEntity>,
-    @InjectRepository(CategoryEntity)
-    private readonly categories: Repository<CategoryEntity>,
-    private readonly dataSource: DataSource,
+    private readonly prisma: PrismaService,
     private readonly money: MoneyService,
     private readonly activity: ActivityService,
     private readonly permissions: PermissionsService,
@@ -56,71 +56,73 @@ export class PurchaseOrdersService {
     private readonly suppliers: SuppliersService,
   ) {}
 
+  private get orders() {
+    return this.prisma.db.orm.public.PurchaseOrder;
+  }
+
   /** Own created rows, or every row for manager/finance/admin. */
-  private applyScope(
-    query: ReturnType<Repository<PurchaseOrderEntity>['createQueryBuilder']>,
-    actor: User,
-  ) {
-    if (!this.permissions.seesAllRows(actor)) {
-      query.andWhere('po.created_by = :actorId', { actorId: actor.id });
-    }
-    return query;
+  private scoped(actor: User) {
+    return this.permissions.seesAllRows(actor)
+      ? this.orders.where({})
+      : this.orders.where({ createdById: Number(actor.id) });
   }
 
-  async list(
-    actor: User,
-    filters: PoListFilters,
-  ): Promise<{ rows: PurchaseOrderEntity[]; count: number }> {
-    const query = this.repository
-      .createQueryBuilder('po')
-      .leftJoinAndSelect('po.supplier', 'supplier')
-      .leftJoinAndSelect('po.createdBy', 'createdBy');
+  async list(actor: User, filters: PoListFilters) {
+    const { search, from, to } = filters;
+    const orders = this.scoped(actor).where((po) =>
+      and(
+        ...(filters.status ? [po.status.eq(filters.status)] : []),
+        ...(search
+          ? [
+              or(
+                po.poNumber.ilike(contains(search)),
+                po.supplierRecord.some((s) => s.name.ilike(contains(search))),
+                po.supplierName.ilike(contains(search)),
+              ),
+            ]
+          : []),
+        ...(from ? [po.createdAt.gte(from)] : []),
+        ...(to ? [po.createdAt.lt(nextDay(to))] : []),
+      ),
+    );
 
-    this.applyScope(query, actor);
+    const field =
+      SORTABLE[filters.orderBy as keyof typeof SORTABLE] ?? 'createdAt';
 
-    if (filters.status) {
-      query.andWhere('po.status = :status', { status: filters.status });
-    }
-    if (filters.search) {
-      query.andWhere(
-        '(po.po_number ILIKE :search OR supplier.name ILIKE :search OR po.supplier ILIKE :search)',
-        { search: `%${filters.search}%` },
-      );
-    }
-    if (filters.from) {
-      query.andWhere('po.created_at >= :from', { from: filters.from });
-    }
-    if (filters.to) {
-      query.andWhere('po.created_at < (:to::date + 1)', { to: filters.to });
-    }
+    const [rows, total] = await Promise.all([
+      orders
+        .include('supplierRecord')
+        .include('createdBy')
+        .orderBy([
+          orderByField(
+            this.orders,
+            field,
+            filters.order === 'asc' ? 'asc' : 'desc',
+            SORT_FIELDS,
+          ),
+          (po) => po.id.desc(),
+        ])
+        .offset((filters.page - 1) * filters.limit)
+        .limit(filters.limit)
+        .all(),
+      orders.aggregate((a) => ({ count: a.count() })),
+    ]);
 
-    const orderBy = SORTABLE[filters.orderBy ?? ''] ?? 'createdAt';
-    query.orderBy(`po.${orderBy}`, filters.order === 'asc' ? 'ASC' : 'DESC');
-
-    const [rows, count] = await query
-      .skip((filters.page - 1) * filters.limit)
-      .take(filters.limit)
-      .getManyAndCount();
-
-    return { rows, count };
+    return { rows, count: total.count };
   }
 
-  async findOneForActor(actor: User, id: number): Promise<PurchaseOrderEntity> {
-    const query = this.repository
-      .createQueryBuilder('po')
-      .leftJoinAndSelect('po.supplier', 'supplier')
-      .leftJoinAndSelect('po.expenseAccount', 'expenseAccount')
-      .leftJoinAndSelect('po.department', 'department')
-      .leftJoinAndSelect('po.project', 'project')
-      .leftJoinAndSelect('po.createdBy', 'createdBy')
-      .leftJoinAndSelect('po.purchaseRequest', 'purchaseRequest')
-      .leftJoinAndSelect('purchaseRequest.requester', 'requester')
-      .leftJoinAndSelect('po.items', 'items')
-      .where('po.id = :id', { id });
+  async findOneForActor(actor: User, id: number) {
+    const row = await this.scoped(actor)
+      .where({ id })
+      .include('supplierRecord')
+      .include('expenseAccount')
+      .include('department')
+      .include('project')
+      .include('createdBy')
+      .include('purchaseRequest', (pr) => pr.include('requester'))
+      .include('items', (items) => items.orderBy((i) => i.id.asc()))
+      .first();
 
-    this.applyScope(query, actor);
-
-    const row = await query.getOne();
     if (!row) throw new NotFoundException('Purchase order not found');
 
     return row;
@@ -139,30 +141,25 @@ export class PurchaseOrdersService {
     const distinct = [...new Set(categories.filter(Boolean))] as string[];
 
     if (distinct.length === 1) {
-      const category = await this.categories.findOne({
-        where: { name: distinct[0] },
-        relations: ['expenseAccount'],
-      });
+      const category = await this.prisma.db.orm.public.Category.where({
+        name: distinct[0],
+      }).first();
 
-      if (category?.expenseAccount) return category.expenseAccount.id;
+      if (category?.expenseAccountId) return category.expenseAccountId;
     }
 
     const misc = await this.accounts.findByCode(MISC_EXPENSE_ACCOUNT_CODE);
     return misc?.id ?? null;
   }
 
-  async createFromRequest(
-    actor: User,
-    dto: CreatePurchaseOrderDto,
-  ): Promise<PurchaseOrderEntity> {
-    // department and project are loaded because the order inherits them, and they become
-    // the dimensions on the journal lines when a payment posts (expense by department).
-    const pr = await this.dataSource
-      .getRepository(PurchaseRequestEntity)
-      .findOne({
-        where: { id: dto.prId },
-        relations: ['items', 'department', 'project'],
-      });
+  async createFromRequest(actor: User, dto: CreatePurchaseOrderDto) {
+    // The order inherits the request's department and project, and they become the
+    // dimensions on the journal lines when a payment posts (expense by department).
+    const pr = await this.prisma.db.orm.public.PurchaseRequest.where({
+      id: dto.prId,
+    })
+      .include('items')
+      .first();
 
     if (!pr) throw new NotFoundException('Purchase request not found');
 
@@ -194,42 +191,35 @@ export class PurchaseOrdersService {
       ),
     );
 
-    const id = await this.dataSource.transaction(async (manager) => {
-      const po = await manager.save(
-        manager.create(PurchaseOrderEntity, {
-          purchaseRequest: { id: pr.id } as never,
-          type: dto.type,
-          supplier: supplierId ? ({ id: supplierId } as never) : null,
-          supplierName,
-          expenseAccount: expenseAccountId
-            ? ({ id: expenseAccountId } as never)
-            : null,
-          // The order inherits the rate the request locked, not today's.
-          currency: pr.currency,
-          exchangeRate: pr.exchangeRate,
-          totalOriginal,
-          department: pr.department,
-          project: pr.project,
-          createdBy: { id: Number(actor.id) } as never,
-        }),
-      );
+    const id = await this.prisma.db.transaction(async (tx) => {
+      const po = await tx.orm.public.PurchaseOrder.create({
+        prId: pr.id,
+        type: dto.type,
+        supplierId,
+        supplierName,
+        expenseAccountId,
+        // The order inherits the rate the request locked, not today's.
+        currency: pr.currency,
+        exchangeRate: rate(pr.exchangeRate),
+        totalOriginal: money(totalOriginal),
+        totalUsd: money(this.money.toUsd(totalOriginal, pr.exchangeRate)),
+        departmentId: pr.departmentId,
+        projectId: pr.projectId,
+        createdById: Number(actor.id),
+      });
 
-      await manager.save(
-        dto.items.map((item) =>
-          manager.create(PurchaseOrderItemEntity, {
-            purchaseOrder: { id: po.id } as never,
-            name: item.name,
-            qtyOrdered: String(item.qtyOrdered),
-            unitPriceOriginal: String(item.unitPrice),
-            inventoryItem: item.inventoryItemId
-              ? ({ id: item.inventoryItemId } as never)
-              : null,
-          }),
-        ),
+      await tx.orm.public.PurchaseOrderItem.createAll(
+        dto.items.map((item) => ({
+          poId: po.id,
+          name: item.name,
+          qtyOrdered: money(String(item.qtyOrdered)),
+          unitPriceOriginal: money(String(item.unitPrice)),
+          inventoryItemId: item.inventoryItemId || null,
+        })),
       );
 
       // The request flips to converted as part of the same transaction.
-      await manager.update(PurchaseRequestEntity, pr.id, {
+      await tx.orm.public.PurchaseRequest.where({ id: pr.id }).update({
         status: PrStatusEnum.converted,
       });
 
@@ -268,7 +258,7 @@ export class PurchaseOrdersService {
       );
     }
 
-    await this.repository.update(id, { status: PoStatusEnum.cancelled });
+    await this.orders.where({ id }).update({ status: PoStatusEnum.cancelled });
 
     await this.activity.log({
       entityType: 'purchase_order',
@@ -278,14 +268,95 @@ export class PurchaseOrdersService {
     });
   }
 
+  /**
+   * Locks an order for the rest of the caller's transaction. Payments against the same
+   * order queue up here, so the over-payment check always sees every committed payment.
+   */
+  async lockForPayment(tx: Tx, id: number) {
+    return await tx.orm.public.PurchaseOrder.where({ id }).forUpdate().first();
+  }
+
+  /** unpaid / partial / paid from the USD sum of every payment against the order. */
+  async rollUpPaymentStatus(
+    tx: Tx,
+    po: { id: number; totalUsd: string },
+  ): Promise<void> {
+    const paid = await this.paidUsd(tx, po.id);
+
+    const paymentStatus =
+      this.money.compare(paid, po.totalUsd) >= 0
+        ? PaymentStatusEnum.paid
+        : this.money.isPositive(paid)
+          ? PaymentStatusEnum.partial
+          : PaymentStatusEnum.unpaid;
+
+    await tx.orm.public.PurchaseOrder.where({ id: po.id }).update({
+      paymentStatus,
+    });
+  }
+
+  async paidUsd(tx: Tx, poId: number): Promise<string> {
+    const { total } = await tx.orm.public.Payment.where({ poId }).aggregate(
+      (a) => ({ total: a.sum('amountUsd') }),
+    );
+
+    return total ?? '0';
+  }
+
+  /**
+   * Goods received against an order line (C3): refuses to go past the ordered quantity
+   * plus `tolerance`, advances the line, then moves the order to partial or complete. A
+   * cancelled order keeps its status. Locks line before order, the same order every
+   * other receipt takes.
+   */
+  async receive(
+    tx: Tx,
+    poItemId: number,
+    qty: string,
+    tolerance: Decimal,
+  ): Promise<void> {
+    const lines = tx.orm.public.PurchaseOrderItem;
+    const line = await lines.where({ id: poItemId }).forUpdate().first();
+
+    if (!line) throw new NotFoundException('Purchase order line not found');
+
+    const claimed = new Decimal(line.qtyClaimed);
+    const ordered = new Decimal(line.qtyOrdered);
+    const received = new Decimal(qty);
+
+    if (claimed.plus(received).greaterThan(ordered.times(tolerance.plus(1)))) {
+      throw new UnprocessableEntityException(
+        `over-receipt on purchase order line ${line.id}: ${claimed.toFixed(4)} already claimed + ${received.toFixed(4)} exceeds ${ordered.toFixed(4)} ordered`,
+      );
+    }
+
+    await lines.where({ id: line.id }).update({
+      qtyClaimed: money(claimed.plus(received).toFixed(4)),
+    });
+
+    const po = await tx.orm.public.PurchaseOrder.where({ id: line.poId })
+      .forUpdate()
+      .first();
+
+    if (!po || po.status === PoStatusEnum.cancelled) return;
+
+    const { outstanding } = await lines
+      .where({ poId: po.id })
+      .where((l) => l.qtyClaimed.lt(l.qtyOrdered))
+      .aggregate((a) => ({ outstanding: a.count() }));
+
+    await tx.orm.public.PurchaseOrder.where({ id: po.id }).update({
+      status: outstanding === 0 ? PoStatusEnum.complete : PoStatusEnum.partial,
+    });
+  }
+
   /** Open or partly received orders — the ones a payment can be recorded against. */
-  findPayable(): Promise<PurchaseOrderEntity[]> {
-    return this.repository
-      .createQueryBuilder('po')
-      .leftJoinAndSelect('po.supplier', 'supplier')
-      .where('po.status != :cancelled', { cancelled: PoStatusEnum.cancelled })
-      .andWhere('po.payment_status != :paid', { paid: 'paid' })
-      .orderBy('po.created_at', 'DESC')
-      .getMany();
+  async findPayable() {
+    return await this.orders
+      .where((po) => po.status.neq(PoStatusEnum.cancelled))
+      .where((po) => po.paymentStatus.neq(PaymentStatusEnum.paid))
+      .include('supplierRecord')
+      .orderBy([(po) => po.createdAt.desc(), (po) => po.id.desc()])
+      .all();
   }
 }

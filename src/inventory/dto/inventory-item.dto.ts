@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsBooleanString,
   IsNotEmpty,
@@ -7,6 +7,7 @@ import {
   IsString,
   Min,
 } from 'class-validator';
+import { lastValueTransformer } from '../../utils/transformers/last-value.transformer';
 
 export class InventoryItemDto {
   @IsString()
@@ -33,6 +34,7 @@ export class InventoryItemDto {
   reorderQty?: number;
 
   @IsOptional()
+  @Transform(lastValueTransformer)
   @IsBooleanString()
   active?: string;
 }

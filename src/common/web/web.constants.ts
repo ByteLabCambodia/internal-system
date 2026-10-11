@@ -18,6 +18,7 @@ export const WEB_ROUTE_PREFIXES = [
   'inventory',
   'reports',
   'accounting',
+  'sales',
   'admin',
   'profile',
   'uploads',

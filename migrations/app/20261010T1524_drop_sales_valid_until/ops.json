@@ -1,0 +1,44 @@
+[
+  {
+    "id": "dropColumn.sales_documents.valid_until",
+    "label": "Drop column \"valid_until\" from \"sales_documents\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "valid_until",
+        "table": "sales_documents"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"valid_until\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "sales_documents",
+          "valid_until"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop column \"valid_until\"",
+        "sql": "ALTER TABLE \"public\".\"sales_documents\" DROP COLUMN \"valid_until\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"valid_until\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "sales_documents",
+          "valid_until"
+        ]
+      }
+    ]
+  }
+]

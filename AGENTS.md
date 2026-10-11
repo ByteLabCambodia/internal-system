@@ -19,7 +19,7 @@ Account `2000 Accounts Payable` is seeded but **nothing posts to it**. There is 
 aging and no accrual entry on claim confirmation. Every report in the reporting layer
 rests on this assumption — changing it later means reposting history.
 
-The expense account is resolved by trigger T5 as
+The expense account is resolved by `PaymentsService.record` as
 `coalesce(po.expense_account_id, payment.expense_account_id, account '6900')` (C1).
 
 ### Primary keys: **integer, no uuid**
@@ -31,7 +31,7 @@ untouched; no new table references it.
 
 ### Roles: **keep the boilerplate's `role` table**
 Part 2 of the brief models the role as a `user_role` enum column on users. We do not do
-that — the boilerplate's `role` lookup table and the `RoleEntity` relation stay, reseeded
+that — the boilerplate's `role` lookup table and the `User.role` relation stay, reseeded
 with the four operations roles:
 
 ```
@@ -47,22 +47,25 @@ as the brief specifies. Deactivating a user sets `active = false` and kills thei
 ## Conventions
 
 - **Table and column naming.** New tables use `snake_case`, plural, exactly as spelled in
-  Part 2 of the brief, because the raw-SQL triggers reference those names. The boilerplate's
-  own `user` / `session` / `file` tables keep their camelCase columns. Entities therefore
-  declare explicit `name:` on every column.
+  Part 2 of the brief. The boilerplate's own `user` / `session` / `file` tables keep their
+  camelCase columns. The Prisma contract (`src/prisma/contract.prisma`) therefore maps
+  every snake_case table and column explicitly (`@@map` / `@map`).
 - **Module layout.** New modules follow the brief's Part 3 layout
-  (`*.controller.ts`, `*.api.controller.ts`, `*.service.ts`, `entities/`, `dto/`) rather
+  (`*.controller.ts`, `*.api.controller.ts`, `*.service.ts`, `dto/`) rather
   than the boilerplate's hexagonal `infrastructure/persistence/...` structure, which is
   kept only for the pre-existing `users` module.
-- **Money.** `numeric(18,4)`, never a JS float and never TypeORM `float`/`number`. Columns
-  use `numericTransformer` (`src/utils/transformers/numeric.transformer.ts`) and surface as
-  `string` in TypeScript. `exchange_rate` is `numeric(18,6)` and means **units per 1 USD**;
+- **Money.** `numeric(18,4)`, never a JS float. Prisma returns numerics as strings; write
+  them through `money()` / `rate()` (`src/prisma/numeric.ts`), and do arithmetic with
+  `MoneyService` / decimal.js. `exchange_rate` is `numeric(18,6)` and means **units per 1 USD**;
   `amount_usd = round(amount_original / exchange_rate, 4)`, displayed at 2dp.
-- **Invariants live in Postgres.** T1–T6 (Part 2.7) are raw SQL triggers inside migrations
-  and are the authority. Services must **not** reimplement them — write, then re-read the row.
+- **Invariants live in the services, with one trigger left.** T1, T3, T4 and T5 moved into
+  `PaymentsService.record`, `ClaimsService.confirm`, `StockRequestsService.fulfil` and the
+  USD helpers; each takes its row locks (`forUpdate()`) inside one Prisma transaction. Only
+  T2 (`journal_lines_balanced`, a deferred constraint trigger) remains in the database, so
+  an unbalanced journal entry can never commit whatever code writes it.
 - **Tolerances are data, not env.** The C3 over-receipt / over-payment guards read
   `receipt_tolerance_pct` and `payment_tolerance_pct` from the `app_settings` table (both
-  seeded to `0`), because a trigger cannot read the app's config. Admin → Settings edits them.
+  seeded to `0`), so an admin can change them without a deploy (Admin → Settings).
 
 ## The page layer
 
@@ -90,14 +93,13 @@ as the brief specifies. Deactivating a user sets `active = false` and kills thei
 - **EJS defaults use `locals.x`**, not `typeof x !== 'undefined'` — the latter throws a TDZ
   error when the name is also declared in the partial. Attribute-building expressions need
   `<%- %>`, not `<%= %>`, or the quotes come out HTML-escaped.
-- **Front end has no bundler.** Tailwind CLI (`npm run css:build` / `css:watch`) plus three
+- **Front end has no bundler.** Tailwind CLI (`pnpm run css:build` / `css:watch`) plus three
   vendored scripts in `public/js` — Flowbite 4.0.2, Alpine, Chart.js. Never a CDN.
 - **Every list page** is filter toolbar → count → sortable table → pagination → CSV
   (`partials/filter-toolbar`, `common/web/csv.ts`). The CSV runs the *same scoped query* as
   the page, so an export can never leak rows the list would hide.
-- **Sorting:** URL sort keys are snake_case but TypeORM's `orderBy` needs the entity
-  property once `skip`/`take` are involved. Each list service keeps a `SORTABLE` map from
-  one to the other, which doubles as the allowlist.
+- **Sorting:** URL sort keys are snake_case; each list service keeps a `SORTABLE` map to
+  the model field, which doubles as the allowlist passed to Prisma's `orderByField`.
 - **EJS render locals are per-view.** Anything a template uses (`money`, `can`, …) that is
   not set by `ViewGlobalsMiddleware` or `WebAuthGuard` must be passed in *every* render call
   for that view, including the re-render on a validation failure.
@@ -107,17 +109,17 @@ as the brief specifies. Deactivating a user sets `active = false` and kills thei
 - **Money never comes from the client.** The PR/PO/payment forms post amounts, but the FX
   rate is looked up server-side and locked onto the record; a foreign currency with no rate
   on file is refused rather than defaulted to 1. Totals are summed with `MoneyService`
-  (decimal.js), and `total_usd` / `amount_usd` are then **derived by trigger T1** — services
-  write, then re-read.
+  (decimal.js), and `total_usd` / `amount_usd` are derived in the service with
+  `MoneyService.toUsd` at the locked rate (formerly trigger T1).
 - **A purchase order inherits the request's locked rate**, not today's, so converting later
   cannot restate an approved amount.
 - **C1 lives in two places** and they must agree: `PurchaseOrdersService.resolveExpenseAccountId`
   picks the account at PO creation (one shared category → its account, otherwise 6900), and
-  trigger T5 resolves `coalesce(po.expense_account_id, payment.expense_account_id, 6900)`
-  when posting.
-- **Guard failures surface as form errors.** The C3 over-payment guard raises inside T5;
-  `PaymentsService` catches `QueryFailedError` and re-renders the form with the trigger's
-  message instead of a 500.
+  `PaymentsService.record` resolves `coalesce(po.expense_account_id,
+  payment.expense_account_id, 6900)` when posting.
+- **Guard failures surface as form errors.** The C3 over-payment guard throws an
+  `UnprocessableEntityException` from `PaymentsService.record`; the controller re-renders
+  the form with its message instead of a 500.
 - **C2's amount tier is still enforced**, in `PurchaseRequestsService.decide` against
   `approval_thresholds`. **C2's self-approval block is deliberately removed**, on the user's
   explicit instruction (2026-08-07): manager and admin may approve or reject their own
@@ -134,21 +136,21 @@ as the brief specifies. Deactivating a user sets `active = false` and kills thei
 
 ## Inventory and stock
 
-- **`inventory_items.stock_qty` is never written directly.** It moves only through trigger
-  T3 (claim confirmed), trigger T4 (stock request fulfilled) and
-  `InventoryService.adjustStock`. The item edit form deliberately has no stock field, so the
-  balance and the `stock_movements` ledger can never disagree. `adjustStock` locks the row
+- **`inventory_items.stock_qty` is never written directly.** It moves only through
+  `ClaimsService.confirm`, `StockRequestsService.fulfil` and `InventoryService.adjustStock`,
+  all through `InventoryService.applyMovement`. The item edit form deliberately has no
+  stock field, so the balance and the `stock_movements` ledger can never disagree. `adjustStock` locks the row
   `FOR UPDATE` and writes the item and the ledger row in one transaction.
-- **Guards are checked twice, on purpose.** The C3 over-receipt rule is enforced by T3 at
-  confirmation (the authority) *and* re-checked in `ClaimsService.create` at submission, so
+- **Guards are checked twice, on purpose.** The C3 over-receipt rule is enforced under lock
+  by `ClaimsService.confirm` (the authority) *and* re-checked in `ClaimsService.create` at submission, so
   the claimant gets "Only 1.0000 of Monitor is still outstanding" instead of a manager
   hitting a 500 later. Both read `receipt_tolerance_pct` from `app_settings`.
-- **Auto-reorder is entirely T4's.** Fulfilling a request that lands at or below the reorder
-  point (with `reorder_qty > 0`) inserts a draft `auto_generated` purchase request plus
-  `stock_below_reorder` notifications for every active manager and admin. Nothing in the
-  service layer duplicates this — it fires for the Telegram bot and the Mini App too.
-- **Trigger messages surface as form errors.** `StockRequestsService.fulfil` and
-  `ClaimsService.confirm` catch `QueryFailedError` and re-render with the raised message
+- **Auto-reorder lives in `StockRequestsService.fulfil`.** Fulfilling a request that lands
+  at or below the reorder point (with `reorder_qty > 0`) inserts a draft `auto_generated`
+  purchase request in the same transaction, then notifies every active manager and admin.
+  The Telegram bot and the Mini App call the same service, so it fires for them too.
+- **Guard failures surface as form errors.** `StockRequestsService.fulfil` and
+  `ClaimsService.confirm` throw `UnprocessableEntityException`s that the pages re-render
   ("insufficient stock for SKU-MON: 4.0000 on hand, 999.0000 requested").
 
 ## Accounting, reports, dashboard
@@ -162,9 +164,9 @@ as the brief specifies. Deactivating a user sets `active = false` and kills thei
   description, columns, rows) plus an entry in its `builders` map. The page, the date filter,
   the tab strip and the CSV route are shared — there is no per-report view.
 - **Dimensions must be loaded to be inherited.** A purchase order copies the request's
-  department and project, and trigger T5 stamps them onto the journal lines. If the relation
-  is not loaded when the PR is fetched, every expense silently reports as "Unassigned" —
-  this was a real bug caught by the expense-by-department report.
+  department and project (`departmentId` / `projectId`), and `JournalService.postPayment`
+  stamps them onto the journal lines. Dropping them silently reports every expense as
+  "Unassigned"; the expense-by-department report and its integration test catch it.
 - **The daily rate cron never overwrites a manual rate** for the same day: finance's
   correction outranks the feed (`RatesService.fetchDailyRates`, 01:00, `open.er-api.com`).
   A fetch failure is logged, not thrown — the consequence is that records in that currency
@@ -234,9 +236,10 @@ as the brief specifies. Deactivating a user sets `active = false` and kills thei
 - **Delete is guarded, deactivate is the norm.** Users, departments, projects, suppliers and
   categories all refuse to delete when records reference them, and the last active admin and
   self-deletion are blocked outright.
-- **`repository.delete({ relation: { id } })` silently matches nothing.** TypeORM does not
-  translate relation criteria for deletes — it reports success having deleted zero rows. Use
-  the query builder with the FK column (see `ApprovalThresholdsService.removeLimit`).
+- **Prisma does not skip soft-deleted rows.** `user` and `session` have `deletedAt`; every
+  query on them filters `deletedAt` null itself (see `UsersRelationalRepository.live()`).
+- **`forUpdate()` cannot be combined with `.include()`.** Lock the row, then read the
+  relations in a second query.
 
 ## Build gotcha
 
@@ -246,7 +249,7 @@ build is interrupted or two builds overlap, tsc can conclude everything is up to
 `Cannot find module '.../dist/main'` even though the build exited 0. Fix: `rm -rf dist`,
 build again, and check `dist/main.js` exists before starting.
 
-Also: build with **`npm run build`**, never bare `tsc`. `nest build` copies the i18n JSON
+Also: build with **`pnpm run build`**, never bare `tsc`. `nest build` copies the i18n JSON
 assets into `dist/`; a raw `tsc` run compiles cleanly but the app then dies at boot with
 `i18n path (dist/i18n/) cannot be found`.
 
@@ -255,7 +258,7 @@ assets into `dist/`; a raw `tsc` run compiles cleanly but the app then dies at b
 `docs/flowbite-llms-full.txt` is the authoritative source for component markup — grep it per
 component, never write Flowbite markup from memory, and ignore Flowbite React/Svelte docs.
 
-The `flowbite` MCP server is configured for this project (`npx -y flowbite-mcp`). It does
+The `flowbite` MCP server is configured for this project (`pnpm exec -y flowbite-mcp`). It does
 **theme generation**, not markup lookup — use it once in phase 2 to produce the theme file,
 then work from `llms-full.txt` for every component.
 

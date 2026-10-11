@@ -1,17 +1,19 @@
 name: Deploy to AWS
 
-# Runs only after CI passes on main, same trigger pattern the old Vercel/Heroku
-# migrate.yml used. Builds the prod image, pushes to ECR, runs migrations as a one-off
-# ECS task, then updates the ECS service.
+# Production deploys come from main only: work merges into develop, then develop is
+# merged into main to release. Runs once every workflow on main has passed (CI and Tests),
+# builds the prod image, pushes to ECR, runs migrations as a one-off ECS task, then updates
+# the ECS service.
 on:
   workflow_run:
-    workflows: ['NestJS API CI']
+    workflows: ['NestJS API CI', 'Tests']
     types: [completed]
     branches: [main]
 
 permissions:
   id-token: write # for OIDC auth to AWS
   contents: read
+  actions: read # for the gate job to read the other workflows' results
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
@@ -24,9 +26,35 @@ env:
   SECURITY_GROUP_ID: ${{ vars.ECS_SERVICE_SECURITY_GROUP_ID }}
 
 jobs:
-  deploy:
+  # Fires when either workflow finishes. Only the run that finds the other one already
+  # green continues, so a deploy never starts while a check is pending or failed.
+  gate:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          runs=$(gh api "repos/${{ github.repository }}/actions/runs?head_sha=$SHA&branch=main&event=push&per_page=50" --jq '.workflow_runs')
+          ready=true
+          for name in 'NestJS API CI' 'Tests'; do
+            result=$(echo "$runs" | jq -r --arg n "$name" '[.[] | select(.name == $n)] | sort_by(.created_at) | last | .conclusion // "pending"')
+            echo "$name: $result"
+            [ "$result" = "success" ] || ready=false
+          done
+          echo "ready=$ready" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: gate
+    if: ${{ needs.gate.outputs.ready == 'true' }}
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-${{ github.event.workflow_run.head_sha }}
+      cancel-in-progress: false
 
     steps:
       - uses: actions/checkout@v6
@@ -86,7 +114,7 @@ jobs:
             --task-definition "${{ steps.register-task-def.outputs.arn }}" \
             --launch-type FARGATE \
             --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_IDS],securityGroups=[$SECURITY_GROUP_ID],assignPublicIp=ENABLED}" \
-            --overrides "{\"containerOverrides\":[{\"name\":\"$ECS_CONTAINER_NAME\",\"command\":[\"npm\",\"run\",\"migration:run:prod\"]}]}" \
+            --overrides "{\"containerOverrides\":[{\"name\":\"$ECS_CONTAINER_NAME\",\"command\":[\"pnpm\",\"run\",\"migrate:prod\"]}]}" \
             --query 'tasks[0].taskArn' --output text)
 
           echo "Waiting for migration task $TASK_ARN to finish..."

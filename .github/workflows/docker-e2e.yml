@@ -2,9 +2,9 @@ name: NestJS API CI
 
 on:
   push:
-    branches: [main]
+    branches: [develop, main]
   pull_request:
-    branches: [main]
+    branches: [develop, main]
 
 jobs:
   build:
@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v6
 
       # <database-relational-block>
-      - name: Run e2e tests for NestJS with TypeORM
+      - name: Run e2e tests for NestJS with Prisma
         id: relational
         run: docker compose -f docker-compose.relational.ci.yaml --env-file env-example-relational -p ci-relational up --build --exit-code-from api
 

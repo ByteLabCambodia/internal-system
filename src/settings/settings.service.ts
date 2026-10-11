@@ -1,36 +1,45 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { AppSettingEntity } from './entities/app-setting.entity';
+import Decimal from 'decimal.js';
+import { PrismaService } from '../prisma/prisma.service';
 
 /**
- * Key/value settings, including the two the C3 triggers read directly. Writes go through
- * here so the trigger and the UI can never disagree about where the value lives.
+ * Key/value settings, including the C3 tolerances (`payment_tolerance_pct`,
+ * `receipt_tolerance_pct`) the payment and claim workflows read.
  */
 @Injectable()
 export class SettingsService {
-  constructor(
-    @InjectRepository(AppSettingEntity)
-    private readonly repository: Repository<AppSettingEntity>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  findAll(): Promise<AppSettingEntity[]> {
-    return this.repository.find({ order: { key: 'ASC' } });
+  private get settings() {
+    return this.prisma.db.orm.public.AppSetting;
+  }
+
+  async findAll() {
+    return await this.settings.orderBy((s) => s.key.asc()).all();
   }
 
   async get(key: string, fallback = ''): Promise<string> {
-    const row = await this.repository.findOne({ where: { key } });
+    const row = await this.settings.where({ key }).first();
     return row?.value ?? fallback;
   }
 
   async set(key: string, value: string): Promise<void> {
-    const existing = await this.repository.findOne({ where: { key } });
+    await this.settings.upsert({
+      create: { key, value },
+      update: { value },
+      conflictOn: { key },
+    });
+  }
 
-    if (existing) {
-      await this.repository.update({ key }, { value });
-      return;
+  /** A numeric setting. Missing, blank or unparseable values fall back rather than throw. */
+  async numeric(key: string, fallback: Decimal.Value = 0): Promise<Decimal> {
+    const value = (await this.get(key)).trim();
+    if (!value) return new Decimal(fallback);
+
+    try {
+      return new Decimal(value);
+    } catch {
+      return new Decimal(fallback);
     }
-
-    await this.repository.save(this.repository.create({ key, value }));
   }
 }

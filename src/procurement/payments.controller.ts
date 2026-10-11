@@ -17,7 +17,8 @@ import { validateForm } from '../common/web/validate-form';
 
 /**
  * Recording a payment. Everything that makes it correct — the USD amount, the over-payment
- * guard, the expense-account resolution and the journal entry — happens in trigger T5.
+ * guard, the expense-account resolution and the journal entry — happens in
+ * PaymentsService.record.
  */
 @Controller('accounting/payments')
 export class PaymentsController {

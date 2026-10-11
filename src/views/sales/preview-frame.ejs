@@ -1,0 +1,40 @@
+<%
+/*
+ * The document as it will print, scaled to fit. Pass `src` for a saved document, or
+ * `formId` to re-render from the form (POST /sales/preview) as the user types.
+ */
+const frameId = 'preview-' + (locals.formId || 'doc');
+%>
+<div id="<%= frameId %>-box" class="relative w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-200 dark:border-gray-700">
+  <iframe id="<%= frameId %>" title="Document preview" <%- locals.src ? 'src="' + src + '"' : '' %>
+          style="width: 794px; height: 1123px; border: 0; transform-origin: top left; background: #fff;"></iframe>
+</div>
+<script>
+(function () {
+  var box = document.getElementById('<%= frameId %>-box');
+  var frame = document.getElementById('<%= frameId %>');
+  function fit() {
+    var scale = box.clientWidth / 794;
+    frame.style.transform = 'scale(' + scale + ')';
+    box.style.height = Math.round(1123 * scale) + 'px';
+  }
+  fit();
+  window.addEventListener('resize', fit);
+  <% if (locals.formId) { %>
+  var form = document.getElementById('<%= formId %>');
+  var timer;
+  function refresh() {
+    fetch('/sales/preview', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(new FormData(form)),
+    }).then(function (r) { return r.text(); }).then(function (html) { frame.srcdoc = html; });
+  }
+  function later() { clearTimeout(timer); timer = setTimeout(refresh, 350); }
+  // Typing, choosing, and the add/remove-line buttons all change what the document says.
+  ['input', 'change', 'click'].forEach(function (name) { form.addEventListener(name, later); });
+  refresh();
+  <% } %>
+})();
+</script>

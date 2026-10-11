@@ -11,11 +11,8 @@ import ocrConfig from './procurement/config/ocr.config';
 import telegramConfig from './telegram/config/telegram.config';
 import path from 'path';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { HeaderResolver, I18nModule } from 'nestjs-i18n';
-import { TypeOrmConfigService } from './database/typeorm-config.service';
 import { MailModule } from './mail/mail.module';
-import { DataSource, DataSourceOptions } from 'typeorm';
 import { AllConfigType } from './config/config.type';
 import { SessionModule } from './session/session.module';
 import { MailerModule } from './mailer/mailer.module';
@@ -30,6 +27,7 @@ import { AccountingModule } from './accounting/accounting.module';
 import { OrgModule } from './org/org.module';
 import { StorageModule } from './storage/storage.module';
 import { ProcurementModule } from './procurement/procurement.module';
+import { SalesModule } from './sales/sales.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { StockModule } from './stock/stock.module';
 import { TelegramModule } from './telegram/telegram.module';
@@ -38,16 +36,11 @@ import { MiniAppModule } from './miniapp/miniapp.module';
 import { ProfileModule } from './profile/profile.module';
 import { SettingsModule } from './settings/settings.module';
 import { AdminModule } from './admin/admin.module';
-
-const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
-  useClass: TypeOrmConfigService,
-  dataSourceFactory: async (options: DataSourceOptions) => {
-    return new DataSource(options).initialize();
-  },
-});
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
   imports: [
+    PrismaModule,
     ConfigModule.forRoot({
       isGlobal: true,
       load: [
@@ -61,7 +54,6 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
       ],
       envFilePath: ['.env'],
     }),
-    infrastructureDatabaseModule,
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     I18nModule.forRootAsync({
       useFactory: (configService: ConfigService<AllConfigType>) => ({
@@ -103,6 +95,7 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
     OrgModule,
     StorageModule,
     ProcurementModule,
+    SalesModule,
     InventoryModule,
     StockModule,
     TelegramModule,

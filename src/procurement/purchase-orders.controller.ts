@@ -28,6 +28,7 @@ import { csvResponse } from '../common/web/csv';
 import { FLOW_STEPS, flowIndex } from './support/flow-stepper';
 import { buildPaymentLink } from './support/payment-link';
 import { buildBaseQuery } from './purchase-requests.controller';
+import { toDate } from '../prisma/dates';
 
 @Controller('purchase-orders')
 export class PurchaseOrdersController {
@@ -111,12 +112,12 @@ export class PurchaseOrdersController {
         row.poNumber,
         row.status,
         row.paymentStatus,
-        row.supplier?.name ?? row.supplierName ?? '',
+        row.supplierRecord?.name ?? row.supplierName ?? '',
         row.currency,
         row.exchangeRate,
         row.totalOriginal,
         row.totalUsd,
-        row.createdAt.toISOString(),
+        toDate(row.createdAt).toISOString(),
       ]),
     );
   }
@@ -177,7 +178,7 @@ export class PurchaseOrdersController {
       await this.notifications.notify('po_created', {
         purchaseOrderId: po.id,
         number: po.poNumber,
-        supplier: po.supplier?.name ?? po.supplierName,
+        supplier: po.supplierRecord?.name ?? po.supplierName,
         amount: `${po.totalOriginal} ${po.currency}`,
       });
 

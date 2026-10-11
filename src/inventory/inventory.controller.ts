@@ -304,7 +304,7 @@ export class InventoryController {
     return response.redirect(`/inventory/${id}`);
   }
 
-  /** Manual adjustment — the only way stock moves outside the triggers. */
+  /** Manual adjustment — the only way stock moves outside claims and fulfilment. */
   @RequirePermission(PermissionEnum['inventory.manage'])
   @Post(':id/adjust')
   async adjust(

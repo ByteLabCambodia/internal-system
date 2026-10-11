@@ -8,9 +8,11 @@ import { RoleEnum } from '../roles/roles.enum';
 import { PermissionEnum } from '../permissions/permissions.enum';
 import { RequirePermission } from '../permissions/require-permission.decorator';
 import { setFlash } from '../common/web/flash';
+import { COMPANY_SETTINGS } from '../sales/sales.service';
+import { SalesDocLanguageEnum } from '../common/enums';
 
 /**
- * Admin → Settings: the C2 approval thresholds, the C3 tolerances the triggers read, and
+ * Admin → Settings: the C2 approval thresholds, the C3 receipt/payment tolerances, and
  * the integration status panel.
  */
 @RequirePermission(PermissionEnum['users.manage'])
@@ -33,6 +35,14 @@ export class AdminSettingsController {
         { id: RoleEnum.finance, label: 'Finance' },
         { id: RoleEnum.employee, label: 'Employee' },
       ],
+      company: Object.fromEntries(
+        await Promise.all(
+          Object.entries(COMPANY_SETTINGS).map(
+            async ([key, fallback]) =>
+              [key, await this.settings.get(key, fallback)] as const,
+          ),
+        ),
+      ),
       receiptTolerance: await this.settings.get('receipt_tolerance_pct', '0'),
       paymentTolerance: await this.settings.get('payment_tolerance_pct', '0'),
       integrations: {
@@ -93,7 +103,7 @@ export class AdminSettingsController {
     return response.redirect('/admin/settings');
   }
 
-  /** C3: read by triggers T3 and T5, so they live in app_settings, not env. */
+  /** C3: read by claim confirmation and payment recording; editable without a deploy. */
   @Post('tolerances')
   async saveTolerances(
     @Body() body: { receipt?: string; payment?: string },
@@ -120,6 +130,35 @@ export class AdminSettingsController {
     await this.settings.set('payment_tolerance_pct', String(payment));
 
     setFlash(response, 'success', 'Tolerances saved.');
+    return response.redirect('/admin/settings');
+  }
+
+  /** Seller details and the default VAT rate printed on quotations, invoices and receipts. */
+  @Post('company')
+  async saveCompany(
+    @Body() body: Record<string, string>,
+    @Res() response: Response,
+  ) {
+    const vat = Number((body.sales_vat_rate ?? '').trim() || '0');
+    if (!Number.isFinite(vat) || vat < 0 || vat > 100) {
+      setFlash(response, 'error', 'VAT rate is a percentage from 0 to 100.');
+      return response.redirect('/admin/settings');
+    }
+
+    if (
+      !Object.values(SalesDocLanguageEnum).includes(
+        body.sales_default_language as SalesDocLanguageEnum,
+      )
+    ) {
+      setFlash(response, 'error', 'Choose a default document language.');
+      return response.redirect('/admin/settings');
+    }
+
+    for (const key of Object.keys(COMPANY_SETTINGS)) {
+      await this.settings.set(key, (body[key] ?? '').trim());
+    }
+
+    setFlash(response, 'success', 'Company details saved.');
     return response.redirect('/admin/settings');
   }
 }

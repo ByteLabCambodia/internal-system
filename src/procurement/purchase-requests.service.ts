@@ -4,10 +4,11 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
-import { PurchaseRequestEntity } from './entities/purchase-request.entity';
-import { PurchaseRequestItemEntity } from './entities/purchase-request-item.entity';
+import { and, or, orderByField } from '@prisma/orm-postgres/orm-client';
+import { PrismaService, Tx } from '../prisma/prisma.service';
+import { money, rate, timestamptz } from '../prisma/numeric';
+import { contains } from '../prisma/like';
+import { nextDay } from '../prisma/dates-filter';
 import { CurrencyEnum, PrStatusEnum } from '../common/enums';
 import { MoneyService } from '../common/money/money.service';
 import { RatesService } from '../accounting/rates.service';
@@ -28,24 +29,31 @@ export type PrListFilters = {
   order?: 'asc' | 'desc';
 };
 
-/**
- * Sort keys as they appear in the URL, mapped to entity properties. TypeORM's orderBy needs
- * the property name (not the column) once skip/take are involved, and the allowlist keeps a
- * query parameter from reaching SQL.
- */
-const SORTABLE: Record<string, string> = {
+/** URL sort key → model field; the allowlist keeps a query parameter from reaching SQL. */
+const SORTABLE = {
   pr_number: 'prNumber',
   status: 'status',
   total_usd: 'totalUsd',
   created_at: 'createdAt',
+} as const;
+const SORT_FIELDS = Object.values(SORTABLE) as [
+  (typeof SORTABLE)[keyof typeof SORTABLE],
+  ...(typeof SORTABLE)[keyof typeof SORTABLE][],
+];
+
+/** What an auto-reorder draft needs from the item it restocks. */
+type ReorderItem = {
+  id: number;
+  sku: string;
+  name: string;
+  category: string | null;
+  reorderQty: string;
 };
 
 @Injectable()
 export class PurchaseRequestsService {
   constructor(
-    @InjectRepository(PurchaseRequestEntity)
-    private readonly repository: Repository<PurchaseRequestEntity>,
-    private readonly dataSource: DataSource,
+    private readonly prisma: PrismaService,
     private readonly money: MoneyService,
     private readonly rates: RatesService,
     private readonly activity: ActivityService,
@@ -53,73 +61,73 @@ export class PurchaseRequestsService {
     private readonly permissions: PermissionsService,
   ) {}
 
+  private get requests() {
+    return this.prisma.db.orm.public.PurchaseRequest;
+  }
+
   /**
    * Row scoping (Part 1 §1): own rows, or every row for manager/finance/admin. Applied in
    * the query, never in the template.
    */
-  private applyScope(
-    query: ReturnType<Repository<PurchaseRequestEntity>['createQueryBuilder']>,
-    actor: User,
-  ) {
-    if (!this.permissions.seesAllRows(actor)) {
-      query.andWhere('pr.requester_id = :actorId', { actorId: actor.id });
-    }
-    return query;
+  private scoped(actor: User) {
+    return this.permissions.seesAllRows(actor)
+      ? this.requests.where({})
+      : this.requests.where({ requesterId: Number(actor.id) });
   }
 
-  async list(
-    actor: User,
-    filters: PrListFilters,
-  ): Promise<{ rows: PurchaseRequestEntity[]; count: number }> {
-    const query = this.repository
-      .createQueryBuilder('pr')
-      .leftJoinAndSelect('pr.requester', 'requester')
-      .leftJoinAndSelect('pr.department', 'department');
+  async list(actor: User, filters: PrListFilters) {
+    const { search, from, to } = filters;
+    const requests = this.scoped(actor).where((pr) =>
+      and(
+        ...(filters.status ? [pr.status.eq(filters.status)] : []),
+        ...(search
+          ? [
+              or(
+                pr.prNumber.ilike(contains(search)),
+                pr.note.ilike(contains(search)),
+              ),
+            ]
+          : []),
+        ...(from ? [pr.createdAt.gte(from)] : []),
+        ...(to ? [pr.createdAt.lt(nextDay(to))] : []),
+      ),
+    );
 
-    this.applyScope(query, actor);
+    const field =
+      SORTABLE[filters.orderBy as keyof typeof SORTABLE] ?? 'createdAt';
 
-    if (filters.status) {
-      query.andWhere('pr.status = :status', { status: filters.status });
-    }
-    if (filters.search) {
-      query.andWhere('(pr.pr_number ILIKE :search OR pr.note ILIKE :search)', {
-        search: `%${filters.search}%`,
-      });
-    }
-    if (filters.from) {
-      query.andWhere('pr.created_at >= :from', { from: filters.from });
-    }
-    if (filters.to) {
-      query.andWhere('pr.created_at < (:to::date + 1)', { to: filters.to });
-    }
+    const [rows, total] = await Promise.all([
+      requests
+        .include('requester')
+        .include('department')
+        .orderBy([
+          orderByField(
+            this.requests,
+            field,
+            filters.order === 'asc' ? 'asc' : 'desc',
+            SORT_FIELDS,
+          ),
+          (pr) => pr.id.desc(),
+        ])
+        .offset((filters.page - 1) * filters.limit)
+        .limit(filters.limit)
+        .all(),
+      requests.aggregate((a) => ({ count: a.count() })),
+    ]);
 
-    const orderBy = SORTABLE[filters.orderBy ?? ''] ?? 'createdAt';
-    query.orderBy(`pr.${orderBy}`, filters.order === 'asc' ? 'ASC' : 'DESC');
-
-    const [rows, count] = await query
-      .skip((filters.page - 1) * filters.limit)
-      .take(filters.limit)
-      .getManyAndCount();
-
-    return { rows, count };
+    return { rows, count: total.count };
   }
 
-  async findOneForActor(
-    actor: User,
-    id: number,
-  ): Promise<PurchaseRequestEntity> {
-    const query = this.repository
-      .createQueryBuilder('pr')
-      .leftJoinAndSelect('pr.requester', 'requester')
-      .leftJoinAndSelect('pr.approver', 'approver')
-      .leftJoinAndSelect('pr.department', 'department')
-      .leftJoinAndSelect('pr.project', 'project')
-      .leftJoinAndSelect('pr.items', 'items')
-      .where('pr.id = :id', { id });
+  async findOneForActor(actor: User, id: number) {
+    const row = await this.scoped(actor)
+      .where({ id })
+      .include('requester')
+      .include('approver')
+      .include('department')
+      .include('project')
+      .include('items', (items) => items.orderBy((i) => i.id.asc()))
+      .first();
 
-    this.applyScope(query, actor);
-
-    const row = await query.getOne();
     if (!row) throw new NotFoundException('Purchase request not found');
 
     return row;
@@ -130,7 +138,7 @@ export class PurchaseRequestsService {
    * the record. A foreign currency with no rate on file is refused rather than defaulted
    * to 1, which would silently misstate every downstream USD figure.
    */
-  private async lockRate(currency: CurrencyEnum): Promise<string> {
+  private async lockRate(currency: `${CurrencyEnum}`): Promise<string> {
     const rate = await this.rates.getCurrentRate(currency);
 
     if (!rate) {
@@ -142,45 +150,34 @@ export class PurchaseRequestsService {
     return rate;
   }
 
-  async create(
-    actor: User,
-    dto: CreatePurchaseRequestDto,
-    submit: boolean,
-  ): Promise<PurchaseRequestEntity> {
+  async create(actor: User, dto: CreatePurchaseRequestDto, submit: boolean) {
     const exchangeRate = await this.lockRate(dto.currency);
     const totalOriginal = this.money.sum(
       dto.items.map((item) => this.money.lineTotal(item.qty, item.unitPrice)),
     );
 
-    const id = await this.dataSource.transaction(async (manager) => {
-      const pr = await manager.save(
-        manager.create(PurchaseRequestEntity, {
-          requester: { id: Number(actor.id) } as never,
-          status: submit ? PrStatusEnum.pending : PrStatusEnum.draft,
-          currency: dto.currency,
-          exchangeRate,
-          totalOriginal,
-          department: dto.departmentId
-            ? ({ id: dto.departmentId } as never)
-            : null,
-          project: dto.projectId ? ({ id: dto.projectId } as never) : null,
-          note: dto.note ?? null,
-        }),
-      );
+    const id = await this.prisma.db.transaction(async (tx) => {
+      const pr = await tx.orm.public.PurchaseRequest.create({
+        requesterId: Number(actor.id),
+        status: submit ? PrStatusEnum.pending : PrStatusEnum.draft,
+        currency: dto.currency,
+        exchangeRate: rate(exchangeRate),
+        totalOriginal: money(totalOriginal),
+        totalUsd: money(this.money.toUsd(totalOriginal, exchangeRate)),
+        departmentId: dto.departmentId || null,
+        projectId: dto.projectId || null,
+        note: dto.note ?? null,
+      });
 
-      await manager.save(
-        dto.items.map((item) =>
-          manager.create(PurchaseRequestItemEntity, {
-            purchaseRequest: { id: pr.id } as never,
-            name: item.name,
-            qty: String(item.qty),
-            unitPriceOriginal: String(item.unitPrice),
-            inventoryItem: item.inventoryItemId
-              ? ({ id: item.inventoryItemId } as never)
-              : null,
-            category: item.category ?? null,
-          }),
-        ),
+      await tx.orm.public.PurchaseRequestItem.createAll(
+        dto.items.map((item) => ({
+          prId: pr.id,
+          name: item.name,
+          qty: money(String(item.qty)),
+          unitPriceOriginal: money(String(item.unitPrice)),
+          inventoryItemId: item.inventoryItemId || null,
+          category: item.category ?? null,
+        })),
       );
 
       return pr.id;
@@ -194,11 +191,43 @@ export class PurchaseRequestsService {
       detail: { currency: dto.currency, exchangeRate, totalOriginal },
     });
 
-    // Re-read: total_usd is derived by trigger T1, not by us.
     return this.findOneForActor(actor, id);
   }
 
-  async submit(actor: User, id: number): Promise<PurchaseRequestEntity> {
+  /**
+   * Auto-reorder: a zero-priced USD draft for the item's reorder quantity, raised in the
+   * caller's transaction when stock lands at or below the reorder point. A person prices
+   * and submits it.
+   */
+  async createReorderDraft(
+    tx: Tx,
+    requesterId: number,
+    item: ReorderItem,
+  ): Promise<number> {
+    const pr = await tx.orm.public.PurchaseRequest.create({
+      requesterId,
+      status: PrStatusEnum.draft,
+      currency: CurrencyEnum.USD,
+      exchangeRate: rate('1'),
+      totalOriginal: money('0'),
+      totalUsd: money('0'),
+      autoGenerated: true,
+      note: `Auto-reorder: ${item.sku} at/below reorder point`,
+    });
+
+    await tx.orm.public.PurchaseRequestItem.create({
+      prId: pr.id,
+      name: item.name,
+      qty: money(item.reorderQty),
+      unitPriceOriginal: money('0'),
+      inventoryItemId: item.id,
+      category: item.category,
+    });
+
+    return pr.id;
+  }
+
+  async submit(actor: User, id: number) {
     const pr = await this.findOneForActor(actor, id);
 
     if (pr.status !== PrStatusEnum.draft) {
@@ -210,9 +239,10 @@ export class PurchaseRequestsService {
     // Re-lock the rate at submit time, which is when the brief says it fixes.
     const exchangeRate = await this.lockRate(pr.currency);
 
-    await this.repository.update(id, {
+    await this.requests.where({ id }).update({
       status: PrStatusEnum.pending,
-      exchangeRate,
+      exchangeRate: rate(exchangeRate),
+      totalUsd: money(this.money.toUsd(pr.totalOriginal, exchangeRate)),
     });
 
     await this.activity.log({
@@ -231,11 +261,7 @@ export class PurchaseRequestsService {
    * attempt a decision; here we enforce the C2 amount tier. Self-approval is allowed for
    * both manager and admin, on the user's explicit instruction.
    */
-  async decide(
-    actor: User,
-    id: number,
-    decision: 'approved' | 'rejected',
-  ): Promise<PurchaseRequestEntity> {
+  async decide(actor: User, id: number, decision: 'approved' | 'rejected') {
     const pr = await this.findOneForActor(actor, id);
 
     if (pr.status !== PrStatusEnum.pending) {
@@ -261,11 +287,11 @@ export class PurchaseRequestsService {
       }
     }
 
-    await this.repository.update(id, {
+    await this.requests.where({ id }).update({
       status:
         decision === 'approved' ? PrStatusEnum.approved : PrStatusEnum.rejected,
-      approver: { id: Number(actor.id) } as never,
-      decidedAt: new Date(),
+      approverId: Number(actor.id),
+      decidedAt: timestamptz(new Date()),
     });
 
     await this.activity.log({
@@ -284,7 +310,7 @@ export class PurchaseRequestsService {
   async cancel(actor: User, id: number): Promise<void> {
     const pr = await this.findOneForActor(actor, id);
 
-    const cancellable: PrStatusEnum[] = [
+    const cancellable: `${PrStatusEnum}`[] = [
       PrStatusEnum.draft,
       PrStatusEnum.pending,
       PrStatusEnum.approved,
@@ -296,7 +322,9 @@ export class PurchaseRequestsService {
       );
     }
 
-    await this.repository.update(id, { status: PrStatusEnum.cancelled });
+    await this.requests
+      .where({ id })
+      .update({ status: PrStatusEnum.cancelled });
 
     await this.activity.log({
       entityType: 'purchase_request',
@@ -311,12 +339,12 @@ export class PurchaseRequestsService {
    * and `converted` requests are excluded because purchase-orders.service.ts links a PO
    * to its source PR by id; deleting one out from under that link would orphan the PO's
    * reference. Line items cascade at the DB level (see the FK on
-   * PurchaseRequestItemEntity), so nothing else needs cleaning up here.
+   * PurchaseRequestItem), so nothing else needs cleaning up here.
    */
   async remove(actor: User, id: number): Promise<void> {
     const pr = await this.findOneForActor(actor, id);
 
-    const deletable: PrStatusEnum[] = [
+    const deletable: `${PrStatusEnum}`[] = [
       PrStatusEnum.draft,
       PrStatusEnum.pending,
       PrStatusEnum.cancelled,
@@ -329,7 +357,7 @@ export class PurchaseRequestsService {
       );
     }
 
-    await this.repository.delete(id);
+    await this.requests.where({ id }).delete();
 
     await this.activity.log({
       entityType: 'purchase_request',
@@ -340,13 +368,12 @@ export class PurchaseRequestsService {
   }
 
   /** Approved requests with no purchase order yet — the source list for the PO form. */
-  findConvertible(): Promise<PurchaseRequestEntity[]> {
-    return this.repository
-      .createQueryBuilder('pr')
-      .leftJoinAndSelect('pr.items', 'items')
-      .leftJoinAndSelect('pr.requester', 'requester')
-      .where('pr.status = :status', { status: PrStatusEnum.approved })
-      .orderBy('pr.created_at', 'DESC')
-      .getMany();
+  async findConvertible() {
+    return await this.requests
+      .where({ status: PrStatusEnum.approved })
+      .include('items', (items) => items.orderBy((i) => i.id.asc()))
+      .include('requester')
+      .orderBy([(pr) => pr.createdAt.desc(), (pr) => pr.id.desc()])
+      .all();
   }
 }

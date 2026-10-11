@@ -1,0 +1,44 @@
+[
+  {
+    "id": "dropColumn.customers.vat_tin",
+    "label": "Drop column \"vat_tin\" from \"customers\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "vat_tin",
+        "table": "customers"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"vat_tin\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "customers",
+          "vat_tin"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop column \"vat_tin\"",
+        "sql": "ALTER TABLE \"public\".\"customers\" DROP COLUMN \"vat_tin\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"vat_tin\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "customers",
+          "vat_tin"
+        ]
+      }
+    ]
+  }
+]
