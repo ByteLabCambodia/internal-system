@@ -22,11 +22,19 @@ export class RatesService {
    * to a rate that does not exist rather than silently using 1.
    */
   async getCurrentRate(currency: `${CurrencyEnum}`): Promise<string | null> {
+    return this.rateOn(currency, this.today());
+  }
+
+  /** The most recent rate on or before `date` (YYYY-MM-DD); same rules as above. */
+  async rateOn(
+    currency: `${CurrencyEnum}`,
+    date: string,
+  ): Promise<string | null> {
     if (currency === CurrencyEnum.USD) return '1.000000';
 
     const row = await this.rates
       .where({ currency })
-      .where((r) => r.rateDate.lte(this.today()))
+      .where((r) => r.rateDate.lte(date))
       .orderBy((r) => r.rateDate.desc())
       .first();
 

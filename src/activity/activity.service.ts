@@ -10,7 +10,9 @@ export type ActivityEntityType =
   | 'inventory_claim'
   | 'inventory_item'
   | 'user'
-  | 'supplier';
+  | 'supplier'
+  | 'customer'
+  | 'sales_document';
 
 @Injectable()
 export class ActivityService {

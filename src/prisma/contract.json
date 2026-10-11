@@ -32,6 +32,10 @@
       "model": "Category",
       "namespace": "public"
     },
+    "customers": {
+      "model": "Customer",
+      "namespace": "public"
+    },
     "departments": {
       "model": "Department",
       "namespace": "public"
@@ -90,6 +94,14 @@
     },
     "role": {
       "model": "Role",
+      "namespace": "public"
+    },
+    "sales_document_items": {
+      "model": "SalesDocumentItem",
+      "namespace": "public"
+    },
+    "sales_documents": {
+      "model": "SalesDocument",
       "namespace": "public"
     },
     "session": {
@@ -799,6 +811,133 @@
               },
               "namespaceId": "public",
               "table": "categories"
+            }
+          },
+          "Customer": {
+            "fields": {
+              "active": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "address": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "company": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "email": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "name": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "note": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "phone": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "salesDocuments": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "customerId"
+                  ]
+                },
+                "to": {
+                  "model": "SalesDocument",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "active": {
+                  "column": "active"
+                },
+                "address": {
+                  "column": "address"
+                },
+                "company": {
+                  "column": "company"
+                },
+                "createdAt": {
+                  "column": "created_at"
+                },
+                "email": {
+                  "column": "email"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "name": {
+                  "column": "name"
+                },
+                "note": {
+                  "column": "note"
+                },
+                "phone": {
+                  "column": "phone"
+                },
+                "updatedAt": {
+                  "column": "updated_at"
+                }
+              },
+              "namespaceId": "public",
+              "table": "customers"
             }
           },
           "Department": {
@@ -1617,6 +1756,21 @@
                 },
                 "to": {
                   "model": "Payment",
+                  "namespace": "public"
+                }
+              },
+              "salesDocuments": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "journalEntryId"
+                  ]
+                },
+                "to": {
+                  "model": "SalesDocument",
                   "namespace": "public"
                 }
               }
@@ -3343,6 +3497,542 @@
               "table": "role"
             }
           },
+          "SalesDocument": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdById": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "currency": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/enum@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "typeName": "currency"
+                  }
+                }
+              },
+              "customerId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "discountAmount": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 18,
+                    "scale": 4
+                  }
+                }
+              },
+              "discountType": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/enum@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "typeName": "discount_type"
+                  }
+                }
+              },
+              "discountValue": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 18,
+                    "scale": 4
+                  }
+                }
+              },
+              "dueDate": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/date-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "exchangeRate": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 18,
+                    "scale": 6
+                  }
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "issueDate": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/date-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "journalEntryId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "language": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/enum@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "typeName": "sales_doc_language"
+                  }
+                }
+              },
+              "notes": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "number": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "paymentMethod": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/enum@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "typeName": "payment_method"
+                  }
+                }
+              },
+              "paymentReference": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "sourceId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/enum@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "typeName": "sales_doc_status"
+                  }
+                }
+              },
+              "subtotal": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 18,
+                    "scale": 4
+                  }
+                }
+              },
+              "total": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 18,
+                    "scale": 4
+                  }
+                }
+              },
+              "totalUsd": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 18,
+                    "scale": 4
+                  }
+                }
+              },
+              "type": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/enum@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "typeName": "sales_doc_type"
+                  }
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "vatAmount": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 18,
+                    "scale": 4
+                  }
+                }
+              },
+              "vatRate": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 18,
+                    "scale": 4
+                  }
+                }
+              }
+            },
+            "relations": {
+              "createdBy": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "createdById"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "customer": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "customerId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Customer",
+                  "namespace": "public"
+                }
+              },
+              "derived": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "sourceId"
+                  ]
+                },
+                "to": {
+                  "model": "SalesDocument",
+                  "namespace": "public"
+                }
+              },
+              "items": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "documentId"
+                  ]
+                },
+                "to": {
+                  "model": "SalesDocumentItem",
+                  "namespace": "public"
+                }
+              },
+              "journalEntry": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "journalEntryId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "JournalEntry",
+                  "namespace": "public"
+                }
+              },
+              "source": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "sourceId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "SalesDocument",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "created_at"
+                },
+                "createdById": {
+                  "column": "created_by"
+                },
+                "currency": {
+                  "column": "currency"
+                },
+                "customerId": {
+                  "column": "customer_id"
+                },
+                "discountAmount": {
+                  "column": "discount_amount"
+                },
+                "discountType": {
+                  "column": "discount_type"
+                },
+                "discountValue": {
+                  "column": "discount_value"
+                },
+                "dueDate": {
+                  "column": "due_date"
+                },
+                "exchangeRate": {
+                  "column": "exchange_rate"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "issueDate": {
+                  "column": "issue_date"
+                },
+                "journalEntryId": {
+                  "column": "journal_entry_id"
+                },
+                "language": {
+                  "column": "language"
+                },
+                "notes": {
+                  "column": "notes"
+                },
+                "number": {
+                  "column": "number"
+                },
+                "paymentMethod": {
+                  "column": "payment_method"
+                },
+                "paymentReference": {
+                  "column": "payment_reference"
+                },
+                "sourceId": {
+                  "column": "source_id"
+                },
+                "status": {
+                  "column": "status"
+                },
+                "subtotal": {
+                  "column": "subtotal"
+                },
+                "total": {
+                  "column": "total"
+                },
+                "totalUsd": {
+                  "column": "total_usd"
+                },
+                "type": {
+                  "column": "type"
+                },
+                "updatedAt": {
+                  "column": "updated_at"
+                },
+                "vatAmount": {
+                  "column": "vat_amount"
+                },
+                "vatRate": {
+                  "column": "vat_rate"
+                }
+              },
+              "namespaceId": "public",
+              "table": "sales_documents"
+            }
+          },
+          "SalesDocumentItem": {
+            "fields": {
+              "amount": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 18,
+                    "scale": 4
+                  }
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "description": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "detail": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "documentId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "qty": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 18,
+                    "scale": 4
+                  }
+                }
+              },
+              "unitPrice": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar",
+                  "typeParams": {
+                    "precision": 18,
+                    "scale": 4
+                  }
+                }
+              }
+            },
+            "relations": {
+              "document": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "documentId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "SalesDocument",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "amount": {
+                  "column": "amount"
+                },
+                "createdAt": {
+                  "column": "created_at"
+                },
+                "description": {
+                  "column": "description"
+                },
+                "detail": {
+                  "column": "detail"
+                },
+                "documentId": {
+                  "column": "document_id"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "qty": {
+                  "column": "qty"
+                },
+                "unitPrice": {
+                  "column": "unit_price"
+                }
+              },
+              "namespaceId": "public",
+              "table": "sales_document_items"
+            }
+          },
           "Session": {
             "fields": {
               "createdAt": {
@@ -4313,6 +5003,21 @@
                   "namespace": "public"
                 }
               },
+              "salesDocuments": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "createdById"
+                  ]
+                },
+                "to": {
+                  "model": "SalesDocument",
+                  "namespace": "public"
+                }
+              },
               "sessions": {
                 "cardinality": "1:N",
                 "on": {
@@ -4497,12 +5202,22 @@
               ],
               "typeName": "currency"
             },
+            "discount_type": {
+              "kind": "postgres-enum",
+              "members": [
+                "percent",
+                "amount"
+              ],
+              "typeName": "discount_type"
+            },
             "journal_source": {
               "kind": "postgres-enum",
               "members": [
                 "po_payment",
                 "manual_income",
-                "manual"
+                "manual",
+                "sales_invoice",
+                "sales_receipt"
               ],
               "typeName": "journal_source"
             },
@@ -4572,6 +5287,37 @@
                 "manual"
               ],
               "typeName": "rate_source"
+            },
+            "sales_doc_language": {
+              "kind": "postgres-enum",
+              "members": [
+                "both",
+                "km",
+                "en"
+              ],
+              "typeName": "sales_doc_language"
+            },
+            "sales_doc_status": {
+              "kind": "postgres-enum",
+              "members": [
+                "draft",
+                "sent",
+                "accepted",
+                "rejected",
+                "issued",
+                "paid",
+                "void"
+              ],
+              "typeName": "sales_doc_status"
+            },
+            "sales_doc_type": {
+              "kind": "postgres-enum",
+              "members": [
+                "quotation",
+                "invoice",
+                "receipt"
+              ],
+              "typeName": "sales_doc_type"
             },
             "stock_priority": {
               "kind": "postgres-enum",
@@ -5150,6 +5896,88 @@
                     "name"
                   ],
                   "name": "categories_name_key"
+                }
+              ]
+            },
+            "customers": {
+              "columns": {
+                "active": {
+                  "codecId": "pg/bool@1",
+                  "dataType": "pg/bool",
+                  "default": {
+                    "kind": "literal",
+                    "value": true
+                  },
+                  "nullable": false
+                },
+                "address": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
+                "company": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
+                "created_at": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "dataType": "pg/timestamptz",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nullable": false
+                },
+                "email": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "dataType": "pg/int4",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nullable": false
+                },
+                "name": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": false
+                },
+                "note": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
+                "phone": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
+                "updated_at": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "dataType": "pg/timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ],
+                "name": "PK_customers"
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "name"
+                  ],
+                  "name": "customers_name_key"
                 }
               ]
             },
@@ -7184,6 +8012,515 @@
               },
               "uniques": []
             },
+            "sales_document_items": {
+              "columns": {
+                "amount": {
+                  "codecId": "pg/numeric@1",
+                  "dataType": "pg/numeric",
+                  "default": {
+                    "kind": "literal",
+                    "value": "0"
+                  },
+                  "nullable": false,
+                  "typeParams": {
+                    "precision": 18,
+                    "scale": 4
+                  }
+                },
+                "created_at": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "dataType": "pg/timestamptz",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nullable": false
+                },
+                "description": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": false
+                },
+                "detail": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
+                "document_id": {
+                  "codecId": "pg/int4@1",
+                  "dataType": "pg/int4",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "dataType": "pg/int4",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nullable": false
+                },
+                "qty": {
+                  "codecId": "pg/numeric@1",
+                  "dataType": "pg/numeric",
+                  "default": {
+                    "kind": "literal",
+                    "value": "1"
+                  },
+                  "nullable": false,
+                  "typeParams": {
+                    "precision": 18,
+                    "scale": 4
+                  }
+                },
+                "unit_price": {
+                  "codecId": "pg/numeric@1",
+                  "dataType": "pg/numeric",
+                  "default": {
+                    "kind": "literal",
+                    "value": "0"
+                  },
+                  "nullable": false,
+                  "typeParams": {
+                    "precision": 18,
+                    "scale": 4
+                  }
+                }
+              },
+              "foreignKeys": [
+                {
+                  "index": {
+                    "name": "sales_document_items_document_idx"
+                  },
+                  "name": "FK_sales_document_items_document",
+                  "onDelete": "cascade",
+                  "source": {
+                    "columns": [
+                      "document_id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "sales_document_items"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "sales_documents"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "document_id"
+                  ],
+                  "name": "sales_document_items_document_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ],
+                "name": "PK_sales_document_items"
+              },
+              "uniques": []
+            },
+            "sales_documents": {
+              "checks": [
+                {
+                  "expression": "(exchange_rate > (0)::numeric)",
+                  "name": "sales_documents_exchange_rate_positive"
+                }
+              ],
+              "columns": {
+                "created_at": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "dataType": "pg/timestamptz",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nullable": false
+                },
+                "created_by": {
+                  "codecId": "pg/int4@1",
+                  "dataType": "pg/int4",
+                  "nullable": true
+                },
+                "currency": {
+                  "codecId": "pg/enum@1",
+                  "dataType": "pg/enum",
+                  "default": {
+                    "kind": "literal",
+                    "value": "USD"
+                  },
+                  "nullable": false,
+                  "typeParams": {
+                    "typeName": "currency"
+                  },
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "Currency",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "customer_id": {
+                  "codecId": "pg/int4@1",
+                  "dataType": "pg/int4",
+                  "nullable": false
+                },
+                "discount_amount": {
+                  "codecId": "pg/numeric@1",
+                  "dataType": "pg/numeric",
+                  "default": {
+                    "kind": "literal",
+                    "value": "0"
+                  },
+                  "nullable": false,
+                  "typeParams": {
+                    "precision": 18,
+                    "scale": 4
+                  }
+                },
+                "discount_type": {
+                  "codecId": "pg/enum@1",
+                  "dataType": "pg/enum",
+                  "default": {
+                    "kind": "literal",
+                    "value": "percent"
+                  },
+                  "nullable": false,
+                  "typeParams": {
+                    "typeName": "discount_type"
+                  },
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "DiscountType",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "discount_value": {
+                  "codecId": "pg/numeric@1",
+                  "dataType": "pg/numeric",
+                  "default": {
+                    "kind": "literal",
+                    "value": "0"
+                  },
+                  "nullable": false,
+                  "typeParams": {
+                    "precision": 18,
+                    "scale": 4
+                  }
+                },
+                "due_date": {
+                  "codecId": "pg/date-string@1",
+                  "dataType": "pg/date",
+                  "nullable": true
+                },
+                "exchange_rate": {
+                  "codecId": "pg/numeric@1",
+                  "dataType": "pg/numeric",
+                  "default": {
+                    "kind": "literal",
+                    "value": "1"
+                  },
+                  "nullable": false,
+                  "typeParams": {
+                    "precision": 18,
+                    "scale": 6
+                  }
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "dataType": "pg/int4",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nullable": false
+                },
+                "issue_date": {
+                  "codecId": "pg/date-string@1",
+                  "dataType": "pg/date",
+                  "default": {
+                    "expression": "CURRENT_DATE",
+                    "kind": "function"
+                  },
+                  "nullable": false
+                },
+                "journal_entry_id": {
+                  "codecId": "pg/int4@1",
+                  "dataType": "pg/int4",
+                  "nullable": true
+                },
+                "language": {
+                  "codecId": "pg/enum@1",
+                  "dataType": "pg/enum",
+                  "default": {
+                    "kind": "literal",
+                    "value": "both"
+                  },
+                  "nullable": false,
+                  "typeParams": {
+                    "typeName": "sales_doc_language"
+                  },
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "SalesDocLanguage",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "notes": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
+                "number": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": false
+                },
+                "payment_method": {
+                  "codecId": "pg/enum@1",
+                  "dataType": "pg/enum",
+                  "nullable": true,
+                  "typeParams": {
+                    "typeName": "payment_method"
+                  },
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "PaymentMethod",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "payment_reference": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": true
+                },
+                "source_id": {
+                  "codecId": "pg/int4@1",
+                  "dataType": "pg/int4",
+                  "nullable": true
+                },
+                "status": {
+                  "codecId": "pg/enum@1",
+                  "dataType": "pg/enum",
+                  "default": {
+                    "kind": "literal",
+                    "value": "draft"
+                  },
+                  "nullable": false,
+                  "typeParams": {
+                    "typeName": "sales_doc_status"
+                  },
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "SalesDocStatus",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "subtotal": {
+                  "codecId": "pg/numeric@1",
+                  "dataType": "pg/numeric",
+                  "default": {
+                    "kind": "literal",
+                    "value": "0"
+                  },
+                  "nullable": false,
+                  "typeParams": {
+                    "precision": 18,
+                    "scale": 4
+                  }
+                },
+                "total": {
+                  "codecId": "pg/numeric@1",
+                  "dataType": "pg/numeric",
+                  "default": {
+                    "kind": "literal",
+                    "value": "0"
+                  },
+                  "nullable": false,
+                  "typeParams": {
+                    "precision": 18,
+                    "scale": 4
+                  }
+                },
+                "total_usd": {
+                  "codecId": "pg/numeric@1",
+                  "dataType": "pg/numeric",
+                  "default": {
+                    "kind": "literal",
+                    "value": "0"
+                  },
+                  "nullable": false,
+                  "typeParams": {
+                    "precision": 18,
+                    "scale": 4
+                  }
+                },
+                "type": {
+                  "codecId": "pg/enum@1",
+                  "dataType": "pg/enum",
+                  "nullable": false,
+                  "typeParams": {
+                    "typeName": "sales_doc_type"
+                  },
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "SalesDocType",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "updated_at": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "dataType": "pg/timestamptz",
+                  "nullable": false
+                },
+                "vat_amount": {
+                  "codecId": "pg/numeric@1",
+                  "dataType": "pg/numeric",
+                  "default": {
+                    "kind": "literal",
+                    "value": "0"
+                  },
+                  "nullable": false,
+                  "typeParams": {
+                    "precision": 18,
+                    "scale": 4
+                  }
+                },
+                "vat_rate": {
+                  "codecId": "pg/numeric@1",
+                  "dataType": "pg/numeric",
+                  "default": {
+                    "kind": "literal",
+                    "value": "0"
+                  },
+                  "nullable": false,
+                  "typeParams": {
+                    "precision": 18,
+                    "scale": 4
+                  }
+                }
+              },
+              "foreignKeys": [
+                {
+                  "name": "FK_sales_documents_customer",
+                  "source": {
+                    "columns": [
+                      "customer_id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "sales_documents"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "customers"
+                  }
+                },
+                {
+                  "name": "FK_sales_documents_source",
+                  "source": {
+                    "columns": [
+                      "source_id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "sales_documents"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "sales_documents"
+                  }
+                },
+                {
+                  "name": "FK_sales_documents_journal_entry",
+                  "source": {
+                    "columns": [
+                      "journal_entry_id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "sales_documents"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "journal_entries"
+                  }
+                },
+                {
+                  "name": "FK_sales_documents_created_by",
+                  "source": {
+                    "columns": [
+                      "created_by"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "sales_documents"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "customer_id"
+                  ],
+                  "name": "sales_documents_customer_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "source_id"
+                  ],
+                  "name": "sales_documents_source_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "type",
+                    "status"
+                  ],
+                  "name": "sales_documents_type_status_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ],
+                "name": "PK_sales_documents"
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "number"
+                  ],
+                  "name": "sales_documents_number_key"
+                }
+              ]
+            },
             "session": {
               "columns": {
                 "createdAt": {
@@ -7983,12 +9320,21 @@
                 "CNY"
               ]
             },
+            "DiscountType": {
+              "kind": "valueSet",
+              "values": [
+                "percent",
+                "amount"
+              ]
+            },
             "JournalSource": {
               "kind": "valueSet",
               "values": [
                 "po_payment",
                 "manual_income",
-                "manual"
+                "manual",
+                "sales_invoice",
+                "sales_receipt"
               ]
             },
             "MovementReason": {
@@ -8051,6 +9397,34 @@
                 "manual"
               ]
             },
+            "SalesDocLanguage": {
+              "kind": "valueSet",
+              "values": [
+                "both",
+                "km",
+                "en"
+              ]
+            },
+            "SalesDocStatus": {
+              "kind": "valueSet",
+              "values": [
+                "draft",
+                "sent",
+                "accepted",
+                "rejected",
+                "issued",
+                "paid",
+                "void"
+              ]
+            },
+            "SalesDocType": {
+              "kind": "valueSet",
+              "values": [
+                "quotation",
+                "invoice",
+                "receipt"
+              ]
+            },
             "StockPriority": {
               "kind": "valueSet",
               "values": [
@@ -8075,10 +9449,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "569cd35f4c53b282ab5083d855b2617be5776e9553e22a11c83024c89406e903"
+    "storageHash": "a23fed17f24b50f640510a1fd3f8d84ae04c199f6510ba4bf367846716a06b1d"
   },
   "execution": {
-    "executionHash": "03f764f8a1ebe0387a9ba0e0332fda126eaa24668b0312d14d06f4b60b156efe",
+    "executionHash": "26f48891e80070dac614dcef0ec211ff929689f4123bc1fae3250823a2a15a65",
     "mutations": {
       "defaults": [
         {
@@ -8137,6 +9511,21 @@
           },
           "ref": {
             "entry": "categories",
+            "field": "updated_at",
+            "namespace": "public"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "entry": "customers",
             "field": "updated_at",
             "namespace": "public"
           }
@@ -8272,6 +9661,21 @@
           },
           "ref": {
             "entry": "purchase_requests",
+            "field": "updated_at",
+            "namespace": "public"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "entry": "sales_documents",
             "field": "updated_at",
             "namespace": "public"
           }

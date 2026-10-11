@@ -11,6 +11,7 @@ const navItems = [
   { href: '/claims', label: 'Claims', icon: 'claims' },
   { href: '/stock-requests', label: 'Stock Requests', icon: 'stock' },
   { href: '/inventory', label: 'Inventory', icon: 'inventory' },
+  { href: '/sales', label: 'Sales', icon: 'sales', permission: 'sales.manage' },
   { href: '/reports', label: 'Reports', icon: 'reports', permission: 'accounting.view' },
   { href: '/accounting', label: 'Accounting', icon: 'accounting', permission: 'accounting.view' },
   { href: '/admin', label: 'Admin', icon: 'admin', permission: 'users.manage' },
@@ -25,11 +26,12 @@ const navItems = [
       <li>
         <a href="<%= item.href %>"
            <%- active ? 'aria-current="page"' : '' %>
-           class="group flex items-center rounded-lg p-2 text-sm <%= active
-             ? 'bg-primary-50 text-primary-700 dark:bg-gray-700 dark:text-white'
+           data-tip="<%= item.label %>"
+           class="group flex items-center rounded-lg px-3.5 py-2 text-sm <%= active
+             ? 'bg-primary-600 text-white'
              : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' %>">
-          <%- include('icon', { name: item.icon, size: 'h-5 w-5', cls: active ? 'text-primary-600 dark:text-white' : 'text-gray-400 group-hover:text-gray-700 dark:group-hover:text-white' }) %>
-          <span class="ms-3"><%= item.label %></span>
+          <%- include('icon', { name: item.icon, size: 'h-5 w-5', cls: active ? 'text-white' : 'text-gray-400 group-hover:text-gray-700 dark:group-hover:text-white' }) %>
+          <span class="ms-3 whitespace-nowrap transition-opacity duration-200 [.sb-collapsed_&]:sm:opacity-0"><%= item.label %></span>
         </a>
       </li>
     <% } %>

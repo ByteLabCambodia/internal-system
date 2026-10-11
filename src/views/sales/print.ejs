@@ -1,0 +1,198 @@
+<%
+/* A4, black on white. Khmer above English (GDT), or either language alone per document. */
+const lang = doc.language || 'both';
+const T = {
+  quotation: { km: 'សម្រង់តម្លៃ', en: 'QUOTATION' },
+  invoice: { km: 'វិក្កយបត្រ', en: 'INVOICE' },
+  receipt: { km: 'បង្កាន់ដៃទទួលប្រាក់', en: 'RECEIPT' },
+}[doc.type];
+// A label in the document's language(s); both puts Khmer on top, English under it.
+const bi = function (km, en) {
+  if (lang === 'km') return '<span class="bi"><span class="km">' + km + '</span></span>';
+  if (lang === 'en') return '<span class="bi"><span class="only">' + en + '</span></span>';
+  return '<span class="bi"><span class="km">' + km + '</span><span class="en">' + en + '</span></span>';
+};
+// Plain text in the document's language(s), for places that cannot hold two stacked lines.
+const t = function (km, en) { return lang === 'km' ? km : lang === 'en' ? en : km + ' / ' + en; };
+const fmt = function (value) { return money.format(value, '').trim(); };
+const khr = khrRate ? Math.round(Number(doc.total) / Number(doc.exchangeRate) * Number(khrRate)).toLocaleString('en-US') : null;
+const discount = Number(doc.discountAmount) > 0;
+// A receipt has no lines of its own: it pays the whole invoice, so it lists that invoice's lines.
+const lines = doc.type === 'receipt' && doc.source && doc.source.items ? doc.source.items : doc.items;
+const methodLabel = doc.paymentMethod ? String(doc.paymentMethod).replace(/_/g, ' ') : '';
+// Top-right block, Word-invoice style: bold right-aligned labels, boxed values.
+const numberLabel = {
+  quotation: ['លេខសម្រង់តម្លៃ', 'Quotation #'],
+  invoice: ['លេខវិក្កយបត្រ', 'Invoice #'],
+  receipt: ['លេខបង្កាន់ដៃ', 'Receipt #'],
+}[doc.type];
+const customerRef = doc.customer.id ? 'C-' + String(doc.customer.id).padStart(4, '0') : '—';
+const showMeta = [];
+showMeta.push([bi('កាលបរិច្ឆេទ', 'Date:'), doc.issueDate]);
+showMeta.push([bi(numberLabel[0], numberLabel[1]), doc.number]);
+showMeta.push([bi('លេខអតិថិជន', 'Customer ID'), customerRef]);
+if (doc.dueDate) showMeta.push([bi('ថ្ងៃផុតកំណត់', 'Due date'), doc.dueDate]);
+if (doc.source) showMeta.push([bi(doc.type === 'receipt' ? 'សម្រាប់វិក្កយបត្រ' : 'យោងសម្រង់តម្លៃ', doc.type === 'receipt' ? 'For invoice' : 'Quotation ref.'), doc.source.number]);
+if (methodLabel) showMeta.push([bi('វិធីបង់ប្រាក់', 'Method'), methodLabel]);
+if (doc.paymentReference) showMeta.push([bi('លេខយោង', 'Reference'), doc.paymentReference]);
+// Contact lines under the logo, each with its own label. A typed "Address:" prefix is dropped
+// so a value saved with the label already in it does not print it twice.
+const companyLines = [
+  [t('អាសយដ្ឋាន', 'Address'), String(company.company_address || '').replace(/^\s*(address|អាសយដ្ឋាន)\s*:\s*/i, '')],
+  [t('ទូរស័ព្ទ', 'Tel'), company.company_phone],
+  [t('អ៊ីមែល', 'Email'), company.company_email],
+  [t('លេខ អតប', 'VAT TIN'), company.company_vat_tin],
+].filter(function (line) { return line[1]; });
+const discountLabel = doc.discountType === 'percent' ? ' ' + Number(doc.discountValue) + '%' : '';
+%><!doctype html>
+<html lang="km">
+<head>
+<meta charset="utf-8" />
+<title><%= doc.number %></title>
+<style>
+  @page { size: A4; margin: 12mm; }
+  .only { color: #000; }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: #000; background: #fff; font: 10.5pt/1.4 "Helvetica Neue", Arial, "Noto Sans", "Noto Sans Khmer", "Khmer OS", "Kantumruy Pro", sans-serif; }
+  .bi { display: grid; line-height: 1.25; }
+  .bi .en { color: #444; font-size: .88em; }
+  .head { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; border-bottom: 1.5px solid #000; padding-bottom: 10px; }
+  .title { text-align: center; }
+  .title .km { font-size: 17pt; font-weight: 700; }
+  .title .en { font-size: 12pt; font-weight: 700; letter-spacing: .18em; }
+  .title .en.solo { font-size: 17pt; letter-spacing: .1em; }
+  .logo { display: block; max-height: 13mm; max-width: 44mm; margin-bottom: 3mm; }
+  .meta { margin: 14px 0; width: 66%; }
+  .cust-line { margin-top: 3px; }
+  .kv.head-meta { justify-self: end; min-width: 58mm; gap: 6px 8px; align-items: center; }
+  .head-meta > .bi { text-align: right; font-weight: 700; }
+  .head-meta > .bi .en { color: #000; font-size: .95em; }
+  .head-meta .v { text-align: left; font-weight: 400; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; align-items: baseline; }
+  .kv .v { text-align: right; }
+  .party .v { text-align: left; }
+  table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
+  tr { page-break-inside: avoid; }
+  thead { display: table-header-group; }
+  th { border: 1px solid #000; padding: 4px 6px; font-weight: 600; text-align: center; vertical-align: bottom; }
+  td { border-left: 1px solid #000; border-right: 1px solid #000; padding: 5px 6px; vertical-align: top; }
+  tbody tr:last-child td { border-bottom: 1px solid #000; }
+  td small { display: block; color: #444; }
+  .n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .c { text-align: center; }
+  tfoot td { border: 1px solid #000; padding: 4px 6px; }
+  tfoot .lbl { text-align: right; }
+  tfoot .grand td { font-weight: 700; }
+  .notes { margin-top: 12px; border: 1px solid #000; padding: 6px 10px; white-space: pre-line; }
+  .pay { margin-top: 12px; border: 1px solid #000; padding: 6px 10px; white-space: pre-line; }
+  .sign { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin: 14mm 0 8mm; page-break-inside: avoid; }
+  .sign > div { text-align: center; }
+  .sign .bi { justify-items: center; }
+  .sign .space { height: 22mm; }
+  .sign .rule { width: 58mm; margin: 0 auto; border-top: 1px solid #000; }
+  .stamp-row { text-align: right; margin: 10mm 8mm 0 0; }
+  .stamp { display: inline-block; transform: rotate(-8deg); border: 3px double #000; padding: 2px 14px; font-weight: 700; font-size: 22pt; letter-spacing: .2em; opacity: .55; text-align: center; line-height: 1.15; }
+  .stamp .km { display: block; font-size: 14pt; letter-spacing: 0; }
+  .foot { margin-top: 14px; border-top: 1px solid #999; padding-top: 4px; font-size: 8.5pt; color: #444; display: flex; justify-content: space-between; }
+<% if (preview) { %>
+  html { background: #d9dde3; }
+  body { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 12mm; background: #fff; }
+<% } %>
+</style>
+</head>
+<body>
+
+  <div class="head">
+    <div>
+      <% if (logo) { %>
+        <img class="logo" src="<%= logo %>" alt="<%= company.company_name_en %>" />
+      <% } else { %>
+        <% if (company.company_name_km && lang !== 'en') { %><div><b><%= company.company_name_km %></b></div><% } %>
+        <% if (company.company_name_en && (lang !== 'km' || !company.company_name_km)) { %><div><b><%= company.company_name_en %></b></div><% } %>
+        <% if (!company.company_name_km && !company.company_name_en) { %><div><b>Your company name</b></div><% } %>
+      <% } %>
+      <% companyLines.forEach(function (line) { %><div><b><%= line[0] %>:</b> <%= line[1] %></div><% }); %>
+    </div>
+    <div class="title">
+      <% if (lang !== 'en') { %><div class="km"><%= T.km %></div><% } %>
+      <% if (lang !== 'km') { %><div class="en<%= lang === 'en' ? ' solo' : '' %>"><%= T.en %></div><% } %>
+    </div>
+    <div class="kv head-meta">
+      <% showMeta.forEach(function (row) { %><%- row[0] %><span class="v"><%= row[1] %></span><% }); %>
+    </div>
+  </div>
+
+  <%
+    // Customer block in the same "Label: value" style as the company lines (rows stay when blank).
+    const customerRows = [
+      [doc.type === 'receipt' ? t('ទទួលពី', 'Received from') : t('ឈ្មោះអតិថិជន', 'Customer'), doc.customer.name],
+      ...(doc.customer.company ? [[t('ក្រុមហ៊ុន', 'Company'), doc.customer.company]] : []),
+      [t('អាសយដ្ឋាន', 'Address'), doc.customer.address || ''],
+      [t('ទូរស័ព្ទ', 'Tel'), doc.customer.phone || ''],
+    ];
+  %>
+  <div class="meta">
+    <% customerRows.forEach(function (row) { %>
+      <div class="cust-line"><b><%= row[0] %>:</b> <%= row[1] %></div>
+    <% }); %>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:6%"><%- bi('ល.រ', 'No.') %></th>
+        <th><%- bi('បរិយាយ', 'Description') %></th>
+        <th style="width:9%"><%- bi('បរិមាណ', 'Qty') %></th>
+        <th style="width:15%"><%- bi('ថ្លៃឯកតា', 'Unit price') %></th>
+        <th style="width:17%"><%- bi('ថ្លៃទំនិញ', 'Amount') %></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% lines.forEach(function (item, index) { %>
+        <tr>
+          <td class="c"><%= index + 1 %></td>
+          <td><%= item.description %><% if (item.detail) { %><small><%= item.detail %></small><% } %></td>
+          <td class="n"><%= Number(item.qty) %></td>
+          <td class="n"><%= fmt(item.unitPrice) %></td>
+          <td class="n"><%= fmt(item.amount) %></td>
+        </tr>
+      <% }); %>
+    </tbody>
+    <tfoot>
+      <tr><td colspan="4" class="lbl"><%- bi('សរុប (មិនរួមអាករ)', 'Subtotal (excl. VAT)') %></td><td class="n"><%= fmt(doc.subtotal) %></td></tr>
+      <% if (discount) { %>
+        <tr><td colspan="4" class="lbl"><%- bi('បញ្ចុះតម្លៃ' + discountLabel, 'Discount' + discountLabel) %></td><td class="n">-<%= fmt(doc.discountAmount) %></td></tr>
+      <% } %>
+      <tr><td colspan="4" class="lbl"><%- bi('អាករលើតម្លៃបន្ថែម ' + Number(doc.vatRate) + '%', 'VAT ' + Number(doc.vatRate) + '%') %></td><td class="n"><%= fmt(doc.vatAmount) %></td></tr>
+      <tr class="grand"><td colspan="4" class="lbl"><%- bi(doc.type === 'receipt' ? 'ចំនួនទឹកប្រាក់បានទទួល' : 'សរុបរួម', (doc.type === 'receipt' ? 'Amount received' : 'Grand total') + ' (' + doc.currency + ')') %></td><td class="n"><%= fmt(doc.total) %></td></tr>
+      <% if (khr) { %>
+        <tr><td colspan="4" class="lbl"><%- bi('សរុបរួម (រៀល)', 'Grand total (KHR) at ' + Number(khrRate).toLocaleString('en-US')) %></td><td class="n"><%= khr %></td></tr>
+      <% } %>
+    </tfoot>
+  </table>
+
+  <% if (doc.type === 'receipt') { %><div class="stamp-row"><div class="stamp"><span class="km">បានបង់</span>PAID</div></div><% } %>
+
+  <% if (doc.notes) { %><div class="notes"><%- bi('កំណត់សម្គាល់', 'Notes') %><%= doc.notes %></div><% } %>
+  <% if (doc.type === 'invoice' && company.company_payment_details) { %>
+    <div class="pay"><%- bi('ព័ត៌មានបង់ប្រាក់', 'Payment details') %><%= company.company_payment_details %>
+<%= t('យោង', 'Reference') %>: <%= doc.number %></div>
+  <% } %>
+
+  <%
+    // Customer on the left, seller on the right; label above the signing space, line below.
+    const signs = {
+      quotation: [bi('អតិថិជនយល់ព្រម', 'Accepted by customer'), bi('អ្នករៀបចំ', 'Prepared by')],
+      invoice: [bi('ហត្ថលេខា និងឈ្មោះអ្នកទិញ', "Customer's signature & name"), bi('ហត្ថលេខា និងឈ្មោះអ្នកលក់', "Seller's signature & name")],
+      receipt: [bi('អ្នកបង់ប្រាក់', 'Paid by'), bi('អ្នកទទួលប្រាក់', 'Received by')],
+    }[doc.type];
+  %>
+  <div class="sign">
+    <% signs.forEach(function (label) { %>
+      <div><%- label %><div class="space"></div><div class="rule"></div></div>
+    <% }); %>
+  </div>
+
+  <div class="foot"><span><%= company.company_name_en || company.company_name_km %><% if (company.company_email) { %> · <%= company.company_email %><% } %></span><span><%= doc.number %></span></div>
+</body>
+</html>

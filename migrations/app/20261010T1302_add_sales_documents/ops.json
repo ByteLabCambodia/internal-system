@@ -1,0 +1,762 @@
+[
+  {
+    "id": "addNativeEnumValue.journal_source.sales_invoice",
+    "label": "Add value \"sales_invoice\" to enum type \"journal_source\"",
+    "summary": "Adds value \"sales_invoice\" to enum type \"journal_source\". A newly added enum value cannot be used until the transaction that adds it commits, so a migration that both appends a value and uses it in the same step will fail at apply.",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "type",
+        "name": "journal_source"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure enum type \"journal_source\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_type\" AS \"t\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"t\".\"typtype\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "journal_source",
+          "e"
+        ]
+      },
+      {
+        "description": "ensure value \"sales_invoice\" is absent from enum type \"journal_source\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_enum\" AS \"e\" INNER JOIN \"pg_type\" AS \"t\" ON \"t\".\"oid\" = \"e\".\"enumtypid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"e\".\"enumlabel\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "journal_source",
+          "sales_invoice"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add value \"sales_invoice\" to enum type \"journal_source\"",
+        "sql": "ALTER TYPE \"public\".\"journal_source\" ADD VALUE 'sales_invoice'"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify value \"sales_invoice\" exists on enum type \"journal_source\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_enum\" AS \"e\" INNER JOIN \"pg_type\" AS \"t\" ON \"t\".\"oid\" = \"e\".\"enumtypid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"e\".\"enumlabel\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "journal_source",
+          "sales_invoice"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "addNativeEnumValue.journal_source.sales_receipt",
+    "label": "Add value \"sales_receipt\" to enum type \"journal_source\"",
+    "summary": "Adds value \"sales_receipt\" to enum type \"journal_source\". A newly added enum value cannot be used until the transaction that adds it commits, so a migration that both appends a value and uses it in the same step will fail at apply.",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "type",
+        "name": "journal_source"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure enum type \"journal_source\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_type\" AS \"t\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"t\".\"typtype\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "journal_source",
+          "e"
+        ]
+      },
+      {
+        "description": "ensure value \"sales_receipt\" is absent from enum type \"journal_source\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_enum\" AS \"e\" INNER JOIN \"pg_type\" AS \"t\" ON \"t\".\"oid\" = \"e\".\"enumtypid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"e\".\"enumlabel\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "journal_source",
+          "sales_receipt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add value \"sales_receipt\" to enum type \"journal_source\"",
+        "sql": "ALTER TYPE \"public\".\"journal_source\" ADD VALUE 'sales_receipt'"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify value \"sales_receipt\" exists on enum type \"journal_source\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_enum\" AS \"e\" INNER JOIN \"pg_type\" AS \"t\" ON \"t\".\"oid\" = \"e\".\"enumtypid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"t\".\"typnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"t\".\"typname\" = $2 AND \"e\".\"enumlabel\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "journal_source",
+          "sales_receipt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "createNativeEnumType.sales_doc_status",
+    "label": "Create enum type \"sales_doc_status\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "type",
+        "name": "sales_doc_status"
+      }
+    },
+    "precheck": [],
+    "execute": [
+      {
+        "description": "create enum type \"sales_doc_status\"",
+        "sql": "CREATE TYPE \"public\".\"sales_doc_status\" AS ENUM ('draft', 'sent', 'accepted', 'rejected', 'issued', 'paid', 'void')",
+        "params": []
+      }
+    ],
+    "postcheck": []
+  },
+  {
+    "id": "createNativeEnumType.sales_doc_type",
+    "label": "Create enum type \"sales_doc_type\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "type",
+        "name": "sales_doc_type"
+      }
+    },
+    "precheck": [],
+    "execute": [
+      {
+        "description": "create enum type \"sales_doc_type\"",
+        "sql": "CREATE TYPE \"public\".\"sales_doc_type\" AS ENUM ('quotation', 'invoice', 'receipt')",
+        "params": []
+      }
+    ],
+    "postcheck": []
+  },
+  {
+    "id": "table.customers",
+    "label": "Create table \"customers\"",
+    "summary": "Creates table \"customers\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "customers"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"customers\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"customers\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"customers\"",
+        "sql": "CREATE TABLE \"public\".\"customers\" (\n  \"active\" bool DEFAULT true NOT NULL,\n  \"address\" text,\n  \"contact_name\" text,\n  \"created_at\" timestamptz DEFAULT (now()) NOT NULL,\n  \"email\" text,\n  \"id\" SERIAL NOT NULL,\n  \"name\" text NOT NULL,\n  \"note\" text,\n  \"phone\" text,\n  \"updated_at\" timestamptz NOT NULL,\n  \"vat_tin\" text,\n  CONSTRAINT \"PK_customers\" PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"customers\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"customers\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.sales_document_items",
+    "label": "Create table \"sales_document_items\"",
+    "summary": "Creates table \"sales_document_items\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "sales_document_items"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"sales_document_items\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"sales_document_items\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"sales_document_items\"",
+        "sql": "CREATE TABLE \"public\".\"sales_document_items\" (\n  \"amount\" numeric(18,4) DEFAULT '0'::numeric(18,4) NOT NULL,\n  \"created_at\" timestamptz DEFAULT (now()) NOT NULL,\n  \"description\" text NOT NULL,\n  \"detail\" text,\n  \"document_id\" int4 NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"qty\" numeric(18,4) DEFAULT '1'::numeric(18,4) NOT NULL,\n  \"unit_price\" numeric(18,4) DEFAULT '0'::numeric(18,4) NOT NULL,\n  CONSTRAINT \"PK_sales_document_items\" PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"sales_document_items\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"sales_document_items\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.sales_documents",
+    "label": "Create table \"sales_documents\"",
+    "summary": "Creates table \"sales_documents\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "sales_documents"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"sales_documents\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"sales_documents\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"sales_documents\"",
+        "sql": "CREATE TABLE \"public\".\"sales_documents\" (\n  \"created_at\" timestamptz DEFAULT (now()) NOT NULL,\n  \"created_by\" int4,\n  \"currency\" \"currency\" DEFAULT 'USD'::\"currency\" NOT NULL,\n  \"customer_id\" int4 NOT NULL,\n  \"due_date\" date,\n  \"exchange_rate\" numeric(18,6) DEFAULT '1'::numeric(18,6) NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"issue_date\" date DEFAULT (CURRENT_DATE) NOT NULL,\n  \"journal_entry_id\" int4,\n  \"notes\" text,\n  \"number\" text NOT NULL,\n  \"payment_method\" \"payment_method\",\n  \"payment_reference\" text,\n  \"source_id\" int4,\n  \"status\" \"sales_doc_status\" DEFAULT 'draft'::\"sales_doc_status\" NOT NULL,\n  \"subtotal\" numeric(18,4) DEFAULT '0'::numeric(18,4) NOT NULL,\n  \"total\" numeric(18,4) DEFAULT '0'::numeric(18,4) NOT NULL,\n  \"total_usd\" numeric(18,4) DEFAULT '0'::numeric(18,4) NOT NULL,\n  \"type\" \"sales_doc_type\" NOT NULL,\n  \"updated_at\" timestamptz NOT NULL,\n  \"valid_until\" date,\n  \"vat_amount\" numeric(18,4) DEFAULT '0'::numeric(18,4) NOT NULL,\n  \"vat_rate\" numeric(18,4) DEFAULT '0'::numeric(18,4) NOT NULL,\n  CONSTRAINT \"PK_sales_documents\" PRIMARY KEY (\"id\"),\n  CONSTRAINT \"sales_documents_exchange_rate_positive\" CHECK ((exchange_rate > (0)::numeric))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"sales_documents\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"sales_documents\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.customers.customers_name_key",
+    "label": "Add unique constraint on \"customers\" (name)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "customers_name_key",
+        "table": "customers"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"customers_name_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "customers_name_key",
+          "public",
+          "\"public\".\"customers\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"customers_name_key\"",
+        "sql": "ALTER TABLE \"public\".\"customers\" ADD CONSTRAINT \"customers_name_key\" UNIQUE (\"name\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"customers_name_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "customers_name_key",
+          "public",
+          "\"public\".\"customers\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.sales_documents.sales_documents_number_key",
+    "label": "Add unique constraint on \"sales_documents\" (number)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "sales_documents_number_key",
+        "table": "sales_documents"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"sales_documents_number_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "sales_documents_number_key",
+          "public",
+          "\"public\".\"sales_documents\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"sales_documents_number_key\"",
+        "sql": "ALTER TABLE \"public\".\"sales_documents\" ADD CONSTRAINT \"sales_documents_number_key\" UNIQUE (\"number\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"sales_documents_number_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "sales_documents_number_key",
+          "public",
+          "\"public\".\"sales_documents\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.sales_document_items.sales_document_items_document_idx",
+    "label": "Create index \"sales_document_items_document_idx\" on \"sales_document_items\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "sales_document_items_document_idx",
+        "table": "sales_document_items"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"sales_document_items_document_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"sales_document_items_document_idx\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"sales_document_items_document_idx\"",
+        "sql": "CREATE INDEX \"sales_document_items_document_idx\" ON \"public\".\"sales_document_items\" (\"document_id\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"sales_document_items_document_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"sales_document_items_document_idx\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.sales_documents.sales_documents_customer_idx",
+    "label": "Create index \"sales_documents_customer_idx\" on \"sales_documents\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "sales_documents_customer_idx",
+        "table": "sales_documents"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"sales_documents_customer_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"sales_documents_customer_idx\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"sales_documents_customer_idx\"",
+        "sql": "CREATE INDEX \"sales_documents_customer_idx\" ON \"public\".\"sales_documents\" (\"customer_id\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"sales_documents_customer_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"sales_documents_customer_idx\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.sales_documents.sales_documents_source_idx",
+    "label": "Create index \"sales_documents_source_idx\" on \"sales_documents\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "sales_documents_source_idx",
+        "table": "sales_documents"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"sales_documents_source_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"sales_documents_source_idx\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"sales_documents_source_idx\"",
+        "sql": "CREATE INDEX \"sales_documents_source_idx\" ON \"public\".\"sales_documents\" (\"source_id\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"sales_documents_source_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"sales_documents_source_idx\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.sales_documents.sales_documents_type_status_idx",
+    "label": "Create index \"sales_documents_type_status_idx\" on \"sales_documents\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "sales_documents_type_status_idx",
+        "table": "sales_documents"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"sales_documents_type_status_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"sales_documents_type_status_idx\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"sales_documents_type_status_idx\"",
+        "sql": "CREATE INDEX \"sales_documents_type_status_idx\" ON \"public\".\"sales_documents\" (\"type\", \"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"sales_documents_type_status_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"sales_documents_type_status_idx\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.sales_document_items.FK_sales_document_items_document",
+    "label": "Add foreign key \"FK_sales_document_items_document\" on \"sales_document_items\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "FK_sales_document_items_document",
+        "table": "sales_document_items"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"FK_sales_document_items_document\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "FK_sales_document_items_document",
+          "public",
+          "\"public\".\"sales_document_items\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"FK_sales_document_items_document\"",
+        "sql": "ALTER TABLE \"public\".\"sales_document_items\"\nADD CONSTRAINT \"FK_sales_document_items_document\"\nFOREIGN KEY (\"document_id\")\nREFERENCES \"public\".\"sales_documents\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"FK_sales_document_items_document\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "FK_sales_document_items_document",
+          "public",
+          "\"public\".\"sales_document_items\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.sales_documents.FK_sales_documents_customer",
+    "label": "Add foreign key \"FK_sales_documents_customer\" on \"sales_documents\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "FK_sales_documents_customer",
+        "table": "sales_documents"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"FK_sales_documents_customer\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "FK_sales_documents_customer",
+          "public",
+          "\"public\".\"sales_documents\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"FK_sales_documents_customer\"",
+        "sql": "ALTER TABLE \"public\".\"sales_documents\"\nADD CONSTRAINT \"FK_sales_documents_customer\"\nFOREIGN KEY (\"customer_id\")\nREFERENCES \"public\".\"customers\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"FK_sales_documents_customer\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "FK_sales_documents_customer",
+          "public",
+          "\"public\".\"sales_documents\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.sales_documents.FK_sales_documents_source",
+    "label": "Add foreign key \"FK_sales_documents_source\" on \"sales_documents\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "FK_sales_documents_source",
+        "table": "sales_documents"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"FK_sales_documents_source\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "FK_sales_documents_source",
+          "public",
+          "\"public\".\"sales_documents\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"FK_sales_documents_source\"",
+        "sql": "ALTER TABLE \"public\".\"sales_documents\"\nADD CONSTRAINT \"FK_sales_documents_source\"\nFOREIGN KEY (\"source_id\")\nREFERENCES \"public\".\"sales_documents\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"FK_sales_documents_source\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "FK_sales_documents_source",
+          "public",
+          "\"public\".\"sales_documents\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.sales_documents.FK_sales_documents_journal_entry",
+    "label": "Add foreign key \"FK_sales_documents_journal_entry\" on \"sales_documents\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "FK_sales_documents_journal_entry",
+        "table": "sales_documents"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"FK_sales_documents_journal_entry\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "FK_sales_documents_journal_entry",
+          "public",
+          "\"public\".\"sales_documents\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"FK_sales_documents_journal_entry\"",
+        "sql": "ALTER TABLE \"public\".\"sales_documents\"\nADD CONSTRAINT \"FK_sales_documents_journal_entry\"\nFOREIGN KEY (\"journal_entry_id\")\nREFERENCES \"public\".\"journal_entries\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"FK_sales_documents_journal_entry\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "FK_sales_documents_journal_entry",
+          "public",
+          "\"public\".\"sales_documents\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.sales_documents.FK_sales_documents_created_by",
+    "label": "Add foreign key \"FK_sales_documents_created_by\" on \"sales_documents\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "FK_sales_documents_created_by",
+        "table": "sales_documents"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"FK_sales_documents_created_by\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "FK_sales_documents_created_by",
+          "public",
+          "\"public\".\"sales_documents\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"FK_sales_documents_created_by\"",
+        "sql": "ALTER TABLE \"public\".\"sales_documents\"\nADD CONSTRAINT \"FK_sales_documents_created_by\"\nFOREIGN KEY (\"created_by\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"FK_sales_documents_created_by\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "FK_sales_documents_created_by",
+          "public",
+          "\"public\".\"sales_documents\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sales.support",
+    "label": "Sales number sequences, updated_at defaults, receivable and VAT accounts",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "sales_documents"
+      }
+    },
+    "precheck": [],
+    "execute": [
+      {
+        "description": "create sequence \"quotation_number_seq\"",
+        "sql": "CREATE SEQUENCE IF NOT EXISTS \"public\".\"quotation_number_seq\"",
+        "params": []
+      },
+      {
+        "description": "create sequence \"invoice_number_seq\"",
+        "sql": "CREATE SEQUENCE IF NOT EXISTS \"public\".\"invoice_number_seq\"",
+        "params": []
+      },
+      {
+        "description": "create sequence \"receipt_number_seq\"",
+        "sql": "CREATE SEQUENCE IF NOT EXISTS \"public\".\"receipt_number_seq\"",
+        "params": []
+      },
+      {
+        "description": "default \"customers\".updated_at to now()",
+        "sql": "ALTER TABLE \"public\".\"customers\" ALTER COLUMN \"updated_at\" SET DEFAULT now()",
+        "params": []
+      },
+      {
+        "description": "default \"sales_documents\".updated_at to now()",
+        "sql": "ALTER TABLE \"public\".\"sales_documents\" ALTER COLUMN \"updated_at\" SET DEFAULT now()",
+        "params": []
+      },
+      {
+        "description": "insert accounts 1100 Accounts Receivable and 2100 VAT Payable",
+        "sql": "INSERT INTO \"public\".\"accounts\" (code, name, type, updated_at) VALUES\n  ('1100', 'Accounts Receivable', 'asset', now()),\n  ('2100', 'VAT Payable', 'liability', now())\nON CONFLICT (code) DO NOTHING",
+        "params": []
+      }
+    ],
+    "postcheck": []
+  }
+]

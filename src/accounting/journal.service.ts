@@ -75,8 +75,8 @@ export class JournalService {
       .all();
   }
 
-  /** One entry and its lines. Runs in the caller's transaction. */
-  private async post(
+  /** One entry and its lines. Runs in the caller's transaction (also used by sales). */
+  async post(
     tx: Tx,
     entry: {
       entryDate: string;

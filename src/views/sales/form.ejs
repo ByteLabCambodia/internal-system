@@ -1,0 +1,201 @@
+<%
+/* Quotation and invoice share this form; the type decides which date field shows. */
+const isInvoice = values.type === 'invoice';
+const items = (values.items && values.items.length ? values.items : [{ description: '', detail: '', qty: 1, unitPrice: 0 }])
+  .map(function (item) {
+    return { description: item.description || '', detail: item.detail || '', qty: Number(item.qty) || 0, unitPrice: Number(item.unitPrice) || 0 };
+  });
+const action = editing ? '/sales/' + editing.id : '/sales';
+const input = 'block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white';
+const label = 'mb-1.5 block text-sm font-medium text-gray-900 dark:text-white';
+const card = 'rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800';
+const fieldError = function (name) {
+  return errors && errors[name] ? '<p class="mt-1.5 text-sm text-red-600 dark:text-red-500">' + errors[name] + '</p>' : '';
+};
+const languageLabels = { both: 'Khmer and English', km: 'Khmer only', en: 'English only' };
+const state = {
+  items: items,
+  vatRate: Number(values.vatRate) || 0,
+  discountType: values.discountType === 'amount' ? 'amount' : 'percent',
+  discountValue: Number(values.discountValue) || 0,
+  language: values.language || 'both',
+};
+%>
+
+<% if (locals.alert) { %><%- include('../partials/alert', { tone: 'error', message: alert }) %><% } %>
+<% if (errors && errors.items) { %><%- include('../partials/alert', { tone: 'error', message: errors.items }) %><% } %>
+
+<% if (!customers.length) { %>
+  <div class="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+    <%- include('../partials/empty-state', {
+      title: 'Add a customer first',
+      description: 'Every quotation and invoice is made out to a customer from the customer list.',
+      action: { href: '/admin/customers', label: 'Add customer' },
+    }) %>
+  </div>
+<% } else { %>
+<form id="sales-form" method="post" action="<%= action %>"
+      x-data='<%- JSON.stringify(state).replace(/'/g, "&#39;") %>'>
+  <%- include('../partials/csrf') %>
+  <input type="hidden" name="type" value="<%= values.type %>" />
+  <% if (editing) { %><input type="hidden" name="editingId" value="<%= editing.id %>" /><% } %>
+
+  <div class="grid gap-6 xl:grid-cols-2">
+    <div class="min-w-0 space-y-4">
+      <div class="<%= card %>">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div class="sm:col-span-2">
+            <label for="customerId" class="<%= label %>">Customer<span class="text-red-600" aria-hidden="true"> *</span></label>
+            <select id="customerId" name="customerId" required class="<%= input %>">
+              <option value="">Choose a customer…</option>
+              <% customers.forEach(function (customer) { %>
+                <option value="<%= customer.id %>" <%- String(values.customerId) === String(customer.id) ? 'selected' : '' %>><%= customer.name %></option>
+              <% }); %>
+            </select>
+            <%- fieldError('customerId') %>
+          </div>
+
+          <div>
+            <label for="issueDate" class="<%= label %>"><%= isInvoice ? 'Invoice date' : 'Date' %></label>
+            <input type="date" id="issueDate" name="issueDate" value="<%= values.issueDate || '' %>" required class="<%= input %>" />
+            <%- fieldError('issueDate') %>
+          </div>
+
+          <% if (isInvoice) { %>
+            <div>
+              <label for="dueDate" class="<%= label %>">Due date</label>
+              <input type="date" id="dueDate" name="dueDate" value="<%= values.dueDate || '' %>" class="<%= input %>" />
+            </div>
+          <% } %>
+
+          <div>
+            <label for="currency" class="<%= label %>">Currency</label>
+            <select id="currency" name="currency" class="<%= input %>">
+              <% currencies.forEach(function (currency) { %>
+                <option value="<%= currency %>" <%- values.currency === currency ? 'selected' : '' %>><%= currency %></option>
+              <% }); %>
+            </select>
+          </div>
+
+          <div>
+            <label for="language" class="<%= label %>">Document language</label>
+            <select id="language" name="language" x-model="language" class="<%= input %>">
+              <% languages.forEach(function (language) { %>
+                <option value="<%= language %>"><%= languageLabels[language] %></option>
+              <% }); %>
+            </select>
+          </div>
+        </div>
+        <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">Today's exchange rate is locked onto the document when you save.</p>
+      </div>
+
+      <div class="<%= card %>">
+        <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Lines</h2>
+
+        <template x-for="(item, index) in items" :key="index">
+          <div class="mb-3 grid gap-2 border-b border-gray-100 pb-3 last:border-0 dark:border-gray-700 sm:grid-cols-12">
+            <div class="sm:col-span-6">
+              <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400" :for="'item-description-' + index">Description</label>
+              <input type="text" :id="'item-description-' + index" :name="'items[' + index + '][description]'" x-model="item.description" required
+                     class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+              <label class="sr-only" :for="'item-detail-' + index">Detail</label>
+              <input type="text" :id="'item-detail-' + index" :name="'items[' + index + '][detail]'" x-model="item.detail" placeholder="Detail (optional): model, spec, period"
+                     class="mt-1.5 w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400" :for="'item-qty-' + index">Qty</label>
+              <input type="number" step="0.0001" min="0.0001" :id="'item-qty-' + index" :name="'items[' + index + '][qty]'" x-model.number="item.qty" required
+                     class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-right text-sm tabular dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+            </div>
+            <div class="sm:col-span-3">
+              <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400" :for="'item-price-' + index">Unit price</label>
+              <input type="number" step="0.0001" min="0" :id="'item-price-' + index" :name="'items[' + index + '][unitPrice]'" x-model.number="item.unitPrice" required
+                     class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-right text-sm tabular dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+            </div>
+            <div class="flex items-end sm:col-span-1">
+              <button type="button" @click="items.splice(index, 1)" x-show="items.length > 1"
+                      class="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm text-gray-500 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700">
+                <span class="sr-only">Remove line</span>&times;
+              </button>
+            </div>
+          </div>
+        </template>
+
+        <button type="button" @click="items.push({ description: '', detail: '', qty: 1, unitPrice: 0 })"
+                class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+          Add line
+        </button>
+      </div>
+
+      <div class="<%= card %>"
+           x-data="{
+             get subtotal() { return items.reduce((sum, item) => sum + (Number(item.qty) || 0) * (Number(item.unitPrice) || 0), 0); },
+             get discount() { return discountType === 'percent' ? this.subtotal * (Number(discountValue) || 0) / 100 : (Number(discountValue) || 0); },
+             get net() { return this.subtotal - this.discount; },
+             get vat() { return this.net * (Number(vatRate) || 0) / 100; },
+           }">
+        <div class="mb-4 grid gap-3 sm:grid-cols-3">
+          <div>
+            <label for="discountType" class="<%= label %>">Discount</label>
+            <select id="discountType" name="discountType" x-model="discountType" class="<%= input %>">
+              <option value="percent">Percent (%)</option>
+              <option value="amount">Amount</option>
+            </select>
+          </div>
+          <div>
+            <label for="discountValue" class="<%= label %>"><span x-text="discountType === 'percent' ? 'Discount %' : 'Discount amount'"></span></label>
+            <input type="number" step="0.01" min="0" id="discountValue" name="discountValue" x-model.number="discountValue" class="<%= input %> text-right tabular" />
+            <%- fieldError('discountValue') %>
+          </div>
+          <div>
+            <label for="vatRate" class="<%= label %>">VAT %</label>
+            <input type="number" step="0.01" min="0" max="100" id="vatRate" name="vatRate" x-model.number="vatRate" class="<%= input %> text-right tabular" />
+            <%- fieldError('vatRate') %>
+          </div>
+        </div>
+
+        <dl class="space-y-1 text-sm">
+          <div class="flex justify-between">
+            <dt class="text-gray-500 dark:text-gray-400">Subtotal</dt>
+            <dd class="tabular text-gray-900 dark:text-white" x-text="subtotal.toFixed(2)"></dd>
+          </div>
+          <div class="flex justify-between" x-show="discount > 0" x-cloak>
+            <dt class="text-gray-500 dark:text-gray-400">Discount</dt>
+            <dd class="tabular text-gray-900 dark:text-white" x-text="'-' + discount.toFixed(2)"></dd>
+          </div>
+          <div class="flex justify-between">
+            <dt class="text-gray-500 dark:text-gray-400">VAT <span x-text="vatRate"></span>%</dt>
+            <dd class="tabular text-gray-900 dark:text-white" x-text="vat.toFixed(2)"></dd>
+          </div>
+          <div class="flex justify-between border-t border-gray-100 pt-1 dark:border-gray-700">
+            <dt class="font-medium text-gray-900 dark:text-white">Total</dt>
+            <dd class="tabular font-semibold text-gray-900 dark:text-white" x-text="(net + vat).toFixed(2)"></dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="<%= card %>">
+        <label for="notes" class="<%= label %>"><%= isInvoice ? 'Notes' : 'Terms and notes' %></label>
+        <textarea id="notes" name="notes" rows="3" class="<%= input %>"
+                  placeholder="<%= isInvoice ? 'Printed on the invoice' : 'e.g. Delivery 5 working days after order. Payment due 30 days after invoice.' %>"><%= values.notes || '' %></textarea>
+      </div>
+    </div>
+
+    <div class="min-w-0 xl:sticky xl:top-4 xl:self-start">
+      <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Live preview</h2>
+      <%- include('preview-frame', { formId: 'sales-form' }) %>
+      <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        Updates as you type. The number is assigned when you save. Add your logo as
+        <code>public/images/company-logo.png</code> (or .svg, .jpg) and it replaces the company name.
+      </p>
+    </div>
+  </div>
+
+  <div class="sticky bottom-0 mt-6 flex items-center justify-end gap-2 border-t border-gray-200 bg-gray-50/95 py-3 backdrop-blur dark:border-gray-700 dark:bg-gray-900/95">
+    <a href="<%= editing ? '/sales/' + editing.id : '/sales' %>" class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Cancel</a>
+    <button type="submit" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">
+      <%= editing ? 'Save changes' : (isInvoice ? 'Create invoice' : 'Create quotation') %>
+    </button>
+  </div>
+</form>
+<% } %>

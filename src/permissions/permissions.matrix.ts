@@ -30,6 +30,8 @@ export const PERMISSION_MATRIX: Record<PermissionEnum, RoleEnum[]> = {
   [PermissionEnum['users.manage']]: [admin],
   // C4
   [PermissionEnum['suppliers.manage']]: [manager, finance, admin],
+  [PermissionEnum['customers.manage']]: [manager, finance, admin],
+  [PermissionEnum['sales.manage']]: [manager, finance, admin],
 };
 
 /** Roles that see every row rather than only their own. */

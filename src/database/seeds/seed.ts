@@ -26,7 +26,9 @@ export const CHART_OF_ACCOUNTS: {
   type: AccountTypeEnum;
 }[] = [
   { code: '1000', name: 'Cash / Bank', type: AccountTypeEnum.asset },
+  { code: '1100', name: 'Accounts Receivable', type: AccountTypeEnum.asset },
   { code: '2000', name: 'Accounts Payable', type: AccountTypeEnum.liability },
+  { code: '2100', name: 'VAT Payable', type: AccountTypeEnum.liability },
   { code: '3000', name: 'Owner Equity', type: AccountTypeEnum.equity },
   {
     code: '4000',
