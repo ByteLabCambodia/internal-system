@@ -71,11 +71,11 @@ const discountLabel = doc.discountType === 'percent' ? ' ' + Number(doc.discount
   .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; align-items: baseline; }
   .kv .v { text-align: right; }
   .party .v { text-align: left; }
-  table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
+  table { width: calc(100% - 1px); border-collapse: collapse; page-break-inside: auto; }
   tr { page-break-inside: avoid; }
   thead { display: table-header-group; }
   th { border: 1px solid #000; padding: 4px 6px; font-weight: 600; text-align: center; vertical-align: bottom; }
-  td { border-left: 1px solid #000; border-right: 1px solid #000; padding: 5px 6px; vertical-align: top; }
+  td { border-left: 1px solid #000; border-right: 1px solid #000; padding: 5px 6px; vertical-align: middle; }
   tbody td { border-bottom: 1px solid #000; } /* every row, so a page break still leaves the table closed */
   td small { display: block; color: #444; }
   .n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
