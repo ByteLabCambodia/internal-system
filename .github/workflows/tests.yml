@@ -47,11 +47,12 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
-      - name: Integration tests
-        run: pnpm run test:integration
-
+      # The sales PDF integration test launches Chromium too.
       - name: Install Playwright's Chromium
         run: pnpm exec playwright install --with-deps chromium
+
+      - name: Integration tests
+        run: pnpm run test:integration
 
       - name: Browser tests
         # The app needs its auth secrets etc. to boot; the example env has test values.
