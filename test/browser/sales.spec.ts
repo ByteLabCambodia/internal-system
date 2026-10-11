@@ -69,7 +69,7 @@ test.describe('sales documents', () => {
     await expect(preview.getByText('Dell Latitude laptop')).toBeVisible();
     await expect(preview.getByText('8,580.00').first()).toBeVisible();
     await page.locator('#language').selectOption('en');
-    await expect(preview.getByText('QUOTATION')).toBeVisible();
+    await expect(preview.getByText('QUOTATION', { exact: true })).toBeVisible();
     await expect(preview.getByText('សម្រង់តម្លៃ')).toHaveCount(0);
     await page.locator('#language').selectOption('both');
     await page.locator('#discountValue').fill('10');
