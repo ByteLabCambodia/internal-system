@@ -1,0 +1,214 @@
+[
+  {
+    "id": "createNativeEnumType.discount_type",
+    "label": "Create enum type \"discount_type\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "type",
+        "name": "discount_type"
+      }
+    },
+    "precheck": [],
+    "execute": [
+      {
+        "description": "create enum type \"discount_type\"",
+        "sql": "CREATE TYPE \"public\".\"discount_type\" AS ENUM ('percent', 'amount')",
+        "params": []
+      }
+    ],
+    "postcheck": []
+  },
+  {
+    "id": "createNativeEnumType.sales_doc_language",
+    "label": "Create enum type \"sales_doc_language\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "type",
+        "name": "sales_doc_language"
+      }
+    },
+    "precheck": [],
+    "execute": [
+      {
+        "description": "create enum type \"sales_doc_language\"",
+        "sql": "CREATE TYPE \"public\".\"sales_doc_language\" AS ENUM ('both', 'km', 'en')",
+        "params": []
+      }
+    ],
+    "postcheck": []
+  },
+  {
+    "id": "column.public.sales_documents.discount_amount",
+    "label": "Add column \"discount_amount\" to \"sales_documents\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "discount_amount",
+        "table": "sales_documents"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"discount_amount\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "sales_documents",
+          "discount_amount"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"discount_amount\"",
+        "sql": "ALTER TABLE \"public\".\"sales_documents\" ADD COLUMN \"discount_amount\" numeric(18,4) DEFAULT '0'::numeric(18,4) NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"discount_amount\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "sales_documents",
+          "discount_amount"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.sales_documents.discount_type",
+    "label": "Add column \"discount_type\" to \"sales_documents\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "discount_type",
+        "table": "sales_documents"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"discount_type\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "sales_documents",
+          "discount_type"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"discount_type\"",
+        "sql": "ALTER TABLE \"public\".\"sales_documents\" ADD COLUMN \"discount_type\" \"discount_type\" DEFAULT 'percent'::\"discount_type\" NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"discount_type\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "sales_documents",
+          "discount_type"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.sales_documents.discount_value",
+    "label": "Add column \"discount_value\" to \"sales_documents\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "discount_value",
+        "table": "sales_documents"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"discount_value\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "sales_documents",
+          "discount_value"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"discount_value\"",
+        "sql": "ALTER TABLE \"public\".\"sales_documents\" ADD COLUMN \"discount_value\" numeric(18,4) DEFAULT '0'::numeric(18,4) NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"discount_value\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "sales_documents",
+          "discount_value"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.sales_documents.language",
+    "label": "Add column \"language\" to \"sales_documents\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "language",
+        "table": "sales_documents"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"language\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "sales_documents",
+          "language"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"language\"",
+        "sql": "ALTER TABLE \"public\".\"sales_documents\" ADD COLUMN \"language\" \"sales_doc_language\" DEFAULT 'both'::\"sales_doc_language\" NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"language\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "sales_documents",
+          "language"
+        ]
+      }
+    ]
+  }
+]

@@ -63,6 +63,7 @@ namespace public {
     notifications                    Notification[]
     payments                         Payment[]
     purchaseOrders                   PurchaseOrder[]
+    salesDocuments                   SalesDocument[]
     sessions                         Session[]
     stockMovements                   StockMovement[]
     claimsFiled                  InventoryClaim[]  @relation(name: "FK_inventory_claims_claimed_by")
@@ -360,6 +361,7 @@ namespace public {
     updatedAt    temporal.updatedAtString()      @map("updated_at")
     lines        JournalLine[]
     payments     Payment[]
+    salesDocuments SalesDocument[]
     createdBy    User?                  @relation(fields: [createdById], references: [id], map: "FK_journal_entries_created_by", index: false)
 
     @@map("journal_entries")
@@ -445,6 +447,81 @@ namespace public {
 
     @@index([prId], map: "purchase_request_items_pr_idx")
     @@map("purchase_request_items")
+  }
+
+  model Customer {
+    id             Int               @id(map: "PK_customers") @default(autoincrement())
+    name           String            @unique(map: "customers_name_key")
+    company        String?
+    phone          String?
+    email          String?
+    address        String?
+    note           String?
+    active         Boolean           @default(true)
+    createdAt      TimestamptzString @default(now()) @map("created_at")
+    updatedAt      temporal.updatedAtString() @map("updated_at")
+    salesDocuments SalesDocument[]
+
+    @@map("customers")
+  }
+
+  // Quotation, invoice and receipt share one table; `sourceId` chains receipt -> invoice -> quotation.
+  model SalesDocument {
+    id               Int                     @id(map: "PK_sales_documents") @default(autoincrement())
+    type             pg.enum(SalesDocType)
+    // Assigned by SalesService from the type's sequence (QT-/INV-/RCPT-), GDT wants them sequential.
+    number           String                  @unique(map: "sales_documents_number_key")
+    status           pg.enum(SalesDocStatus) @default("draft")
+    customerId       Int                     @map("customer_id")
+    sourceId         Int?                    @map("source_id")
+    issueDate        DateString              @default(sql`CURRENT_DATE`) @map("issue_date")
+    dueDate          DateString?             @map("due_date")
+    currency         pg.enum(Currency)       @default("USD")
+    exchangeRate     Numeric(18, 6)          @default(1) @map("exchange_rate")
+    language         pg.enum(SalesDocLanguage) @default("both")
+    discountType     pg.enum(DiscountType)   @default("percent") @map("discount_type")
+    // What the user typed (a percentage or an amount) and the resulting amount off the subtotal.
+    discountValue    Numeric(18, 4)          @default(0) @map("discount_value")
+    discountAmount   Numeric(18, 4)          @default(0) @map("discount_amount")
+    vatRate          Numeric(18, 4)          @default(0) @map("vat_rate")
+    subtotal         Numeric(18, 4)          @default(0)
+    vatAmount        Numeric(18, 4)          @default(0) @map("vat_amount")
+    total            Numeric(18, 4)          @default(0)
+    totalUsd         Numeric(18, 4)          @default(0) @map("total_usd")
+    paymentMethod    pg.enum(PaymentMethod)? @map("payment_method")
+    paymentReference String?                 @map("payment_reference")
+    notes            String?
+    journalEntryId   Int?                    @map("journal_entry_id")
+    createdById      Int?                    @map("created_by")
+    createdAt        TimestamptzString       @default(now()) @map("created_at")
+    updatedAt        temporal.updatedAtString() @map("updated_at")
+    items            SalesDocumentItem[]
+    derived          SalesDocument[]         @relation(name: "FK_sales_documents_source")
+    customer         Customer                @relation(fields: [customerId], references: [id], map: "FK_sales_documents_customer", index: false)
+    source           SalesDocument?          @relation(name: "FK_sales_documents_source", fields: [sourceId], references: [id], map: "FK_sales_documents_source", index: false)
+    journalEntry     JournalEntry?           @relation(fields: [journalEntryId], references: [id], map: "FK_sales_documents_journal_entry", index: false)
+    createdBy        User?                   @relation(fields: [createdById], references: [id], map: "FK_sales_documents_created_by", index: false)
+
+    @@index([type, status], map: "sales_documents_type_status_idx")
+    @@index([customerId], map: "sales_documents_customer_idx")
+    @@index([sourceId], map: "sales_documents_source_idx")
+    @@check(expression: "(exchange_rate > (0)::numeric)", map: "sales_documents_exchange_rate_positive")
+    @@map("sales_documents")
+  }
+
+  model SalesDocumentItem {
+    id          Int               @id(map: "PK_sales_document_items") @default(autoincrement())
+    documentId  Int               @map("document_id")
+    description String
+    detail      String?
+    qty         Numeric(18, 4)    @default(1)
+    unitPrice   Numeric(18, 4)    @default(0) @map("unit_price")
+    amount      Numeric(18, 4)    @default(0)
+    createdAt   TimestamptzString @default(now()) @map("created_at")
+    document    SalesDocument     @relation(fields: [documentId], references: [id], onDelete: Cascade, map: "FK_sales_document_items_document")
+
+    @@index([documentId], map: "sales_document_items_document_idx")
+    @@map("sales_document_items")
   }
 
   model Session {
@@ -536,6 +613,8 @@ namespace public {
     po_payment = "po_payment"
     manual_income = "manual_income"
     manual = "manual"
+    sales_invoice = "sales_invoice"
+    sales_receipt = "sales_receipt"
     @@map("journal_source")
   }
 
@@ -590,6 +669,37 @@ namespace public {
     api = "api"
     manual = "manual"
     @@map("rate_source")
+  }
+
+  native_enum SalesDocLanguage {
+    both = "both"
+    km = "km"
+    en = "en"
+    @@map("sales_doc_language")
+  }
+
+  native_enum DiscountType {
+    percent = "percent"
+    amount = "amount"
+    @@map("discount_type")
+  }
+
+  native_enum SalesDocType {
+    quotation = "quotation"
+    invoice = "invoice"
+    receipt = "receipt"
+    @@map("sales_doc_type")
+  }
+
+  native_enum SalesDocStatus {
+    draft = "draft"
+    sent = "sent"
+    accepted = "accepted"
+    rejected = "rejected"
+    issued = "issued"
+    paid = "paid"
+    void = "void"
+    @@map("sales_doc_status")
   }
 
   native_enum StockPriority {

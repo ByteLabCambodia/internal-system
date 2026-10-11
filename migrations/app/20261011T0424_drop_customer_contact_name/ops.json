@@ -1,0 +1,44 @@
+[
+  {
+    "id": "dropColumn.customers.contact_name",
+    "label": "Drop column \"contact_name\" from \"customers\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "contact_name",
+        "table": "customers"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"contact_name\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "customers",
+          "contact_name"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop column \"contact_name\"",
+        "sql": "ALTER TABLE \"public\".\"customers\" DROP COLUMN \"contact_name\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"contact_name\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "customers",
+          "contact_name"
+        ]
+      }
+    ]
+  }
+]

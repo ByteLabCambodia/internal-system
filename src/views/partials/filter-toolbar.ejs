@@ -3,8 +3,10 @@
 const statuses = locals.statuses || [];
 const filters = locals.filters || {};
 const exportHref = locals.exportHref || null;
+const hidden = locals.hidden || {};
 %>
 <form method="get" class="mb-4 flex flex-wrap items-end gap-3">
+  <% Object.keys(hidden).forEach(function (key) { if (hidden[key]) { %><input type="hidden" name="<%= key %>" value="<%= hidden[key] %>" /><% } }); %>
   <div>
     <label for="filter-status" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Status</label>
     <select id="filter-status" name="status"
@@ -30,7 +32,7 @@ const exportHref = locals.exportHref || null;
 
   <div class="min-w-[12rem] flex-1">
     <label for="filter-search" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Search</label>
-    <input type="search" id="filter-search" name="search" value="<%= filters.search || '' %>" placeholder="Number, supplier, note"
+    <input type="search" id="filter-search" name="search" value="<%= filters.search || '' %>" placeholder="<%= locals.searchPlaceholder || 'Number, supplier, note' %>"
            class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
   </div>
 

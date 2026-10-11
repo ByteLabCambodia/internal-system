@@ -10,6 +10,14 @@
       <%- include('icon', { name: 'menu', size: 'h-6 w-6' }) %>
     </button>
 
+    <button type="button" onclick="toggleSidebar()" title="Collapse or expand" aria-label="Collapse or expand navigation"
+            class="hidden rounded-lg p-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 sm:inline-flex">
+      <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="16" rx="3"/>
+        <rect x="3" y="4" width="7" height="16" rx="3" fill="currentColor" stroke="none" class="origin-left [transform-box:fill-box] transition-transform duration-300 ease-in-out [.sb-collapsed_&]:scale-x-50"/>
+      </svg>
+    </button>
+
     <div class="min-w-0 flex-1">
       <h1 class="truncate text-base font-semibold text-gray-900 dark:text-white">
         <%= locals.title || 'Dashboard' %>

@@ -60,6 +60,69 @@
   </div>
 
   <div class="rounded-lg border border-gray-200 bg-white p-4 lg:col-span-2 dark:border-gray-700 dark:bg-gray-800">
+    <h2 class="mb-1 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Company on sales documents</h2>
+    <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+      Printed at the top of every quotation, invoice and receipt.
+    </p>
+    <form method="post" action="/admin/settings/company" class="grid gap-3 sm:grid-cols-2">
+      <%- include('../partials/csrf') %>
+      <div>
+        <label for="company_name_km" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Company name (Khmer)</label>
+        <input type="text" id="company_name_km" name="company_name_km" value="<%= company.company_name_km %>"
+               class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+      </div>
+      <div>
+        <label for="company_name_en" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Company name (English)</label>
+        <input type="text" id="company_name_en" name="company_name_en" value="<%= company.company_name_en %>"
+               class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+      </div>
+      <div>
+        <label for="company_address" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Address</label>
+        <input type="text" id="company_address" name="company_address" value="<%= company.company_address %>"
+               class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+      </div>
+      <div>
+        <label for="company_phone" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Phone</label>
+        <input type="text" id="company_phone" name="company_phone" value="<%= company.company_phone %>"
+               class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+      </div>
+      <div>
+        <label for="company_email" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Email</label>
+        <input type="text" id="company_email" name="company_email" value="<%= company.company_email %>"
+               class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+      </div>
+      <div>
+        <label for="company_vat_tin" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">VAT TIN</label>
+        <input type="text" id="company_vat_tin" name="company_vat_tin" value="<%= company.company_vat_tin %>"
+               class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+      </div>
+      <div>
+        <label for="sales_vat_rate" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Default VAT % on sales</label>
+        <input type="text" id="sales_vat_rate" name="sales_vat_rate" value="<%= company.sales_vat_rate %>"
+               class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+      </div>
+      <div>
+        <label for="sales_default_language" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Default document language</label>
+        <select id="sales_default_language" name="sales_default_language"
+                class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+          <% [['both', 'Khmer and English'], ['km', 'Khmer only'], ['en', 'English only']].forEach(function (option) { %>
+            <option value="<%= option[0] %>" <%- company.sales_default_language === option[0] ? 'selected' : '' %>><%= option[1] %></option>
+          <% }); %>
+        </select>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Each quotation and invoice can still change it.</p>
+      </div>
+      <div class="sm:col-span-2">
+        <label for="company_payment_details" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Payment details printed on invoices</label>
+        <textarea id="company_payment_details" name="company_payment_details" rows="3" placeholder="ABA Bank · Company name&#10;Account 000 123 456 (USD)"
+                  class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"><%= company.company_payment_details %></textarea>
+      </div>
+      <div class="sm:col-span-2">
+        <button type="submit" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">Save company details</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="rounded-lg border border-gray-200 bg-white p-4 lg:col-span-2 dark:border-gray-700 dark:bg-gray-800">
     <h2 class="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Integrations</h2>
 
     <dl class="grid gap-4 text-sm sm:grid-cols-3">

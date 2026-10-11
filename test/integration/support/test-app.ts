@@ -19,6 +19,8 @@ import { PermissionsService } from '../../../src/permissions/permissions.service
 import { PaymentsService } from '../../../src/procurement/payments.service';
 import { PurchaseOrdersService } from '../../../src/procurement/purchase-orders.service';
 import { PurchaseRequestsService } from '../../../src/procurement/purchase-requests.service';
+import { SalesService } from '../../../src/sales/sales.service';
+import { PdfService } from '../../../src/sales/pdf.service';
 import { SettingsService } from '../../../src/settings/settings.service';
 import { StockRequestsService } from '../../../src/stock/stock-requests.service';
 import { TelegramService } from '../../../src/telegram/telegram.service';
@@ -82,6 +84,8 @@ export async function createTestApp(): Promise<TestingModule> {
       PurchaseRequestsService,
       RatesService,
       ReportsService,
+      SalesService,
+      PdfService,
       SettingsService,
       StockRequestsService,
       SuppliersService,
@@ -115,6 +119,9 @@ const TRUNCATE = [
   'stock_movements',
   'stock_requests',
   'inventory_claims',
+  'sales_document_items',
+  'sales_documents',
+  'customers',
   'journal_lines',
   'journal_entries',
   'budgets',
@@ -145,4 +152,9 @@ export async function resetData(dataSource: TestDb): Promise<void> {
   );
   await dataSource.query(`ALTER SEQUENCE "pr_number_seq" RESTART WITH 1`);
   await dataSource.query(`ALTER SEQUENCE "po_number_seq" RESTART WITH 1`);
+  for (const type of ['quotation', 'invoice', 'receipt']) {
+    await dataSource.query(
+      `ALTER SEQUENCE "${type}_number_seq" RESTART WITH 1`,
+    );
+  }
 }

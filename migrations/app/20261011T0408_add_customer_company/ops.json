@@ -1,0 +1,44 @@
+[
+  {
+    "id": "column.public.customers.company",
+    "label": "Add column \"company\" to \"customers\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "company",
+        "table": "customers"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"company\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "customers",
+          "company"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"company\"",
+        "sql": "ALTER TABLE \"public\".\"customers\" ADD COLUMN \"company\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"company\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "customers",
+          "company"
+        ]
+      }
+    ]
+  }
+]

@@ -8,6 +8,15 @@
     }
   })();
 
+  try {
+    if (localStorage.getItem('sidebar') === 'collapsed') document.documentElement.classList.add('sb-collapsed');
+  } catch (e) {}
+
+  function toggleSidebar() {
+    var c = document.documentElement.classList.toggle('sb-collapsed');
+    try { localStorage.setItem('sidebar', c ? 'collapsed' : 'open'); } catch (e) {}
+  }
+
   function toggleTheme() {
     var isDark = document.documentElement.classList.toggle('dark');
     localStorage.setItem('theme', isDark ? 'dark' : 'light');

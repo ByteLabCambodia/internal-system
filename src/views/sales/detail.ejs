@@ -1,0 +1,152 @@
+<%
+const btn = 'rounded-lg px-4 py-2 text-sm font-medium';
+const primary = btn + ' bg-primary-600 text-white hover:bg-primary-700';
+const outline = 'rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700';
+const post = function (action, label, cls) {
+  return `<form method="post" action="/sales/${doc.id}/${action}" class="inline">${include('../partials/csrf')}<button class="${cls}">${label}</button></form>`;
+};
+const setStatus = function (status, label, cls) {
+  return `<form method="post" action="/sales/${doc.id}/status" class="inline">${include('../partials/csrf')}<input type="hidden" name="status" value="${status}" /><button class="${cls}">${label}</button></form>`;
+};
+
+const actions = [`<a href="/sales/${doc.id}/pdf" class="${outline}">Download PDF</a>`];
+const hasInvoice = doc.derived.some(function (d) { return d.type === 'invoice' && d.status !== 'void'; });
+
+if (doc.type === 'quotation') {
+  if (doc.status === 'draft') actions.push(`<a href="/sales/${doc.id}/edit" class="${outline}">Edit</a>`, setStatus('sent', 'Mark as sent', primary));
+  if (doc.status === 'sent') actions.push(setStatus('accepted', 'Customer accepted', outline), setStatus('rejected', 'Customer rejected', outline));
+  if (['sent', 'accepted'].includes(doc.status) && !hasInvoice) actions.push(post('convert', 'Convert to invoice', primary));
+}
+if (doc.type === 'invoice') {
+  if (doc.status === 'draft') actions.push(`<a href="/sales/${doc.id}/edit" class="${outline}">Edit</a>`, `<form method="post" action="/sales/${doc.id}/issue" class="inline-flex items-center gap-3">${include('../partials/csrf')}<label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300"><input type="checkbox" name="postIncome" checked class="rounded border-gray-300" /> Post income to ledger</label><button class="${primary}">Issue invoice</button></form>`);
+}
+if (transitions.includes('void')) actions.push(setStatus('void', 'Void', outline));
+const fieldLabel = 'text-gray-500 dark:text-gray-400';
+const fieldValue = 'text-gray-900 dark:text-white';
+%>
+
+<%- include('../partials/page-header', {
+  heading: doc.number,
+  status: doc.status,
+  breadcrumbs: [{ label: 'Sales', href: '/sales' }, { label: doc.number }],
+  actionsHtml: actions.join(' '),
+}) %>
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="space-y-6 lg:col-span-2">
+    <%- include('preview-frame', { src: '/sales/' + doc.id + '/print?preview=1' }) %>
+
+    <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+      <table class="w-full text-left text-sm text-gray-600 dark:text-gray-300">
+        <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+          <tr>
+            <th class="px-4 py-3">Description</th>
+            <th class="px-4 py-3 text-right">Qty</th>
+            <th class="px-4 py-3 text-right">Unit price</th>
+            <th class="px-4 py-3 text-right">Amount</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+          <% (doc.type === 'receipt' && doc.source && doc.source.items ? doc.source.items : doc.items).forEach(function (item) { %>
+            <tr>
+              <td class="px-4 py-2.5 text-gray-900 dark:text-white"><%= item.description %>
+                <% if (item.detail) { %><span class="block text-xs text-gray-400"><%= item.detail %></span><% } %>
+              </td>
+              <td class="px-4 py-2.5 text-right tabular"><%= Number(item.qty) %></td>
+              <td class="px-4 py-2.5 text-right tabular"><%= money.format(item.unitPrice, doc.currency) %></td>
+              <td class="px-4 py-2.5 text-right tabular"><%= money.format(item.amount, doc.currency) %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+        <tfoot class="border-t border-gray-200 dark:border-gray-700">
+          <tr><td colspan="3" class="px-4 py-2 text-right">Subtotal</td><td class="px-4 py-2 text-right tabular"><%= money.format(doc.subtotal, doc.currency) %></td></tr>
+          <% if (Number(doc.discountAmount) > 0) { %>
+            <tr><td colspan="3" class="px-4 py-2 text-right">Discount<%= doc.discountType === 'percent' ? ' ' + Number(doc.discountValue) + '%' : '' %></td><td class="px-4 py-2 text-right tabular">-<%= money.format(doc.discountAmount, doc.currency) %></td></tr>
+          <% } %>
+          <tr><td colspan="3" class="px-4 py-2 text-right">VAT <%= Number(doc.vatRate) %>%</td><td class="px-4 py-2 text-right tabular"><%= money.format(doc.vatAmount, doc.currency) %></td></tr>
+          <tr>
+            <td colspan="3" class="px-4 py-2.5 text-right font-medium text-gray-900 dark:text-white">Total</td>
+            <td class="px-4 py-2.5 text-right font-semibold text-gray-900 dark:text-white">
+              <%- include('../partials/money', { amount: doc.total, currency: doc.currency, amountUsd: doc.totalUsd, money }) %>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <% if (doc.notes) { %>
+      <div class="rounded-lg border border-gray-200 bg-white p-4 text-sm dark:border-gray-700 dark:bg-gray-800">
+        <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Notes</h2>
+        <p class="whitespace-pre-line text-gray-700 dark:text-gray-300"><%= doc.notes %></p>
+      </div>
+    <% } %>
+
+    <% if (doc.type === 'invoice' && doc.status === 'issued') { %>
+      <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+        <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Record payment</h2>
+        <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
+          The customer paid the full <%= money.format(doc.total, doc.currency) %>. This creates a receipt and posts cash to the ledger.
+        </p>
+        <form method="post" action="/sales/<%= doc.id %>/receipt" class="grid gap-3 sm:grid-cols-3">
+          <%- include('../partials/csrf') %>
+          <div>
+            <label for="paidOn" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Payment date</label>
+            <input type="date" id="paidOn" name="paidOn" value="<%= today %>" required
+                   class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+          </div>
+          <div>
+            <label for="paymentMethod" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Method</label>
+            <select id="paymentMethod" name="paymentMethod" required
+                    class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm capitalize dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+              <% paymentMethods.forEach(function (method) { %><option value="<%= method %>"><%= method.replace(/_/g, ' ') %></option><% }); %>
+            </select>
+          </div>
+          <div>
+            <label for="paymentReference" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Bank reference</label>
+            <input type="text" id="paymentReference" name="paymentReference"
+                   class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+          </div>
+          <div class="sm:col-span-3">
+            <button type="submit" class="<%= primary %>">Record payment and create receipt</button>
+          </div>
+        </form>
+      </div>
+    <% } %>
+
+    <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+      <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Activity</h2>
+      <%- include('../partials/timeline', { events }) %>
+    </div>
+  </div>
+
+  <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+    <dl class="space-y-3 text-sm">
+      <div><dt class="<%= fieldLabel %>">Type</dt><dd class="capitalize <%= fieldValue %>"><%= typeTitle %></dd></div>
+      <div><dt class="<%= fieldLabel %>">Customer</dt>
+        <dd class="<%= fieldValue %>"><%= doc.customer.name %></dd></div>
+      <div><dt class="<%= fieldLabel %>">Date</dt><dd class="tabular <%= fieldValue %>"><%= doc.issueDate %></dd></div>
+      <% if (doc.dueDate) { %><div><dt class="<%= fieldLabel %>">Due date</dt><dd class="tabular <%= fieldValue %>"><%= doc.dueDate %></dd></div><% } %>
+      <% if (doc.paymentMethod) { %>
+        <div><dt class="<%= fieldLabel %>">Paid by</dt>
+          <dd class="capitalize <%= fieldValue %>"><%= String(doc.paymentMethod).replace(/_/g, ' ') %>
+            <% if (doc.paymentReference) { %><span class="block text-xs normal-case text-gray-400"><%= doc.paymentReference %></span><% } %></dd></div>
+      <% } %>
+      <div><dt class="<%= fieldLabel %>">Language</dt><dd class="<%= fieldValue %>"><%= { both: 'Khmer and English', km: 'Khmer only', en: 'English only' }[doc.language] %></dd></div>
+      <div><dt class="<%= fieldLabel %>">Rate locked at</dt><dd class="tabular <%= fieldValue %>"><%= Number(doc.exchangeRate) %> <%= doc.currency %> per USD</dd></div>
+      <% if (doc.source) { %>
+        <div><dt class="<%= fieldLabel %>">Created from</dt>
+          <dd><a href="/sales/<%= doc.source.id %>" class="text-primary-600 hover:underline dark:text-primary-400"><%= doc.source.number %></a></dd></div>
+      <% } %>
+      <% if (doc.derived.length) { %>
+        <div><dt class="<%= fieldLabel %>">Led to</dt>
+          <dd class="space-y-0.5">
+            <% doc.derived.forEach(function (next) { %>
+              <a href="/sales/<%= next.id %>" class="block text-primary-600 hover:underline dark:text-primary-400"><%= next.number %></a>
+            <% }); %>
+          </dd></div>
+      <% } %>
+      <div><dt class="<%= fieldLabel %>">Created by</dt>
+        <dd class="<%= fieldValue %>"><%= doc.createdBy ? doc.createdBy.firstName + ' ' + doc.createdBy.lastName : '—' %></dd></div>
+    </dl>
+  </div>
+</div>

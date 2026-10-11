@@ -1,0 +1,143 @@
+import { expect, test } from '@playwright/test';
+import { login, sql, submit } from './support';
+
+/**
+ * Sales documents through the real screens: a customer, a quotation, its conversion to
+ * an invoice, issuing it, the payment and receipt, then the CSV and PDF downloads.
+ */
+test.describe.configure({ mode: 'serial' });
+
+const pdfOf = async (page: import('@playwright/test').Page, path: string) => {
+  const response = await page.request.get(path);
+  expect(response.status()).toBe(200);
+  expect(response.headers()['content-type']).toContain('application/pdf');
+  expect((await response.body()).subarray(0, 5).toString()).toBe('%PDF-');
+};
+
+test.describe('sales documents', () => {
+  test('should save the company details printed on documents', async ({
+    page,
+  }) => {
+    await login(page, 'admin');
+    await page.goto('/admin/settings');
+    await page.locator('#company_name_en').fill('ByteLab Co., Ltd.');
+    await page.locator('#company_name_km').fill('ក្រុមហ៊ុន បៃថ៍ឡាប់ ឯ.ក');
+    await page.locator('#company_vat_tin').fill('K001-901234567');
+    await page.locator('#company_address').fill('#12, St. 271, Phnom Penh');
+    await page.locator('#sales_vat_rate').fill('10');
+    await page
+      .locator('#company_payment_details')
+      .fill('ABA Bank · Account 000 123 456 (USD)');
+    await submit(page, 'Save company details');
+
+    const [row] = await sql(
+      `SELECT value FROM app_settings WHERE key = 'company_vat_tin'`,
+    );
+    expect(row.value).toBe('K001-901234567');
+  });
+
+  test('should add a customer from the admin tabs', async ({ page }) => {
+    await login(page, 'admin');
+    await page.goto('/admin/suppliers');
+    await page.getByRole('link', { name: 'Customers' }).click();
+    await expect(page).toHaveURL(/\/admin\/customers/);
+
+    await page.locator('#name').fill('Mekong Retail Co., Ltd.');
+    await page.locator('#address').fill('#88, Monivong Blvd, Phnom Penh');
+    await submit(page, 'Add customer');
+    await expect(
+      page.getByText('Mekong Retail Co., Ltd.').first(),
+    ).toBeVisible();
+  });
+
+  test('should take a quotation to an invoice to a receipt', async ({
+    page,
+  }) => {
+    await login(page, 'admin');
+    await page.goto('/sales');
+    await page.getByRole('link', { name: 'New quotation' }).first().click();
+
+    await page
+      .locator('#customerId')
+      .selectOption({ label: 'Mekong Retail Co., Ltd.' });
+    await page.locator('#item-description-0').fill('Dell Latitude laptop');
+    await page.locator('#item-qty-0').fill('10');
+    await page.locator('#item-price-0').fill('780');
+
+    // The live preview redraws from the form without saving anything.
+    const preview = page.frameLocator('#preview-sales-form');
+    await expect(preview.getByText('Dell Latitude laptop')).toBeVisible();
+    await expect(preview.getByText('8,580.00').first()).toBeVisible();
+    await page.locator('#language').selectOption('en');
+    await expect(preview.getByText('QUOTATION')).toBeVisible();
+    await expect(preview.getByText('សម្រង់តម្លៃ')).toHaveCount(0);
+    await page.locator('#language').selectOption('both');
+    await page.locator('#discountValue').fill('10');
+    await expect(preview.getByText('Discount 10%')).toBeVisible();
+    await expect(preview.getByText('7,722.00').first()).toBeVisible(); // 7,020 + 10% VAT
+    await page.locator('#discountValue').fill('0');
+
+    await submit(page, 'Create quotation');
+
+    await expect(page).toHaveURL(/\/sales\/\d+$/);
+    await expect(
+      page.getByRole('heading', { name: 'QT-0001' }).first(),
+    ).toBeVisible();
+    await expect(page.getByText('8,580.00 USD').first()).toBeVisible(); // 7,800 + 10% VAT
+
+    await submit(page, 'Mark as sent');
+    await submit(page, 'Convert to invoice');
+    await expect(
+      page.getByRole('heading', { name: 'INV-0001' }).first(),
+    ).toBeVisible();
+
+    await submit(page, 'Issue invoice');
+    await expect(page.getByText('Invoice issued')).toBeVisible();
+
+    await page.locator('#paymentReference').fill('ABA-88231407');
+    await submit(page, 'Record payment and create receipt');
+    await expect(
+      page.getByRole('heading', { name: 'RCPT-0001' }).first(),
+    ).toBeVisible();
+
+    const entries = await sql(
+      `SELECT source::text, COUNT(*)::int AS n FROM journal_entries
+        WHERE source IN ('sales_invoice', 'sales_receipt') GROUP BY source ORDER BY source`,
+    );
+    expect(entries).toEqual([
+      { source: 'sales_invoice', n: 1 },
+      { source: 'sales_receipt', n: 1 },
+    ]);
+  });
+
+  test('should download each document as a PDF and the list as CSV', async ({
+    page,
+  }) => {
+    await login(page, 'admin');
+    const ids = await sql<{ id: number }>(
+      `SELECT id FROM sales_documents ORDER BY id`,
+    );
+    expect(ids).toHaveLength(3);
+    for (const { id } of ids) await pdfOf(page, `/sales/${id}/pdf`);
+
+    // An invoice is titled INVOICE, not TAX INVOICE.
+    const printed = await page.request.get(`/sales/${ids[1].id}/print`);
+    const html = await printed.text();
+    expect(html).toContain('>INVOICE<');
+    expect(html).not.toContain('TAX INVOICE');
+
+    const csv = await page.request.get('/sales/export.csv');
+    const text = (await csv.body()).toString();
+    expect(csv.headers()['content-type']).toContain('text/csv');
+    expect(text).toContain('QT-0001');
+    expect(text).toContain('INV-0001');
+    expect(text).toContain('RCPT-0001');
+    expect(text).toContain('Mekong Retail Co., Ltd.');
+  });
+
+  test('should keep Sales away from an employee', async ({ page }) => {
+    await login(page, 'employee');
+    const response = await page.goto('/sales');
+    expect(response?.status()).toBe(403);
+  });
+});

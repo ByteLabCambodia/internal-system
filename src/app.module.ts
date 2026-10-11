@@ -27,6 +27,7 @@ import { AccountingModule } from './accounting/accounting.module';
 import { OrgModule } from './org/org.module';
 import { StorageModule } from './storage/storage.module';
 import { ProcurementModule } from './procurement/procurement.module';
+import { SalesModule } from './sales/sales.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { StockModule } from './stock/stock.module';
 import { TelegramModule } from './telegram/telegram.module';
@@ -94,6 +95,7 @@ import { PrismaModule } from './prisma/prisma.module';
     OrgModule,
     StorageModule,
     ProcurementModule,
+    SalesModule,
     InventoryModule,
     StockModule,
     TelegramModule,

@@ -1,0 +1,62 @@
+<%
+const tabs = [{ value: '', label: 'All' }, { value: 'quotation', label: 'Quotations' }, { value: 'invoice', label: 'Invoices' }, { value: 'receipt', label: 'Receipts' }];
+%>
+<div class="mb-4 flex flex-wrap gap-2 border-b border-gray-200 pb-3 dark:border-gray-700">
+  <% tabs.forEach(function (tab) { %>
+    <a href="/sales<%= tab.value ? '?type=' + tab.value : '' %>"
+       class="rounded-lg px-3 py-1.5 text-sm <%= (filters.type || '') === tab.value
+         ? 'bg-primary-50 font-medium text-primary-700 dark:bg-gray-700 dark:text-white'
+         : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700' %>"><%= tab.label %></a>
+  <% }); %>
+  <a href="/sales/new?type=invoice" class="ms-auto rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">New invoice</a>
+</div>
+
+<%- include('../partials/filter-toolbar', {
+  statuses, filters, hidden: { type: filters.type },
+  searchPlaceholder: 'Number or customer',
+  exportHref: '/sales/export.csv?' + baseQuery,
+}) %>
+
+<p class="mb-3 text-sm text-gray-500 dark:text-gray-400"><%= count %> document<%= count === 1 ? '' : 's' %></p>
+
+<% if (!rows.length) { %>
+  <div class="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+    <%- include('../partials/empty-state', {
+      title: 'No sales documents match these filters',
+      description: 'Start with a quotation. Once the customer accepts, convert it to an invoice.',
+      action: { href: '/sales/new', label: 'New quotation' },
+    }) %>
+  </div>
+<% } else { %>
+  <%
+    let rowsHtml = '';
+    rows.forEach(function (row) {
+      rowsHtml += `
+        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+          <td class="px-4 py-2.5">
+            <a class="font-medium text-primary-600 hover:underline dark:text-primary-400" href="/sales/${row.id}">${row.number}</a>
+            <span class="block text-xs capitalize text-gray-400">${row.type}${row.source ? ' · from ' + row.source.number : ''}</span>
+          </td>
+          <td class="px-4 py-2.5">${include('../partials/esc', { text: row.customer.name })}</td>
+          <td class="px-4 py-2.5 text-gray-500 dark:text-gray-400 tabular">${row.issueDate}</td>
+          <td class="px-4 py-2.5 text-right">${include('../partials/money', { amount: row.total, currency: row.currency, amountUsd: row.totalUsd, money })}</td>
+          <td class="px-4 py-2.5">${include('../partials/status-badge', { status: row.status })}</td>
+          <td class="px-4 py-2.5 text-right"><a class="text-sm text-primary-600 hover:underline dark:text-primary-400" href="/sales/${row.id}/pdf">PDF</a></td>
+        </tr>`;
+    });
+  %>
+  <%- include('../partials/table', {
+    columns: [
+      { key: 'number', label: 'Number' },
+      { key: 'customer', label: 'Customer' },
+      { key: 'issue_date', label: 'Date' },
+      { key: 'total', label: 'Total', align: 'right' },
+      { key: 'status', label: 'Status' },
+      { key: 'pdf', label: '' },
+    ],
+    sort: {},
+    baseQuery,
+    rowsHtml,
+  }) %>
+  <%- include('../partials/pagination', { page: filters.page, limit: filters.limit, count, baseQuery }) %>
+<% } %>
