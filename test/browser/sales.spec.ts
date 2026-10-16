@@ -81,14 +81,14 @@ test.describe('sales documents', () => {
 
     await expect(page).toHaveURL(/\/sales\/\d+$/);
     await expect(
-      page.getByRole('heading', { name: 'QT-0001' }).first(),
+      page.getByRole('heading', { name: /^QT-\d{4}-0001$/ }).first(),
     ).toBeVisible();
     await expect(page.getByText('8,580.00 USD').first()).toBeVisible(); // 7,800 + 10% VAT
 
     await submit(page, 'Mark as sent');
     await submit(page, 'Convert to invoice');
     await expect(
-      page.getByRole('heading', { name: 'INV-0001' }).first(),
+      page.getByRole('heading', { name: /^INV-\d{4}-0001$/ }).first(),
     ).toBeVisible();
 
     await submit(page, 'Issue invoice');
@@ -97,7 +97,7 @@ test.describe('sales documents', () => {
     await page.locator('#paymentReference').fill('ABA-88231407');
     await submit(page, 'Record payment and create receipt');
     await expect(
-      page.getByRole('heading', { name: 'RCPT-0001' }).first(),
+      page.getByRole('heading', { name: /^RCPT-\d{4}-0001$/ }).first(),
     ).toBeVisible();
 
     const entries = await sql(
@@ -129,10 +129,46 @@ test.describe('sales documents', () => {
     const csv = await page.request.get('/sales/export.csv');
     const text = (await csv.body()).toString();
     expect(csv.headers()['content-type']).toContain('text/csv');
-    expect(text).toContain('QT-0001');
-    expect(text).toContain('INV-0001');
-    expect(text).toContain('RCPT-0001');
+    expect(text).toMatch(/QT-\d{4}-0001/);
+    expect(text).toMatch(/INV-\d{4}-0001/);
+    expect(text).toMatch(/RCPT-\d{4}-0001/);
     expect(text).toContain('Mekong Retail Co., Ltd.');
+  });
+
+  test('should save exactly the lines left after removing and adding on edit', async ({
+    page,
+  }) => {
+    await login(page, 'admin');
+    await page.goto('/sales/new?type=quotation');
+    await page
+      .locator('#customerId')
+      .selectOption({ label: 'Mekong Retail Co., Ltd.' });
+    for (const [index, name] of ['Laptop', 'Mouse', 'Bag'].entries()) {
+      if (index > 0)
+        await page.getByRole('button', { name: 'Add line' }).click();
+      await page.locator(`#item-description-${index}`).fill(name);
+      await page.locator(`#item-price-${index}`).fill('10');
+    }
+    await submit(page, 'Create quotation');
+    await expect(page).toHaveURL(/\/sales\/\d+$/);
+    const id = page.url().split('/').pop();
+
+    await page.goto(`/sales/${id}/edit`);
+    await page.getByRole('button', { name: 'Remove line' }).nth(1).click(); // Mouse
+    await page.getByRole('button', { name: 'Add line' }).click();
+    await page.locator('#item-description-2').fill('Charger');
+    await page.locator('#item-price-2').fill('10');
+    await submit(page, 'Save changes');
+
+    const items = await sql(
+      `SELECT description FROM sales_document_items WHERE document_id = $1 ORDER BY id`,
+      [Number(id)],
+    );
+    expect(items.map((item) => item.description)).toEqual([
+      'Laptop',
+      'Bag',
+      'Charger',
+    ]);
   });
 
   test('should keep Sales away from an employee', async ({ page }) => {

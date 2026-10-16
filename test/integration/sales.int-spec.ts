@@ -82,8 +82,32 @@ describe('SalesService', () => {
     const second = await sales.create(world.finance, quotation());
 
     const doc = await sales.findOne(first);
-    expect(doc.number).toBe('QT-0001');
-    expect((await sales.findOne(second)).number).toBe('QT-0002');
+    expect(doc.customer.code).toMatch(/^C-\d{4}$/);
+    const code = doc.customer.code.slice(2);
+    expect(doc.number).toBe(`QT-${code}-0001`);
+    expect((await sales.findOne(second)).number).toBe(`QT-${code}-0002`);
+
+    // Each customer counts its own quotes, and a draft moved to another customer
+    // takes that customer's next number.
+    const otherId = (
+      await q(
+        db,
+        `INSERT INTO customers (name) VALUES ('Angkor Foods') RETURNING id`,
+      )
+    ).id;
+    const other = await sales.findOne(
+      await sales.create(world.finance, quotation({ customerId: otherId })),
+    );
+    expect(other.customer.code).not.toBe(doc.customer.code);
+    expect(other.number).toBe(`QT-${other.customer.code.slice(2)}-0001`);
+    await sales.update(
+      world.finance,
+      second,
+      quotation({ customerId: otherId }),
+    );
+    expect((await sales.findOne(second)).number).toBe(
+      `QT-${other.customer.code.slice(2)}-0002`,
+    );
     expect(doc.subtotal).toBe('8000.0000');
     expect(doc.vatAmount).toBe('800.0000');
     expect(doc.total).toBe('8800.0000');
@@ -101,7 +125,7 @@ describe('SalesService', () => {
     const invoiceId = await sales.convertToInvoice(world.finance, id);
     const invoice = await sales.findOne(invoiceId);
 
-    expect(invoice.number).toBe('INV-0001');
+    expect(invoice.number).toBe(`INV-${invoice.customer.code.slice(2)}-0001`);
     expect(invoice.type).toBe(SalesDocTypeEnum.invoice);
     expect(invoice.sourceId).toBe(id);
     expect(invoice.total).toBe('8800.0000');
@@ -155,7 +179,7 @@ describe('SalesService', () => {
     });
 
     const receipt = await sales.findOne(receiptId);
-    expect(receipt.number).toBe('RCPT-0001');
+    expect(receipt.number).toBe(`RCPT-${receipt.customer.code.slice(2)}-0001`);
     expect(receipt.sourceId).toBe(id);
     expect(receipt.paymentReference).toBe('ABA-88231407');
     // The receipt prints the paid invoice's lines, so findOne carries them on `source`.

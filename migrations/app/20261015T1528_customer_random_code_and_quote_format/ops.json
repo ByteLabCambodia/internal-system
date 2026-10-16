@@ -1,0 +1,98 @@
+[
+  {
+    "id": "customers.random_code_function",
+    "label": "random_customer_code(): a random unused C-1000..C-9999",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "customers"
+      }
+    },
+    "precheck": [],
+    "execute": [
+      {
+        "description": "create function random_customer_code()",
+        "sql": "CREATE OR REPLACE FUNCTION \"public\".\"random_customer_code\"() RETURNS text\nLANGUAGE plpgsql VOLATILE AS $$\nDECLARE candidate text;\nBEGIN\n  LOOP\n    candidate := 'C-' || (1000 + floor(random() * 9000))::int;\n    EXIT WHEN NOT EXISTS (SELECT 1 FROM \"public\".\"customers\" WHERE code = candidate);\n  END LOOP;\n  RETURN candidate;\nEND $$",
+        "params": []
+      }
+    ],
+    "postcheck": []
+  },
+  {
+    "id": "setDefault.customers.code",
+    "label": "Set default on \"customers\".\"code\"",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "code",
+        "table": "customers"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"code\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "customers",
+          "code"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "set default on \"code\"",
+        "sql": "ALTER TABLE \"public\".\"customers\" ALTER COLUMN \"code\" SET DEFAULT (random_customer_code())"
+      }
+    ],
+    "postcheck": []
+  },
+  {
+    "id": "customers.random_codes_and_quote_numbers",
+    "label": "Random customer codes and per-customer document numbers",
+    "operationClass": "data",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "customers"
+      }
+    },
+    "precheck": [],
+    "execute": [
+      {
+        "description": "give every existing customer a random code",
+        "sql": "DO $$\nDECLARE row record;\nBEGIN\n  FOR row IN SELECT id FROM \"public\".\"customers\" ORDER BY id LOOP\n    UPDATE \"public\".\"customers\" SET code = \"public\".\"random_customer_code\"() WHERE id = row.id;\n  END LOOP;\nEND $$",
+        "params": []
+      },
+      {
+        "description": "renumber documents as <prefix>-<customer code>-<nth>",
+        "sql": "UPDATE \"public\".\"sales_documents\" d\nSET number = CASE d.type::text WHEN 'quotation' THEN 'QT' WHEN 'invoice' THEN 'INV' ELSE 'RCPT' END\n  || '-' || substr(c.code, 3) || '-' || lpad(r.rn::text, 4, '0')\nFROM (SELECT id, row_number() OVER (PARTITION BY customer_id, type ORDER BY id) AS rn\n        FROM \"public\".\"sales_documents\") r,\n     \"public\".\"customers\" c\nWHERE d.id = r.id AND c.id = d.customer_id",
+        "params": []
+      },
+      {
+        "description": "rebuild invoice journal memos with the new numbers",
+        "sql": "UPDATE \"public\".\"journal_entries\" j SET memo = 'Invoice ' || d.number\nFROM \"public\".\"sales_documents\" d\nWHERE j.source::text = 'sales_invoice' AND j.source_ref = d.id",
+        "params": []
+      },
+      {
+        "description": "rebuild receipt journal memos with the new numbers",
+        "sql": "UPDATE \"public\".\"journal_entries\" j SET memo = 'Receipt ' || r.number || ' for ' || i.number\nFROM \"public\".\"sales_documents\" r JOIN \"public\".\"sales_documents\" i ON i.id = r.source_id\nWHERE j.source::text = 'sales_receipt' AND j.source_ref = r.id",
+        "params": []
+      },
+      {
+        "description": "drop the unused number and customer code sequences",
+        "sql": "DROP SEQUENCE IF EXISTS \"public\".\"quotation_number_seq\", \"public\".\"invoice_number_seq\",\n  \"public\".\"receipt_number_seq\", \"public\".\"customer_code_seq\"",
+        "params": []
+      }
+    ],
+    "postcheck": []
+  }
+]

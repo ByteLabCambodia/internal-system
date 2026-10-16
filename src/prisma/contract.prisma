@@ -451,6 +451,9 @@ namespace public {
 
   model Customer {
     id             Int               @id(map: "PK_customers") @default(autoincrement())
+    // Shown on documents as the Customer ID instead of the database id: a random unused
+    // C-1000..C-9999 from random_customer_code(). Quotation numbers embed it (QT-7419-0005).
+    code           String            @unique(map: "customers_code_key") @default(sql`random_customer_code()`)
     name           String            @unique(map: "customers_name_key")
     company        String?
     phone          String?
@@ -469,7 +472,8 @@ namespace public {
   model SalesDocument {
     id               Int                     @id(map: "PK_sales_documents") @default(autoincrement())
     type             pg.enum(SalesDocType)
-    // Assigned by SalesService from the type's sequence (QT-/INV-/RCPT-), GDT wants them sequential.
+    // Assigned by SalesService: QT-<customer code>-<that customer's quote count>, INV-/RCPT- from
+    // the type's sequence (GDT wants them sequential).
     number           String                  @unique(map: "sales_documents_number_key")
     status           pg.enum(SalesDocStatus) @default("draft")
     customerId       Int                     @map("customer_id")

@@ -1,0 +1,163 @@
+[
+  {
+    "id": "sales.number_starts",
+    "label": "Customer code sequence and document number starts",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "customers"
+      }
+    },
+    "precheck": [],
+    "execute": [
+      {
+        "description": "create sequence \"customer_code_seq\"",
+        "sql": "CREATE SEQUENCE IF NOT EXISTS \"public\".\"customer_code_seq\" START 1386",
+        "params": []
+      },
+      {
+        "description": "renumber existing quotation documents from QT-3817",
+        "sql": "UPDATE \"public\".\"sales_documents\" d\nSET number = 'QT-' || lpad((3816 + r.rn)::text, 4, '0')\nFROM (SELECT id, row_number() OVER (ORDER BY id) AS rn\n        FROM \"public\".\"sales_documents\" WHERE type = 'quotation') r\nWHERE d.id = r.id",
+        "params": []
+      },
+      {
+        "description": "continue \"quotation_number_seq\" after the last renumbered quotation",
+        "sql": "SELECT setval('\"public\".\"quotation_number_seq\"', 3816 + (SELECT count(*) FROM \"public\".\"sales_documents\" WHERE type = 'quotation'))",
+        "params": []
+      },
+      {
+        "description": "renumber existing invoice documents from INV-5294",
+        "sql": "UPDATE \"public\".\"sales_documents\" d\nSET number = 'INV-' || lpad((5293 + r.rn)::text, 4, '0')\nFROM (SELECT id, row_number() OVER (ORDER BY id) AS rn\n        FROM \"public\".\"sales_documents\" WHERE type = 'invoice') r\nWHERE d.id = r.id",
+        "params": []
+      },
+      {
+        "description": "continue \"invoice_number_seq\" after the last renumbered invoice",
+        "sql": "SELECT setval('\"public\".\"invoice_number_seq\"', 5293 + (SELECT count(*) FROM \"public\".\"sales_documents\" WHERE type = 'invoice'))",
+        "params": []
+      },
+      {
+        "description": "renumber existing receipt documents from RCPT-7461",
+        "sql": "UPDATE \"public\".\"sales_documents\" d\nSET number = 'RCPT-' || lpad((7460 + r.rn)::text, 4, '0')\nFROM (SELECT id, row_number() OVER (ORDER BY id) AS rn\n        FROM \"public\".\"sales_documents\" WHERE type = 'receipt') r\nWHERE d.id = r.id",
+        "params": []
+      },
+      {
+        "description": "continue \"receipt_number_seq\" after the last renumbered receipt",
+        "sql": "SELECT setval('\"public\".\"receipt_number_seq\"', 7460 + (SELECT count(*) FROM \"public\".\"sales_documents\" WHERE type = 'receipt'))",
+        "params": []
+      },
+      {
+        "description": "rebuild invoice journal memos with the new numbers",
+        "sql": "UPDATE \"public\".\"journal_entries\" j SET memo = 'Invoice ' || d.number\nFROM \"public\".\"sales_documents\" d\nWHERE j.source::text = 'sales_invoice' AND j.source_ref = d.id",
+        "params": []
+      },
+      {
+        "description": "rebuild receipt journal memos with the new numbers",
+        "sql": "UPDATE \"public\".\"journal_entries\" j SET memo = 'Receipt ' || r.number || ' for ' || i.number\nFROM \"public\".\"sales_documents\" r JOIN \"public\".\"sales_documents\" i ON i.id = r.source_id\nWHERE j.source::text = 'sales_receipt' AND j.source_ref = r.id",
+        "params": []
+      },
+      {
+        "description": "record start 3817 on \"quotation_number_seq\"",
+        "sql": "ALTER SEQUENCE \"public\".\"quotation_number_seq\" START WITH 3817",
+        "params": []
+      },
+      {
+        "description": "record start 5294 on \"invoice_number_seq\"",
+        "sql": "ALTER SEQUENCE \"public\".\"invoice_number_seq\" START WITH 5294",
+        "params": []
+      },
+      {
+        "description": "record start 7461 on \"receipt_number_seq\"",
+        "sql": "ALTER SEQUENCE \"public\".\"receipt_number_seq\" START WITH 7461",
+        "params": []
+      }
+    ],
+    "postcheck": []
+  },
+  {
+    "id": "column.public.customers.code",
+    "label": "Add column \"code\" to \"customers\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "code",
+        "table": "customers"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"code\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "customers",
+          "code"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"code\"",
+        "sql": "ALTER TABLE \"public\".\"customers\" ADD COLUMN \"code\" text DEFAULT (('C-'::text || lpad((nextval('customer_code_seq'::regclass))::text, 4, '0'::text))) NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"code\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "customers",
+          "code"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.customers.customers_code_key",
+    "label": "Add unique constraint on \"customers\" (code)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "customers_code_key",
+        "table": "customers"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"customers_code_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "customers_code_key",
+          "public",
+          "\"public\".\"customers\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"customers_code_key\"",
+        "sql": "ALTER TABLE \"public\".\"customers\" ADD CONSTRAINT \"customers_code_key\" UNIQUE (\"code\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"customers_code_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "customers_code_key",
+          "public",
+          "\"public\".\"customers\""
+        ]
+      }
+    ]
+  }
+]
