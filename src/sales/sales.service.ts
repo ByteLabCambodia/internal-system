@@ -314,7 +314,9 @@ export class SalesService {
 
     await this.prisma.db.transaction(async (tx) => {
       await tx.orm.public.SalesDocument.where({ id }).update(data);
-      await tx.orm.public.SalesDocumentItem.where({ documentId: id }).delete();
+      await tx.orm.public.SalesDocumentItem.where({
+        documentId: id,
+      }).deleteAll();
       await this.writeItems(tx, id, dto, lines);
     });
 

@@ -135,6 +135,42 @@ test.describe('sales documents', () => {
     expect(text).toContain('Mekong Retail Co., Ltd.');
   });
 
+  test('should save exactly the lines left after removing and adding on edit', async ({
+    page,
+  }) => {
+    await login(page, 'admin');
+    await page.goto('/sales/new?type=quotation');
+    await page
+      .locator('#customerId')
+      .selectOption({ label: 'Mekong Retail Co., Ltd.' });
+    for (const [index, name] of ['Laptop', 'Mouse', 'Bag'].entries()) {
+      if (index > 0)
+        await page.getByRole('button', { name: 'Add line' }).click();
+      await page.locator(`#item-description-${index}`).fill(name);
+      await page.locator(`#item-price-${index}`).fill('10');
+    }
+    await submit(page, 'Create quotation');
+    await expect(page).toHaveURL(/\/sales\/\d+$/);
+    const id = page.url().split('/').pop();
+
+    await page.goto(`/sales/${id}/edit`);
+    await page.getByRole('button', { name: 'Remove line' }).nth(1).click(); // Mouse
+    await page.getByRole('button', { name: 'Add line' }).click();
+    await page.locator('#item-description-2').fill('Charger');
+    await page.locator('#item-price-2').fill('10');
+    await submit(page, 'Save changes');
+
+    const items = await sql(
+      `SELECT description FROM sales_document_items WHERE document_id = $1 ORDER BY id`,
+      [Number(id)],
+    );
+    expect(items.map((item) => item.description)).toEqual([
+      'Laptop',
+      'Bag',
+      'Charger',
+    ]);
+  });
+
   test('should keep Sales away from an employee', async ({ page }) => {
     await login(page, 'employee');
     const response = await page.goto('/sales');
