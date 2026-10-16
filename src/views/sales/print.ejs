@@ -26,7 +26,7 @@ const numberLabel = {
   invoice: ['លេខវិក្កយបត្រ', 'Invoice #'],
   receipt: ['លេខបង្កាន់ដៃ', 'Receipt #'],
 }[doc.type];
-const customerRef = doc.customer.id ? 'C-' + String(doc.customer.id).padStart(4, '0') : '—';
+const customerRef = doc.customer.code || '—';
 const showMeta = [];
 showMeta.push([bi('កាលបរិច្ឆេទ', 'Date:'), doc.issueDate]);
 showMeta.push([bi(numberLabel[0], numberLabel[1]), doc.number]);

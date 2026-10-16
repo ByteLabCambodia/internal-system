@@ -81,14 +81,14 @@ test.describe('sales documents', () => {
 
     await expect(page).toHaveURL(/\/sales\/\d+$/);
     await expect(
-      page.getByRole('heading', { name: 'QT-0001' }).first(),
+      page.getByRole('heading', { name: /^QT-\d{4}-0001$/ }).first(),
     ).toBeVisible();
     await expect(page.getByText('8,580.00 USD').first()).toBeVisible(); // 7,800 + 10% VAT
 
     await submit(page, 'Mark as sent');
     await submit(page, 'Convert to invoice');
     await expect(
-      page.getByRole('heading', { name: 'INV-0001' }).first(),
+      page.getByRole('heading', { name: /^INV-\d{4}-0001$/ }).first(),
     ).toBeVisible();
 
     await submit(page, 'Issue invoice');
@@ -97,7 +97,7 @@ test.describe('sales documents', () => {
     await page.locator('#paymentReference').fill('ABA-88231407');
     await submit(page, 'Record payment and create receipt');
     await expect(
-      page.getByRole('heading', { name: 'RCPT-0001' }).first(),
+      page.getByRole('heading', { name: /^RCPT-\d{4}-0001$/ }).first(),
     ).toBeVisible();
 
     const entries = await sql(
@@ -129,9 +129,9 @@ test.describe('sales documents', () => {
     const csv = await page.request.get('/sales/export.csv');
     const text = (await csv.body()).toString();
     expect(csv.headers()['content-type']).toContain('text/csv');
-    expect(text).toContain('QT-0001');
-    expect(text).toContain('INV-0001');
-    expect(text).toContain('RCPT-0001');
+    expect(text).toMatch(/QT-\d{4}-0001/);
+    expect(text).toMatch(/INV-\d{4}-0001/);
+    expect(text).toMatch(/RCPT-\d{4}-0001/);
     expect(text).toContain('Mekong Retail Co., Ltd.');
   });
 

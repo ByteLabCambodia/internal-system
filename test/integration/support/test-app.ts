@@ -152,9 +152,4 @@ export async function resetData(dataSource: TestDb): Promise<void> {
   );
   await dataSource.query(`ALTER SEQUENCE "pr_number_seq" RESTART WITH 1`);
   await dataSource.query(`ALTER SEQUENCE "po_number_seq" RESTART WITH 1`);
-  for (const type of ['quotation', 'invoice', 'receipt']) {
-    await dataSource.query(
-      `ALTER SEQUENCE "${type}_number_seq" RESTART WITH 1`,
-    );
-  }
 }

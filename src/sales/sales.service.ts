@@ -159,21 +159,32 @@ export class SalesService {
   }
 
   /**
-   * QT-0001 / INV-0001 / RCPT-0001 from the type's own sequence. Callers take it only
-   * after their checks pass. shortcut: an insert that fails afterwards (e.g. a customer
-   * deleted mid-request) still leaves a gap; if GDT audits gaps, assign numbers from a
-   * locked counter row inside the transaction instead.
+   * <prefix>-<customer code>-<that customer's next document of this type>, e.g.
+   * QT-7419-0005, INV-7419-0002. Callers take it only after their checks pass.
+   * shortcut: two documents of one type for one customer saved at the same instant get
+   * the same number and the second fails on the unique key; lock the customer row in
+   * the transaction if that shows up.
    */
-  private async nextNumber(type: SalesDocTypeEnum): Promise<string> {
+  private async nextNumber(
+    type: SalesDocTypeEnum,
+    customerId: number,
+  ): Promise<string> {
     const db = this.prisma.db;
-    const [row] = await db
-      .runtime()
-      .query(
-        db.raw.sql`SELECT nextval(${`${type}_number_seq`}::regclass)::text AS n`
-          .returnsRow(textRow('n'))
-          .build(),
-      );
-    return `${PREFIX[type]}-${row.n.padStart(4, '0')}`;
+    const prefix = `${PREFIX[type]}-`;
+    const [row] = await db.runtime().query(
+      db.raw
+        .sql`SELECT ${prefix} || substr(c.code, 3) || '-' || lpad((COALESCE(MAX(
+               split_part(d.number, '-', 3)::int), 0) + 1)::text, 4, '0') AS n
+             FROM customers c
+             LEFT JOIN sales_documents d ON d.customer_id = c.id AND d.type::text = ${type}
+              AND d.number LIKE ${prefix} || substr(c.code, 3) || '-%'
+            WHERE c.id = ${customerId}::int
+            GROUP BY c.code`
+        .returnsRow(textRow('n'))
+        .build(),
+    );
+    if (!row) throw new NotFoundException('Customer not found');
+    return row.n;
   }
 
   /**
@@ -279,7 +290,7 @@ export class SalesService {
   async create(actor: User, dto: SalesDocumentDto): Promise<number> {
     const exchangeRate = await this.lockedRate(dto.currency);
     const { lines, data } = this.header(dto, exchangeRate);
-    const number = await this.nextNumber(dto.type);
+    const number = await this.nextNumber(dto.type, dto.customerId);
 
     const id = await this.prisma.db.transaction(async (tx) => {
       const doc = await tx.orm.public.SalesDocument.create({
@@ -312,8 +323,17 @@ export class SalesService {
       exchangeRate,
     );
 
+    // The number carries the customer's code, so a new customer means a new number.
+    const number =
+      dto.customerId !== doc.customerId
+        ? await this.nextNumber(doc.type as SalesDocTypeEnum, dto.customerId)
+        : doc.number;
+
     await this.prisma.db.transaction(async (tx) => {
-      await tx.orm.public.SalesDocument.where({ id }).update(data);
+      await tx.orm.public.SalesDocument.where({ id }).update({
+        ...data,
+        number,
+      });
       await tx.orm.public.SalesDocumentItem.where({
         documentId: id,
       }).deleteAll();
@@ -380,7 +400,10 @@ export class SalesService {
 
     const due = new Date();
     due.setDate(due.getDate() + 30);
-    const number = await this.nextNumber(SalesDocTypeEnum.invoice);
+    const number = await this.nextNumber(
+      SalesDocTypeEnum.invoice,
+      quote.customerId,
+    );
 
     const id = await this.prisma.db.transaction(async (tx) => {
       const invoice = await tx.orm.public.SalesDocument.create({
@@ -563,7 +586,10 @@ export class SalesService {
       }
 
       // After the checks above, so a refused attempt never burns a number.
-      number = await this.nextNumber(SalesDocTypeEnum.receipt);
+      number = await this.nextNumber(
+        SalesDocTypeEnum.receipt,
+        invoice.customerId,
+      );
 
       const receipt = await tx.orm.public.SalesDocument.create({
         type: SalesDocTypeEnum.receipt,
