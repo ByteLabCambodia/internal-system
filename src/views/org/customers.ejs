@@ -25,7 +25,7 @@
           <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
             <% rows.forEach(function (row) { %>
               <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-                <td class="px-4 py-2.5 font-medium text-gray-900 dark:text-white"><%= row.name %>
+                <td class="px-4 py-2.5 font-medium text-gray-900 dark:text-white"><%= row.name %> <span class="text-xs font-normal text-gray-400"><%= row.code %></span>
                   <% if (row.company) { %><span class="block text-xs font-normal text-gray-500 dark:text-gray-400"><%= row.company %></span><% } %>
                   <% if (row.address) { %><span class="block text-xs font-normal text-gray-400"><%= row.address %></span><% } %>
                 </td>

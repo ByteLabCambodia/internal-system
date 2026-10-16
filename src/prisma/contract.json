@@ -829,6 +829,13 @@
                   "kind": "scalar"
                 }
               },
+              "code": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "company": {
                 "nullable": true,
                 "type": {
@@ -910,6 +917,9 @@
                 },
                 "address": {
                   "column": "address"
+                },
+                "code": {
+                  "column": "code"
                 },
                 "company": {
                   "column": "company"
@@ -5915,6 +5925,15 @@
                   "dataType": "pg/text",
                   "nullable": true
                 },
+                "code": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "default": {
+                    "expression": "random_customer_code()",
+                    "kind": "function"
+                  },
+                  "nullable": false
+                },
                 "company": {
                   "codecId": "pg/text@1",
                   "dataType": "pg/text",
@@ -5973,6 +5992,12 @@
                 "name": "PK_customers"
               },
               "uniques": [
+                {
+                  "columns": [
+                    "code"
+                  ],
+                  "name": "customers_code_key"
+                },
                 {
                   "columns": [
                     "name"
@@ -9449,7 +9474,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "a23fed17f24b50f640510a1fd3f8d84ae04c199f6510ba4bf367846716a06b1d"
+    "storageHash": "be5c79a1417961a96f87fb50660f117cfacb18d4a67407d6352dde601d10643b"
   },
   "execution": {
     "executionHash": "26f48891e80070dac614dcef0ec211ff929689f4123bc1fae3250823a2a15a65",

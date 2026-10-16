@@ -18,7 +18,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'a23fed17f24b50f640510a1fd3f8d84ae04c199f6510ba4bf367846716a06b1d'>;
+  StorageHashBase<'be5c79a1417961a96f87fb50660f117cfacb18d4a67407d6352dde601d10643b'>;
 export type ExecutionHash =
   ExecutionHashBase<'26f48891e80070dac614dcef0ec211ff929689f4123bc1fae3250823a2a15a65'>;
 export type ProfileHash =
@@ -294,6 +294,7 @@ export type FieldOutputTypes = {
     readonly Customer: {
       readonly active: CodecTypes['pg/bool@1']['output'];
       readonly address: CodecTypes['pg/text@1']['output'] | null;
+      readonly code: CodecTypes['pg/text@1']['output'];
       readonly company: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly email: CodecTypes['pg/text@1']['output'] | null;
@@ -653,6 +654,7 @@ export type FieldInputTypes = {
     readonly Customer: {
       readonly active: CodecTypes['pg/bool@1']['input'];
       readonly address: CodecTypes['pg/text@1']['input'] | null;
+      readonly code: CodecTypes['pg/text@1']['input'];
       readonly company: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly email: CodecTypes['pg/text@1']['input'] | null;
@@ -1012,6 +1014,7 @@ export type StorageColumnTypes = {
     readonly customers: {
       readonly active: CodecTypes['pg/bool@1']['output'];
       readonly address: CodecTypes['pg/text@1']['output'] | null;
+      readonly code: CodecTypes['pg/text@1']['output'];
       readonly company: CodecTypes['pg/text@1']['output'] | null;
       readonly created_at: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly email: CodecTypes['pg/text@1']['output'] | null;
@@ -1371,6 +1374,7 @@ export type StorageColumnInputTypes = {
     readonly customers: {
       readonly active: CodecTypes['pg/bool@1']['input'];
       readonly address: CodecTypes['pg/text@1']['input'] | null;
+      readonly code: CodecTypes['pg/text@1']['input'];
       readonly company: CodecTypes['pg/text@1']['input'] | null;
       readonly created_at: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly email: CodecTypes['pg/text@1']['input'] | null;
@@ -1747,6 +1751,7 @@ export namespace Models {
   export type public_Customer = {
     active: CodecTypes['pg/bool@1']['output'];
     address: CodecTypes['pg/text@1']['output'] | null;
+    code: CodecTypes['pg/text@1']['output'];
     company: CodecTypes['pg/text@1']['output'] | null;
     createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
     email: CodecTypes['pg/text@1']['output'] | null;
@@ -2740,6 +2745,16 @@ type ContractBase = Omit<
                   readonly nullable: true;
                   readonly many: false;
                 };
+                readonly code: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'function';
+                    readonly expression: 'random_customer_code()';
+                  };
+                  readonly many: false;
+                };
                 readonly company: {
                   readonly dataType: 'pg/text';
                   readonly codecId: 'pg/text@1';
@@ -2796,6 +2811,7 @@ type ContractBase = Omit<
               };
               primaryKey: { readonly columns: readonly ['id']; readonly name: 'PK_customers' };
               uniques: readonly [
+                { readonly columns: readonly ['code']; readonly name: 'customers_code_key' },
                 { readonly columns: readonly ['name']; readonly name: 'customers_name_key' },
               ];
               indexes: readonly [];
@@ -6257,6 +6273,10 @@ type ContractBase = Omit<
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly code: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly company: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
@@ -6315,6 +6335,7 @@ type ContractBase = Omit<
               readonly fields: {
                 readonly active: { readonly column: 'active' };
                 readonly address: { readonly column: 'address' };
+                readonly code: { readonly column: 'code' };
                 readonly company: { readonly column: 'company' };
                 readonly createdAt: { readonly column: 'created_at' };
                 readonly email: { readonly column: 'email' };
