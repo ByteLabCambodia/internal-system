@@ -15,6 +15,7 @@ import {
   CurrencyEnum,
   DiscountTypeEnum,
   JournalSourceEnum,
+  SalesDocLanguageEnum,
   SalesDocStatusEnum,
   SalesDocTypeEnum,
 } from '../common/enums';
@@ -367,6 +368,20 @@ export class SalesService {
     }
     await this.documents.where({ id }).update({ status });
     await this.log(actor, id, status);
+  }
+
+  /** Language only changes how the document prints, so it stays editable at any status. */
+  async setLanguage(
+    actor: User,
+    id: number,
+    language: SalesDocLanguageEnum,
+  ): Promise<void> {
+    if (!Object.values(SalesDocLanguageEnum).includes(language)) {
+      throw new UnprocessableEntityException('Choose the document language.');
+    }
+    await this.findOne(id);
+    await this.documents.where({ id }).update({ language });
+    await this.log(actor, id, 'language', { language });
   }
 
   /** Accepted (or sent) quotation → draft invoice with the same lines, due in 30 days. */
