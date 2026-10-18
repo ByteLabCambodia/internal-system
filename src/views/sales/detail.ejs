@@ -9,7 +9,9 @@ const setStatus = function (status, label, cls) {
   return `<form method="post" action="/sales/${doc.id}/status" class="inline">${include('../partials/csrf')}<input type="hidden" name="status" value="${status}" /><button class="${cls}">${label}</button></form>`;
 };
 
-const actions = [`<a href="/sales/${doc.id}/pdf" class="${outline}">Download PDF</a>`];
+const languageLabels = { both: 'Khmer and English', km: 'Khmer only', en: 'English only' };
+const languageForm = `<form method="post" action="/sales/${doc.id}/language" class="inline">${include('../partials/csrf')}<select name="language" aria-label="Document language" onchange="this.form.submit()" class="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">${Object.keys(languageLabels).map(function (l) { return `<option value="${l}"${(doc.language || 'both') === l ? ' selected' : ''}>${languageLabels[l]}</option>`; }).join('')}</select></form>`;
+const actions = [languageForm, `<a href="/sales/${doc.id}/pdf" class="${outline}">Download PDF</a>`];
 const hasInvoice = doc.derived.some(function (d) { return d.type === 'invoice' && d.status !== 'void'; });
 
 if (doc.type === 'quotation') {
