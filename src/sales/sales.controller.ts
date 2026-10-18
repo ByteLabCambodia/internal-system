@@ -410,6 +410,27 @@ export class SalesController {
     );
   }
 
+  @Post(':id/language')
+  language(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('language') language: SalesDocLanguageEnum,
+    @Res() response: Response,
+  ) {
+    return this.step(
+      response,
+      id,
+      async () => {
+        await this.service.setLanguage(
+          response.locals.currentUser,
+          id,
+          language,
+        );
+        return '';
+      },
+      'Document language changed.',
+    );
+  }
+
   @Post(':id/convert')
   convert(@Param('id', ParseIntPipe) id: number, @Res() response: Response) {
     return this.step(
