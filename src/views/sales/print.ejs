@@ -15,7 +15,9 @@ const bi = function (km, en) {
 // Plain text in the document's language(s), for places that cannot hold two stacked lines.
 const t = function (km, en) { return lang === 'km' ? km : lang === 'en' ? en : km + ' / ' + en; };
 const fmt = function (value) { return money.format(value, '').trim(); };
-const khr = khrRate ? Math.round(Number(doc.total) / Number(doc.exchangeRate) * Number(khrRate)).toLocaleString('en-US') : null;
+// Hidden when it rounds to 0 riel (a zero-total document): a 0 line says nothing.
+const khrValue = khrRate ? Math.round(Number(doc.total) / Number(doc.exchangeRate) * Number(khrRate)) : 0;
+const khr = khrValue ? khrValue.toLocaleString('en-US') : null;
 const discount = Number(doc.discountAmount) > 0;
 // Paid so far = this invoice's receipts, so the rows stay right if instalments arrive later.
 const showDue = doc.type === 'invoice' && doc.status !== 'void';
