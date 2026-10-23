@@ -93,4 +93,11 @@ export class RecordReceiptDto {
   paymentMethod: PaymentMethodEnum;
 
   @IsOptional() @IsString() paymentReference?: string;
+
+  // Omitted: pay everything still due.
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Amount must be a number' })
+  @Min(0.01, { message: 'Amount must be greater than zero' })
+  amount?: number;
 }

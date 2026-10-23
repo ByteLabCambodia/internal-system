@@ -148,7 +148,10 @@ export class SalesService {
       .where({ id })
       .include('customer')
       .include('source', (source) =>
-        source.include('items', (items) => items.orderBy((i) => i.id.asc())),
+        source
+          .include('items', (items) => items.orderBy((i) => i.id.asc()))
+          // A receipt prints what was left after it, so it needs its sibling receipts.
+          .include('derived'),
       )
       .include('derived', (d) => d.orderBy((x) => x.id.asc()))
       .include('createdBy')
@@ -574,9 +577,10 @@ export class SalesService {
   }
 
   /**
-   * Issued invoice → receipt for the full amount, invoice → paid. DR 1000 cash / CR 1100.
-   * shortcut: one receipt pays the whole invoice at the invoice's USD value (no partial
-   * payments, no FX gain/loss); add both if customers start paying in instalments.
+   * Issued invoice → receipt for `amount` (default: what is still due). DR 1000 cash / CR 1100.
+   * The invoice turns paid once its receipts add up to its total.
+   * shortcut: each receipt is valued at the invoice's rate (no FX gain/loss); add it if
+   * foreign-currency instalments arrive at a different rate.
    */
   async recordReceipt(
     actor: User,
@@ -585,7 +589,7 @@ export class SalesService {
   ): Promise<number> {
     let number = '';
 
-    const id = await this.prisma.db.transaction(async (tx) => {
+    const result = await this.prisma.db.transaction(async (tx) => {
       const invoice = await tx.orm.public.SalesDocument.where({ id: invoiceId })
         .forUpdate()
         .first();
@@ -599,6 +603,34 @@ export class SalesService {
             : `${invoice.number} is ${invoice.status}; issue it before recording payment.`,
         );
       }
+
+      const earlier = await tx.orm.public.SalesDocument.where({
+        sourceId: invoice.id,
+        type: SalesDocTypeEnum.receipt,
+      }).all();
+      const paid = earlier.reduce(
+        (sum, r) => sum.plus(r.total),
+        new Decimal(0),
+      );
+      const paidUsd = earlier.reduce(
+        (sum, r) => sum.plus(r.totalUsd),
+        new Decimal(0),
+      );
+      const due = new Decimal(invoice.total).minus(paid);
+      const amount =
+        dto.amount === undefined
+          ? due
+          : new Decimal(dto.amount).toDecimalPlaces(2);
+      if (amount.lessThanOrEqualTo(0) || amount.greaterThan(due)) {
+        throw new UnprocessableEntityException(
+          `Enter an amount between 0.01 and ${this.money.format(due, invoice.currency)}, the amount still due.`,
+        );
+      }
+      const settles = amount.equals(due);
+      // The last payment takes the rest of the USD value, so the receivable clears to exactly 0.
+      const amountUsd = settles
+        ? new Decimal(invoice.totalUsd).minus(paidUsd).toString()
+        : this.money.toUsd(amount.toString(), invoice.exchangeRate);
 
       // After the checks above, so a refused attempt never burns a number.
       number = await this.nextNumber(
@@ -622,8 +654,8 @@ export class SalesService {
         vatRate: money(invoice.vatRate),
         subtotal: money(invoice.subtotal),
         vatAmount: money(invoice.vatAmount),
-        total: money(invoice.total),
-        totalUsd: money(invoice.totalUsd),
+        total: money(amount.toString()),
+        totalUsd: money(amountUsd),
         paymentMethod: dto.paymentMethod,
         paymentReference: dto.paymentReference?.trim() || null,
         createdById: Number(actor.id),
@@ -647,14 +679,14 @@ export class SalesService {
               [
                 {
                   accountId: await this.account(tx, ACCOUNTS.cash),
-                  debitUsd: invoice.totalUsd,
+                  debitUsd: amountUsd,
                   creditUsd: '0',
                   ...noDimensions,
                 },
                 {
                   accountId: await this.account(tx, ACCOUNTS.receivable),
                   debitUsd: '0',
-                  creditUsd: invoice.totalUsd,
+                  creditUsd: amountUsd,
                   ...noDimensions,
                 },
               ],
@@ -665,16 +697,21 @@ export class SalesService {
           journalEntryId: entryId,
         });
       }
-      await tx.orm.public.SalesDocument.where({ id: invoice.id }).update({
-        status: SalesDocStatusEnum.paid,
-      });
+      if (settles) {
+        await tx.orm.public.SalesDocument.where({ id: invoice.id }).update({
+          status: SalesDocStatusEnum.paid,
+        });
+      }
 
-      return receipt.id;
+      return { id: receipt.id, settles, amount: amount.toFixed(2) };
     });
 
-    await this.log(actor, id, 'created', { number });
-    await this.log(actor, invoiceId, 'paid', { receipt: number });
-    return id;
+    await this.log(actor, result.id, 'created', { number });
+    await this.log(actor, invoiceId, result.settles ? 'paid' : 'part_paid', {
+      receipt: number,
+      amount: result.amount,
+    });
+    return result.id;
   }
 
   /**
