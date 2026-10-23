@@ -13,6 +13,10 @@ const languageLabels = { both: 'Khmer and English', km: 'Khmer only', en: 'Engli
 const languageForm = `<form method="post" action="/sales/${doc.id}/language" class="inline">${include('../partials/csrf')}<select name="language" aria-label="Document language" onchange="this.form.submit()" class="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">${Object.keys(languageLabels).map(function (l) { return `<option value="${l}"${(doc.language || 'both') === l ? ' selected' : ''}>${languageLabels[l]}</option>`; }).join('')}</select></form>`;
 const actions = [languageForm, `<a href="/sales/${doc.id}/pdf" class="${outline}">Download PDF</a>`];
 const hasInvoice = doc.derived.some(function (d) { return d.type === 'invoice' && d.status !== 'void'; });
+// Paid so far = this invoice's receipts; a customer may pay in several instalments.
+const paid = doc.derived.filter(function (d) { return d.type === 'receipt' && d.status !== 'void'; })
+  .reduce(function (sum, d) { return sum + Number(d.total); }, 0);
+const due = Math.round((Number(doc.total) - paid) * 100) / 100;
 
 if (doc.type === 'quotation') {
   if (doc.status === 'draft') actions.push(`<a href="/sales/${doc.id}/edit" class="${outline}">Edit</a>`, setStatus('sent', 'Mark as sent', primary));
@@ -72,6 +76,10 @@ const fieldValue = 'text-gray-900 dark:text-white';
               <%- include('../partials/money', { amount: doc.total, currency: doc.currency, amountUsd: doc.totalUsd, money }) %>
             </td>
           </tr>
+          <% if (doc.type === 'invoice' && doc.status !== 'void') { %>
+            <tr><td colspan="3" class="px-4 py-2 text-right">Amount paid</td><td class="px-4 py-2 text-right tabular"><%= money.format(paid, doc.currency) %></td></tr>
+            <tr><td colspan="3" class="px-4 py-2.5 text-right font-medium text-gray-900 dark:text-white">Amount due</td><td class="px-4 py-2.5 text-right tabular font-semibold text-gray-900 dark:text-white"><%= money.format(due, doc.currency) %></td></tr>
+          <% } %>
         </tfoot>
       </table>
     </div>
@@ -87,10 +95,15 @@ const fieldValue = 'text-gray-900 dark:text-white';
       <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
         <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Record payment</h2>
         <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
-          The customer paid the full <%= money.format(doc.total, doc.currency) %>. This creates a receipt and posts cash to the ledger.
+          <%= money.format(due, doc.currency) %> is still due. Enter what the customer paid now; less than that leaves the rest due. This creates a receipt and posts cash to the ledger.
         </p>
-        <form method="post" action="/sales/<%= doc.id %>/receipt" class="grid gap-3 sm:grid-cols-3">
+        <form method="post" action="/sales/<%= doc.id %>/receipt" class="grid gap-3 sm:grid-cols-4">
           <%- include('../partials/csrf') %>
+          <div>
+            <label for="amount" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Amount (<%= doc.currency %>)</label>
+            <input type="number" id="amount" name="amount" value="<%= due.toFixed(2) %>" min="0.01" max="<%= due.toFixed(2) %>" step="0.01" required
+                   class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm tabular dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+          </div>
           <div>
             <label for="paidOn" class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Payment date</label>
             <input type="date" id="paidOn" name="paidOn" value="<%= today %>" required
@@ -108,7 +121,7 @@ const fieldValue = 'text-gray-900 dark:text-white';
             <input type="text" id="paymentReference" name="paymentReference"
                    class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
           </div>
-          <div class="sm:col-span-3">
+          <div class="sm:col-span-4">
             <button type="submit" class="<%= primary %>">Record payment and create receipt</button>
           </div>
         </form>
