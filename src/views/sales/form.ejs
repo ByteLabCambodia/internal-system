@@ -18,6 +18,8 @@ const state = {
   vatRate: Number(values.vatRate) || 0,
   discountType: values.discountType === 'amount' ? 'amount' : 'percent',
   discountValue: Number(values.discountValue) || 0,
+  depositType: values.depositType === 'amount' ? 'amount' : 'percent',
+  depositValue: Number(values.depositValue) || 0,
   language: values.language || 'both',
 };
 %>
@@ -152,6 +154,18 @@ const state = {
             <input type="number" step="0.01" min="0" max="100" id="vatRate" name="vatRate" x-model.number="vatRate" class="<%= input %> text-right tabular" />
             <%- fieldError('vatRate') %>
           </div>
+          <div>
+            <label for="depositType" class="<%= label %>">Deposit</label>
+            <select id="depositType" name="depositType" x-model="depositType" class="<%= input %>">
+              <option value="percent">Percent (%)</option>
+              <option value="amount">Amount</option>
+            </select>
+          </div>
+          <div>
+            <label for="depositValue" class="<%= label %>"><span x-text="depositType === 'percent' ? 'Deposit %' : 'Deposit amount'"></span></label>
+            <input type="number" step="0.01" min="0" id="depositValue" name="depositValue" x-model.number="depositValue" placeholder="0 = none" class="<%= input %> text-right tabular" />
+            <%- fieldError('depositValue') %>
+          </div>
         </div>
 
         <dl class="space-y-1 text-sm">
@@ -170,6 +184,10 @@ const state = {
           <div class="flex justify-between border-t border-gray-100 pt-1 dark:border-gray-700">
             <dt class="font-medium text-gray-900 dark:text-white">Total</dt>
             <dd class="tabular font-semibold text-gray-900 dark:text-white" x-text="(net + vat).toFixed(2)"></dd>
+          </div>
+          <div class="flex justify-between" x-show="depositValue > 0" x-cloak>
+            <dt class="text-gray-500 dark:text-gray-400">Deposit due<span x-show="depositType === 'percent'" x-text="' (' + depositValue + '%)'"></span></dt>
+            <dd class="tabular text-gray-900 dark:text-white" x-text="(depositType === 'percent' ? (net + vat) * depositValue / 100 : depositValue).toFixed(2)"></dd>
           </div>
         </dl>
       </div>

@@ -204,6 +204,13 @@ export class SalesController {
         subtotal: totals.subtotal,
         vatAmount: totals.vatAmount,
         total: totals.total,
+        ...this.service.deposit(
+          totals.total,
+          body.depositType === DiscountTypeEnum.amount
+            ? DiscountTypeEnum.amount
+            : DiscountTypeEnum.percent,
+          Number(body.depositValue) || 0,
+        ),
         issueDate: body.issueDate || addDays(0),
         dueDate: type === 'invoice' ? body.dueDate || null : null,
         notes: body.notes || null,
@@ -331,6 +338,7 @@ export class SalesController {
         ...doc,
         vatRate: Number(doc.vatRate),
         discountValue: Number(doc.discountValue),
+        depositValue: Number(doc.depositValue),
         items: doc.items.map((item) => ({
           description: item.description,
           detail: item.detail ?? '',

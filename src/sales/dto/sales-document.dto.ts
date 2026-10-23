@@ -76,6 +76,16 @@ export class SalesDocumentDto {
   @Min(0, { message: 'Discount cannot be negative' })
   discountValue?: number;
 
+  @IsOptional()
+  @IsEnum(DiscountTypeEnum)
+  depositType?: DiscountTypeEnum;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Deposit must be a number' })
+  @Min(0, { message: 'Deposit cannot be negative' })
+  depositValue?: number;
+
   @IsOptional() @IsString() notes?: string;
 
   @IsArray()

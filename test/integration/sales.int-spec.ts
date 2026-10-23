@@ -230,6 +230,40 @@ describe('SalesService', () => {
     await expect(pay(1)).rejects.toThrow('already paid');
   });
 
+  it('should take a deposit as a percent or an amount and carry it to the invoice', async () => {
+    const quoteId = await sales.create(
+      world.finance,
+      quotation({ depositValue: 50 }),
+    );
+    const quote = await sales.findOne(quoteId);
+    expect(quote.depositType).toBe(DiscountTypeEnum.percent);
+    expect(quote.depositAmount).toBe('4400.0000');
+    await sales.setStatus(world.finance, quoteId, SalesDocStatusEnum.sent);
+    const invoice = await sales.findOne(
+      await sales.convertToInvoice(world.finance, quoteId),
+    );
+    expect(invoice.depositValue).toBe('50.0000');
+    expect(invoice.depositAmount).toBe('4400.0000');
+
+    const fixed = await sales.findOne(
+      await sales.create(
+        world.finance,
+        quotation({ depositType: DiscountTypeEnum.amount, depositValue: 1000 }),
+      ),
+    );
+    expect(fixed.depositAmount).toBe('1000.0000');
+    expect(
+      (await sales.findOne(await sales.create(world.finance, quotation())))
+        .depositAmount,
+    ).toBe('0.0000');
+    await expect(
+      sales.create(
+        world.finance,
+        quotation({ depositType: DiscountTypeEnum.amount, depositValue: 9000 }),
+      ),
+    ).rejects.toThrow('deposit is more than the total');
+  });
+
   it('should lock the current rate for a KHR document and refuse a currency with no rate', async () => {
     const id = await sales.create(
       world.finance,
