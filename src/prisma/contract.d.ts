@@ -18,7 +18,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'be5c79a1417961a96f87fb50660f117cfacb18d4a67407d6352dde601d10643b'>;
+  StorageHashBase<'e3eeb3a2e4f077e4bc0ab2e037ddc8d5ac6dc39c84d276da46f0a94ac7c0b477'>;
 export type ExecutionHash =
   ExecutionHashBase<'26f48891e80070dac614dcef0ec211ff929689f4123bc1fae3250823a2a15a65'>;
 export type ProfileHash =
@@ -481,6 +481,9 @@ export type FieldOutputTypes = {
       readonly createdById: CodecTypes['pg/int4@1']['output'] | null;
       readonly currency: 'USD' | 'KHR' | 'CNY';
       readonly customerId: CodecTypes['pg/int4@1']['output'];
+      readonly depositAmount: Numeric<18, 4>;
+      readonly depositType: 'percent' | 'amount';
+      readonly depositValue: Numeric<18, 4>;
       readonly discountAmount: Numeric<18, 4>;
       readonly discountType: 'percent' | 'amount';
       readonly discountValue: Numeric<18, 4>;
@@ -841,6 +844,9 @@ export type FieldInputTypes = {
       readonly createdById: CodecTypes['pg/int4@1']['input'] | null;
       readonly currency: 'USD' | 'KHR' | 'CNY';
       readonly customerId: CodecTypes['pg/int4@1']['input'];
+      readonly depositAmount: CodecTypes['pg/numeric@1']['input'];
+      readonly depositType: 'percent' | 'amount';
+      readonly depositValue: CodecTypes['pg/numeric@1']['input'];
       readonly discountAmount: CodecTypes['pg/numeric@1']['input'];
       readonly discountType: 'percent' | 'amount';
       readonly discountValue: CodecTypes['pg/numeric@1']['input'];
@@ -1211,6 +1217,9 @@ export type StorageColumnTypes = {
       readonly created_by: CodecTypes['pg/int4@1']['output'] | null;
       readonly currency: 'USD' | 'KHR' | 'CNY';
       readonly customer_id: CodecTypes['pg/int4@1']['output'];
+      readonly deposit_amount: Numeric<18, 4>;
+      readonly deposit_type: 'percent' | 'amount';
+      readonly deposit_value: Numeric<18, 4>;
       readonly discount_amount: Numeric<18, 4>;
       readonly discount_type: 'percent' | 'amount';
       readonly discount_value: Numeric<18, 4>;
@@ -1571,6 +1580,9 @@ export type StorageColumnInputTypes = {
       readonly created_by: CodecTypes['pg/int4@1']['input'] | null;
       readonly currency: 'USD' | 'KHR' | 'CNY';
       readonly customer_id: CodecTypes['pg/int4@1']['input'];
+      readonly deposit_amount: CodecTypes['pg/numeric@1']['input'];
+      readonly deposit_type: 'percent' | 'amount';
+      readonly deposit_value: CodecTypes['pg/numeric@1']['input'];
       readonly discount_amount: CodecTypes['pg/numeric@1']['input'];
       readonly discount_type: 'percent' | 'amount';
       readonly discount_value: CodecTypes['pg/numeric@1']['input'];
@@ -2024,6 +2036,9 @@ export namespace Models {
     createdById: CodecTypes['pg/int4@1']['output'] | null;
     currency: 'USD' | 'KHR' | 'CNY';
     customerId: CodecTypes['pg/int4@1']['output'];
+    depositAmount: Numeric<18, 4>;
+    depositType: 'percent' | 'amount';
+    depositValue: Numeric<18, 4>;
     discountAmount: Numeric<18, 4>;
     discountType: 'percent' | 'amount';
     discountValue: Numeric<18, 4>;
@@ -4655,6 +4670,39 @@ type ContractBase = Omit<
                   readonly dataType: 'pg/int4';
                   readonly codecId: 'pg/int4@1';
                   readonly nullable: false;
+                  readonly many: false;
+                };
+                readonly deposit_amount: {
+                  readonly dataType: 'pg/numeric';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/numeric@1', '0'>;
+                  };
+                  readonly typeParams: { readonly precision: 18; readonly scale: 4 };
+                  readonly many: false;
+                };
+                readonly deposit_type: {
+                  readonly dataType: 'pg/enum';
+                  readonly codecId: 'pg/enum@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/enum@1', 'percent'>;
+                  };
+                  readonly typeParams: { readonly typeName: 'discount_type' };
+                  readonly many: false;
+                };
+                readonly deposit_value: {
+                  readonly dataType: 'pg/numeric';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/numeric@1', '0'>;
+                  };
+                  readonly typeParams: { readonly precision: 18; readonly scale: 4 };
                   readonly many: false;
                 };
                 readonly discount_amount: {
@@ -8066,6 +8114,30 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
               };
+              readonly depositAmount: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly typeParams: { readonly precision: 18; readonly scale: 4 };
+                };
+              };
+              readonly depositType: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/enum@1';
+                  readonly typeParams: { readonly typeName: 'discount_type' };
+                };
+              };
+              readonly depositValue: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/numeric@1';
+                  readonly typeParams: { readonly precision: 18; readonly scale: 4 };
+                };
+              };
               readonly discountAmount: {
                 readonly nullable: false;
                 readonly type: {
@@ -8287,6 +8359,9 @@ type ContractBase = Omit<
                 readonly createdById: { readonly column: 'created_by' };
                 readonly currency: { readonly column: 'currency' };
                 readonly customerId: { readonly column: 'customer_id' };
+                readonly depositAmount: { readonly column: 'deposit_amount' };
+                readonly depositType: { readonly column: 'deposit_type' };
+                readonly depositValue: { readonly column: 'deposit_value' };
                 readonly discountAmount: { readonly column: 'discount_amount' };
                 readonly discountType: { readonly column: 'discount_type' };
                 readonly discountValue: { readonly column: 'discount_value' };

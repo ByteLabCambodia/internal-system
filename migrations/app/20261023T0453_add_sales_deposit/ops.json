@@ -1,0 +1,128 @@
+[
+  {
+    "id": "column.public.sales_documents.deposit_amount",
+    "label": "Add column \"deposit_amount\" to \"sales_documents\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "deposit_amount",
+        "table": "sales_documents"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"deposit_amount\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "sales_documents",
+          "deposit_amount"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"deposit_amount\"",
+        "sql": "ALTER TABLE \"public\".\"sales_documents\" ADD COLUMN \"deposit_amount\" numeric(18,4) DEFAULT '0'::numeric(18,4) NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"deposit_amount\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "sales_documents",
+          "deposit_amount"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.sales_documents.deposit_type",
+    "label": "Add column \"deposit_type\" to \"sales_documents\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "deposit_type",
+        "table": "sales_documents"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"deposit_type\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "sales_documents",
+          "deposit_type"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"deposit_type\"",
+        "sql": "ALTER TABLE \"public\".\"sales_documents\" ADD COLUMN \"deposit_type\" \"discount_type\" DEFAULT 'percent'::\"discount_type\" NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"deposit_type\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "sales_documents",
+          "deposit_type"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.sales_documents.deposit_value",
+    "label": "Add column \"deposit_value\" to \"sales_documents\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "deposit_value",
+        "table": "sales_documents"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"deposit_value\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "sales_documents",
+          "deposit_value"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"deposit_value\"",
+        "sql": "ALTER TABLE \"public\".\"sales_documents\" ADD COLUMN \"deposit_value\" numeric(18,4) DEFAULT '0'::numeric(18,4) NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"deposit_value\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "sales_documents",
+          "deposit_value"
+        ]
+      }
+    ]
+  }
+]

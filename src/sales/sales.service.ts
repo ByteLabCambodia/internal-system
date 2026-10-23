@@ -260,6 +260,29 @@ export class SalesService {
     );
   }
 
+  /** The deposit asked up front: a percentage of the total or a fixed amount, at most the total. */
+  deposit(
+    total: string,
+    type: DiscountTypeEnum = DiscountTypeEnum.percent,
+    value: number | string = 0,
+  ) {
+    const amount = this.money.round(
+      type === DiscountTypeEnum.percent
+        ? new Decimal(total).times(value).dividedBy(100)
+        : value,
+    );
+    if (new Decimal(amount).greaterThan(total)) {
+      throw new UnprocessableEntityException(
+        'The deposit is more than the total.',
+      );
+    }
+    return {
+      depositType: type,
+      depositValue: money(this.money.round(value)),
+      depositAmount: money(amount),
+    };
+  }
+
   private header(dto: SalesDocumentDto, exchangeRate: string) {
     const discountType = dto.discountType ?? DiscountTypeEnum.percent;
     const discountValue = dto.discountValue ?? 0;
@@ -286,6 +309,7 @@ export class SalesService {
         vatAmount: money(vatAmount),
         total: money(total),
         totalUsd: money(this.money.toUsd(total, exchangeRate)),
+        ...this.deposit(total, dto.depositType, dto.depositValue),
         notes: dto.notes?.trim() || null,
       },
     };
@@ -444,6 +468,9 @@ export class SalesService {
         vatAmount: money(quote.vatAmount),
         total: money(quote.total),
         totalUsd: money(quote.totalUsd),
+        depositType: quote.depositType,
+        depositValue: money(quote.depositValue),
+        depositAmount: money(quote.depositAmount),
         notes: quote.notes,
         createdById: Number(actor.id),
       });

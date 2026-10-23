@@ -21,6 +21,10 @@ const discount = Number(doc.discountAmount) > 0;
 const showDue = doc.type === 'invoice' && doc.status !== 'void';
 const paid = (doc.derived || []).filter(function (d) { return d.type === 'receipt' && d.status !== 'void'; })
   .reduce(function (sum, d) { return sum + Number(d.total); }, 0);
+// Deposit asked up front; on an invoice, only the part of it not yet paid is still due.
+const depositAmount = Number(doc.depositAmount) || 0;
+const depositPct = doc.depositType === 'amount' ? '' : ' (' + Number(doc.depositValue) + '%)';
+const depositDueNow = Math.max(0, Math.round((depositAmount - paid) * 100) / 100);
 // A receipt may pay part of its invoice: print the invoice total and what is left after this receipt.
 const isReceipt = doc.type === 'receipt' && doc.source;
 const grandTotal = isReceipt ? doc.source.total : doc.total;
@@ -186,9 +190,15 @@ const discountLabel = doc.discountType === 'percent' ? ' ' + Number(doc.discount
       <% if (isReceipt) { %>
         <tr><td colspan="4" class="lbl"><%- bi('ចំនួនទឹកប្រាក់នៅសល់', 'Amount remaining') %></td><td class="n"><%= fmt(remaining) %></td></tr>
       <% } %>
+      <% if (doc.type === 'quotation' && depositAmount > 0) { %>
+        <tr><td colspan="4" class="lbl"><b><%- bi('ប្រាក់កក់ត្រូវបង់' + depositPct, 'Deposit due' + depositPct) %></b></td><td class="n"><b><%= fmt(depositAmount) %></b></td></tr>
+      <% } %>
       <% if (showDue) { %>
         <tr><td colspan="4" class="lbl"><%- bi('ចំនួនទឹកប្រាក់បានបង់', 'Amount paid') %></td><td class="n"><%= fmt(paid) %></td></tr>
         <tr><td colspan="4" class="lbl"><b><%- bi('ចំនួនទឹកប្រាក់ត្រូវបង់', 'Amount due (' + doc.currency + ')') %></b></td><td class="n"><b><%= fmt(Number(doc.total) - paid) %></b></td></tr>
+        <% if (depositDueNow > 0) { %>
+          <tr><td colspan="4" class="lbl"><b><%- bi('ប្រាក់កក់ត្រូវបង់' + depositPct, 'Deposit due' + depositPct) %></b></td><td class="n"><b><%= fmt(depositDueNow) %></b></td></tr>
+        <% } %>
       <% } %>
     </tfoot>
   </table>
