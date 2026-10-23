@@ -196,6 +196,40 @@ describe('SalesService', () => {
     ).rejects.toThrow('already paid');
   });
 
+  it('should take an invoice in instalments and mark it paid only when nothing is left', async () => {
+    const id = await sales.create(
+      world.finance,
+      quotation({ type: SalesDocTypeEnum.invoice }),
+    );
+    await sales.issueInvoice(world.finance, id);
+    const pay = (amount?: number) =>
+      sales.recordReceipt(world.finance, id, {
+        paidOn: '2026-11-20',
+        paymentMethod: PaymentMethodEnum.cash,
+        amount,
+      });
+
+    const firstId = await pay(4400);
+    expect((await sales.findOne(firstId)).total).toBe('4400.0000');
+    expect((await sales.findOne(id)).status).toBe(SalesDocStatusEnum.issued);
+    expect(await balances('1000')).toBe('4400.0000');
+    expect(await balances('1100')).toBe('4400.0000');
+
+    await expect(pay(4400.01)).rejects.toThrow('still due');
+    await expect(pay(0)).rejects.toThrow('still due');
+
+    // No amount: pay whatever is left.
+    const secondId = await pay();
+    const second = await sales.findOne(secondId);
+    expect(second.total).toBe('4400.0000');
+    expect(second.number).toMatch(/-0002$/);
+    expect(second.source?.derived).toHaveLength(2);
+    expect((await sales.findOne(id)).status).toBe(SalesDocStatusEnum.paid);
+    expect(await balances('1000')).toBe('8800.0000');
+    expect(await balances('1100')).toBe('0.0000');
+    await expect(pay(1)).rejects.toThrow('already paid');
+  });
+
   it('should lock the current rate for a KHR document and refuse a currency with no rate', async () => {
     const id = await sales.create(
       world.finance,

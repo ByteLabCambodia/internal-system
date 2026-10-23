@@ -125,6 +125,18 @@ test.describe('sales documents', () => {
     const html = await printed.text();
     expect(html).toContain('>INVOICE<');
     expect(html).not.toContain('TAX INVOICE');
+    // The previous test paid it in full, so nothing is left to pay.
+    expect(html).toContain('Amount paid');
+    expect(html).toMatch(/Amount due \(USD\)[\s\S]*?>0\.00</);
+    const quote = await (
+      await page.request.get(`/sales/${ids[0].id}/print`)
+    ).text();
+    expect(quote).not.toContain('Amount due');
+    const receipt = await (
+      await page.request.get(`/sales/${ids[2].id}/print`)
+    ).text();
+    expect(receipt).toContain('Amount received');
+    expect(receipt).toMatch(/Amount remaining[\s\S]*?>0\.00</);
 
     const csv = await page.request.get('/sales/export.csv');
     const text = (await csv.body()).toString();
