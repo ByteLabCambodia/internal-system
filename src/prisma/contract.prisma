@@ -492,6 +492,11 @@ namespace public {
     vatAmount        Numeric(18, 4)          @default(0) @map("vat_amount")
     total            Numeric(18, 4)          @default(0)
     totalUsd         Numeric(18, 4)          @default(0) @map("total_usd")
+    // Deposit asked up front, typed like the discount (a percentage of the total or an
+    // amount) and the resulting amount; 0 = none. Printed, never posted.
+    depositType      pg.enum(DiscountType)   @default("percent") @map("deposit_type")
+    depositValue     Numeric(18, 4)          @default(0) @map("deposit_value")
+    depositAmount    Numeric(18, 4)          @default(0) @map("deposit_amount")
     paymentMethod    pg.enum(PaymentMethod)? @map("payment_method")
     paymentReference String?                 @map("payment_reference")
     notes            String?

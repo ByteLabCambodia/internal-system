@@ -132,6 +132,15 @@ test.describe('sales documents', () => {
       await page.request.get(`/sales/${ids[0].id}/print`)
     ).text();
     expect(quote).not.toContain('Amount due');
+    expect(quote).not.toContain('Deposit');
+    await sql(
+      `UPDATE sales_documents SET deposit_value = 50, deposit_amount = total / 2 WHERE id = $1`,
+      [ids[0].id],
+    );
+    const withDeposit = await (
+      await page.request.get(`/sales/${ids[0].id}/print`)
+    ).text();
+    expect(withDeposit).toContain('Deposit due (50%)');
     const receipt = await (
       await page.request.get(`/sales/${ids[2].id}/print`)
     ).text();
