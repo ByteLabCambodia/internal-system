@@ -25,6 +25,8 @@ const paid = (doc.derived || []).filter(function (d) { return d.type === 'receip
 const depositAmount = Number(doc.depositAmount) || 0;
 const depositPct = doc.depositType === 'amount' ? '' : ' (' + Number(doc.depositValue) + '%)';
 const depositDueNow = Math.max(0, Math.round((depositAmount - paid) * 100) / 100);
+// Payments fill the deposit first; once it is paid, what is left is the final payment.
+const isFinal = depositAmount > 0 && depositDueNow === 0 && Number(doc.total) - paid > 0;
 // A receipt may pay part of its invoice: print the invoice total and what is left after this receipt.
 const isReceipt = doc.type === 'receipt' && doc.source;
 const grandTotal = isReceipt ? doc.source.total : doc.total;
@@ -195,9 +197,10 @@ const discountLabel = doc.discountType === 'percent' ? ' ' + Number(doc.discount
       <% } %>
       <% if (showDue) { %>
         <tr><td colspan="4" class="lbl"><%- bi('ចំនួនទឹកប្រាក់បានបង់', 'Amount paid') %></td><td class="n"><%= fmt(paid) %></td></tr>
-        <tr><td colspan="4" class="lbl"><b><%- bi('ចំនួនទឹកប្រាក់ត្រូវបង់', 'Amount due (' + doc.currency + ')') %></b></td><td class="n"><b><%= fmt(Number(doc.total) - paid) %></b></td></tr>
+        <tr><td colspan="4" class="lbl"><b><%- isFinal ? bi('ប្រាក់ទូទាត់ចុងក្រោយ', 'Final payment (' + doc.currency + ')') : bi('ចំនួនទឹកប្រាក់ត្រូវបង់', 'Amount due (' + doc.currency + ')') %></b></td><td class="n"><b><%= fmt(Number(doc.total) - paid) %></b></td></tr>
         <% if (depositDueNow > 0) { %>
           <tr><td colspan="4" class="lbl"><b><%- bi('ប្រាក់កក់ត្រូវបង់' + depositPct, 'Deposit due' + depositPct) %></b></td><td class="n"><b><%= fmt(depositDueNow) %></b></td></tr>
+          <tr><td colspan="4" class="lbl"><%- bi('ប្រាក់ទូទាត់ចុងក្រោយ', 'Final payment') %></td><td class="n"><%= fmt(Number(doc.total) - depositAmount) %></td></tr>
         <% } %>
       <% } %>
     </tfoot>
