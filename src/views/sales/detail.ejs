@@ -20,6 +20,8 @@ const due = Math.round((Number(doc.total) - paid) * 100) / 100;
 const depositAmount = Number(doc.depositAmount) || 0;
 const depositLabel = 'Deposit due' + (doc.depositType === 'amount' ? '' : ' (' + Number(doc.depositValue) + '%)');
 const depositDueNow = Math.max(0, Math.round((depositAmount - paid) * 100) / 100);
+// Payments fill the deposit first; once it is paid, what is left is the final payment.
+const isFinal = depositAmount > 0 && depositDueNow === 0 && due > 0;
 // The payment form suggests the deposit first, then the rest.
 const suggested = depositDueNow > 0 ? Math.min(depositDueNow, due) : due;
 
@@ -86,9 +88,10 @@ const fieldValue = 'text-gray-900 dark:text-white';
           <% } %>
           <% if (doc.type === 'invoice' && doc.status !== 'void') { %>
             <tr><td colspan="3" class="px-4 py-2 text-right">Amount paid</td><td class="px-4 py-2 text-right tabular"><%= money.format(paid, doc.currency) %></td></tr>
-            <tr><td colspan="3" class="px-4 py-2.5 text-right font-medium text-gray-900 dark:text-white">Amount due</td><td class="px-4 py-2.5 text-right tabular font-semibold text-gray-900 dark:text-white"><%= money.format(due, doc.currency) %></td></tr>
+            <tr><td colspan="3" class="px-4 py-2.5 text-right font-medium text-gray-900 dark:text-white"><%= isFinal ? 'Final payment' : 'Amount due' %></td><td class="px-4 py-2.5 text-right tabular font-semibold text-gray-900 dark:text-white"><%= money.format(due, doc.currency) %></td></tr>
             <% if (depositDueNow > 0) { %>
               <tr><td colspan="3" class="px-4 py-2 text-right"><%= depositLabel %></td><td class="px-4 py-2 text-right tabular"><%= money.format(depositDueNow, doc.currency) %></td></tr>
+              <tr><td colspan="3" class="px-4 py-2 text-right">Final payment</td><td class="px-4 py-2 text-right tabular"><%= money.format(Number(doc.total) - depositAmount, doc.currency) %></td></tr>
             <% } %>
           <% } %>
         </tfoot>
