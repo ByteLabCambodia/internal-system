@@ -1,0 +1,24 @@
+[
+  {
+    "id": "customers.code_c4019_to_c0075",
+    "label": "Customer C-4019 becomes C-0075, with its document numbers",
+    "operationClass": "data",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "customers"
+      }
+    },
+    "precheck": [],
+    "execute": [
+      {
+        "description": "recode customer C-4019 and renumber its documents and journal memos",
+        "sql": "DO $$\nDECLARE cid int;\nBEGIN\n  SELECT id INTO cid FROM \"public\".\"customers\" WHERE code = 'C-4019';\n  IF cid IS NULL THEN RETURN; END IF;\n  IF EXISTS (SELECT 1 FROM \"public\".\"customers\" WHERE code = 'C-0075') THEN\n    RAISE EXCEPTION 'customer code C-0075 is already taken';\n  END IF;\n  UPDATE \"public\".\"customers\" SET code = 'C-0075' WHERE id = cid;\n  UPDATE \"public\".\"sales_documents\" SET number = replace(number, '-4019-', '-0075-')\n    WHERE customer_id = cid;\n  UPDATE \"public\".\"journal_entries\" j SET memo = replace(j.memo, '-4019-', '-0075-')\n    FROM \"public\".\"sales_documents\" d\n    WHERE j.source::text IN ('sales_invoice', 'sales_receipt') AND j.source_ref = d.id\n      AND d.customer_id = cid;\nEND $$",
+        "params": []
+      }
+    ],
+    "postcheck": []
+  }
+]
